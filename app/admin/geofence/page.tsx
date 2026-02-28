@@ -1,30 +1,170 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MapPin, Info } from "lucide-react"
+import { MapPin, Info, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import dynamic from "next/dynamic"
+
+// Dynamically import the map component to avoid SSR issues with Leaflet
+const GeofenceMap = dynamic(() => import("./geofence-map"), { ssr: false })
 
 export default function GeofencePage() {
   const [lat, setLat] = useState("17.4944")
   const [lng, setLng] = useState("78.3996")
   const [radius, setRadius] = useState("250")
   const [collegeName, setCollegeName] = useState("NNRG College")
+  const [existingId, setExistingId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false)
 
-  function handleSave() {
+  // Fetch existing geofence settings
+  const fetchSettings = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("geofence_settings")
+        .select("*")
+        .limit(1)
+        .single()
+
+      if (error && error.code !== "PGRST116") {
+        // PGRST116 = no rows found — that's ok, we keep defaults
+        console.error("Fetch geofence error:", error)
+      }
+
+      if (data) {
+        setExistingId(data.id)
+        setCollegeName(data.college_name)
+        setLat(String(data.latitude))
+        setLng(String(data.longitude))
+        setRadius(String(data.radius_meters))
+      }
+    } catch {
+      console.error("Unexpected error fetching geofence")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchSettings()
+  }, [fetchSettings])
+
+  async function handleSave() {
     if (!lat || !lng || !radius || !collegeName) {
       toast.error("Please fill all fields")
       return
     }
-    toast.success("Geofence updated successfully.")
+
+    setIsSaving(true)
+    try {
+      const supabase = createClient()
+
+      const payload = {
+        college_name: collegeName,
+        latitude: parseFloat(lat),
+        longitude: parseFloat(lng),
+        radius_meters: parseInt(radius, 10),
+        updated_at: new Date().toISOString(),
+      }
+
+      let saveError
+
+      if (existingId) {
+        // Update existing record
+        const { error } = await supabase
+          .from("geofence_settings")
+          .update(payload)
+          .eq("id", existingId)
+        saveError = error
+      } else {
+        // Insert new record
+        const { data, error } = await supabase
+          .from("geofence_settings")
+          .insert(payload)
+          .select("id")
+          .single()
+        saveError = error
+        if (data) setExistingId(data.id)
+      }
+
+      if (saveError) {
+        toast.error(`Save failed: ${saveError.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
+        return
+      }
+
+      // System log
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "update",
+          description: `Geofence updated with radius ${radius} meters`,
+        })
+      }
+
+      toast.success("Geofence updated successfully.")
+    } catch {
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function handleTestLocation() {
-    toast.info("Location test initiated. Your current position will be checked against the geofence boundary.")
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
+      return
+    }
+
+    setIsFetchingLocation(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newLat = position.coords.latitude.toFixed(6)
+        const newLng = position.coords.longitude.toFixed(6)
+        setLat(newLat)
+        setLng(newLng)
+        setIsFetchingLocation(false)
+        toast.success(`Location detected: ${newLat}, ${newLng}`)
+      },
+      (error) => {
+        setIsFetchingLocation(false)
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error("Location access denied. Please allow location access and try again.", {
+            style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+          })
+        } else {
+          toast.error(`Failed to get location: ${error.message}`, {
+            style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+          })
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    )
   }
+
+  // Memoize map props to avoid unnecessary re-renders
+  const mapCenter = useMemo(
+    () => ({
+      lat: parseFloat(lat) || 17.4944,
+      lng: parseFloat(lng) || 78.3996,
+    }),
+    [lat, lng]
+  )
+  const mapRadius = parseInt(radius, 10) || 250
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,7 +180,7 @@ export default function GeofencePage() {
           <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
         </span>
         <span className="text-sm font-medium text-emerald-700">
-          Geofence Active — {collegeName}
+          {isLoading ? "Loading geofence…" : `Geofence Active — ${collegeName}`}
         </span>
       </div>
 
@@ -92,31 +232,37 @@ export default function GeofencePage() {
         </CardContent>
       </Card>
 
-      {/* Map placeholder */}
+      {/* Interactive Map */}
       <Card>
-        <CardContent className="p-0">
-          <div className="flex flex-col items-center justify-center gap-3 rounded-lg bg-muted/50 py-24 px-6 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full bg-muted">
-              <MapPin className="size-7 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              Map Preview — Campus Boundary
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Interactive map will be available after backend integration
-            </p>
-          </div>
+        <CardContent className="p-0 overflow-hidden rounded-lg">
+          <GeofenceMap center={mapCenter} radius={mapRadius} collegeName={collegeName} />
         </CardContent>
       </Card>
 
       {/* Action buttons */}
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Button onClick={handleSave} className="gap-2">
-          Save Geofence
+        <Button onClick={handleSave} className="gap-2" disabled={isSaving}>
+          {isSaving ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Geofence"
+          )}
         </Button>
-        <Button variant="outline" onClick={handleTestLocation} className="gap-2">
-          <MapPin className="size-4" />
-          Test Location
+        <Button variant="outline" onClick={handleTestLocation} className="gap-2" disabled={isFetchingLocation}>
+          {isFetchingLocation ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Fetching...
+            </>
+          ) : (
+            <>
+              <MapPin className="size-4" />
+              Test Location
+            </>
+          )}
         </Button>
       </div>
 
@@ -126,7 +272,8 @@ export default function GeofencePage() {
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-foreground">Current Setting</span>
           <span className="text-xs text-muted-foreground">
-            Radius {radius} meters covers approximately the main campus buildings. Students outside this boundary cannot mark attendance.
+            Radius {radius} meters covers approximately the main campus buildings. Students outside
+            this boundary cannot mark attendance.
           </span>
         </div>
       </div>
