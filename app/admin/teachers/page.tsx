@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,7 +38,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, MoreHorizontal, Pencil, KeyRound, ShieldOff } from "lucide-react"
+import { Plus, MoreHorizontal, Pencil, KeyRound, ShieldOff, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 interface Teacher {
   id: string
@@ -50,19 +51,23 @@ interface Teacher {
   status: "Active" | "Disabled"
 }
 
-const initialTeachers: Teacher[] = [
-  { id: "1", name: "Dr. P. Sharma", initials: "PS", teacherId: "TCH001", department: "CSE", subjects: 3, status: "Active" },
-  { id: "2", name: "Dr. S. Reddy", initials: "SR", teacherId: "TCH002", department: "CSE", subjects: 2, status: "Active" },
-  { id: "3", name: "Dr. M. Patel", initials: "MP", teacherId: "TCH003", department: "ECE", subjects: 1, status: "Active" },
-  { id: "4", name: "Dr. K. Rao", initials: "KR", teacherId: "TCH004", department: "CSE", subjects: 2, status: "Active" },
-  { id: "5", name: "Dr. A. Singh", initials: "AS", teacherId: "TCH005", department: "ECE", subjects: 1, status: "Disabled" },
-]
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter((w) => w[0] && w[0] === w[0].toUpperCase())
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2) || "NA"
+}
 
 export default function TeacherManagementPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers)
+  const [teachers, setTeachers] = useState<Teacher[]>([])
+  const [isLoadingTeachers, setIsLoadingTeachers] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<Teacher | null>(null)
   const [disableTarget, setDisableTarget] = useState<Teacher | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form state
   const [formName, setFormName] = useState("")
@@ -70,53 +75,272 @@ export default function TeacherManagementPage() {
   const [formDept, setFormDept] = useState("")
   const [formEmail, setFormEmail] = useState("")
 
-  function handleAddTeacher() {
-    if (!formName || !formTeacherId || !formDept || !formEmail) {
-      toast.error("Please fill all fields")
+  // Departments list for the form select
+  const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([])
+
+  const fetchTeachers = useCallback(async () => {
+    setIsLoadingTeachers(true)
+    setFetchError(null)
+
+    try {
+      const supabase = createClient()
+
+      const { data, error } = await supabase
+        .from("teachers")
+        .select(`
+          id,
+          teacher_id_code,
+          is_active,
+          department:departments ( name ),
+          user:users ( full_name, email )
+        `)
+        .order("created_at", { ascending: false })
+
+      if (error) {
+        console.error("Fetch teachers error:", error)
+        setFetchError("Failed to load teachers. Please refresh.")
+        setIsLoadingTeachers(false)
+        return
+      }
+
+      const mapped: Teacher[] = (data || []).map((t: any) => ({
+        id: t.id,
+        name: t.user?.full_name ?? "Unknown",
+        initials: getInitials(t.user?.full_name ?? ""),
+        teacherId: t.teacher_id_code,
+        department: t.department?.name ?? "—",
+        subjects: 0,
+        status: t.is_active ? "Active" : "Disabled",
+      }))
+
+      setTeachers(mapped)
+    } catch {
+      setFetchError("An unexpected error occurred.")
+    } finally {
+      setIsLoadingTeachers(false)
+    }
+  }, [])
+
+  // Fetch departments for the form select
+  const fetchDepartments = useCallback(async () => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("departments")
+      .select("id, name, code")
+      .order("name")
+    if (data) setDepartments(data)
+  }, [])
+
+  useEffect(() => {
+    fetchTeachers()
+    fetchDepartments()
+  }, [fetchTeachers, fetchDepartments])
+
+  async function handleAddTeacher() {
+    if (!formName || !formTeacherId || !formDept) {
+      toast.error("Please fill all required fields")
       return
     }
-    const initials = formName
-      .split(" ")
-      .filter((w) => w[0] && w[0] === w[0].toUpperCase())
-      .map((w) => w[0])
-      .join("")
-      .slice(0, 2)
-    const newTeacher: Teacher = {
-      id: String(Date.now()),
-      name: formName,
-      initials: initials || "NA",
-      teacherId: formTeacherId,
-      department: formDept,
-      subjects: 0,
-      status: "Active",
+
+    setIsSubmitting(true)
+
+    try {
+      const supabase = createClient()
+
+      // Step 1: Create auth user via signUp
+      const teacherEmail = `${formTeacherId.toLowerCase()}@nnrg.edu.in`
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: teacherEmail,
+        password: "Teacher@1234",
+        options: {
+          data: {
+            full_name: formName,
+            role: "teacher",
+          },
+        },
+      })
+
+      if (signUpError) {
+        toast.error(signUpError.message, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        setIsSubmitting(false)
+        return
+      }
+
+      const newUserId = signUpData.user?.id
+      if (!newUserId) {
+        toast.error("Failed to create auth user — no user ID returned.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Step 2: Insert into public.users
+      const { error: userInsertError } = await supabase.from("users").insert({
+        id: newUserId,
+        email: teacherEmail,
+        full_name: formName,
+        role: "teacher",
+        must_change_password: true,
+      })
+
+      if (userInsertError) {
+        toast.error(`Users insert failed: ${userInsertError.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Step 3: Fetch department_id from departments table
+      const selectedDept = departments.find((d) => d.name === formDept || d.code === formDept)
+      if (!selectedDept) {
+        toast.error(`Department "${formDept}" not found.`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Step 4: Insert into public.teachers
+      const { error: teacherInsertError } = await supabase.from("teachers").insert({
+        id: newUserId,
+        teacher_id_code: formTeacherId,
+        department_id: selectedDept.id,
+        is_active: true,
+      })
+
+      if (teacherInsertError) {
+        toast.error(`Teachers insert failed: ${teacherInsertError.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Step 5: Insert system log
+      const { data: { user: adminUser } } = await supabase.auth.getUser()
+      if (adminUser) {
+        await supabase.from("system_logs").insert({
+          performed_by: adminUser.id,
+          action_type: "create",
+          description: `Teacher account created for ${formName}`,
+        })
+      }
+
+      toast.success("Teacher account created successfully")
+      setSheetOpen(false)
+      setFormName("")
+      setFormTeacherId("")
+      setFormDept("")
+      setFormEmail("")
+      fetchTeachers()
+    } catch {
+      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+    } finally {
+      setIsSubmitting(false)
     }
-    setTeachers((prev) => [...prev, newTeacher])
-    setSheetOpen(false)
-    setFormName("")
-    setFormTeacherId("")
-    setFormDept("")
-    setFormEmail("")
-    toast.success(`Teacher "${formName}" added successfully`)
   }
 
-  function handleResetPassword() {
+  async function handleResetPassword() {
     if (!resetTarget) return
-    toast.success(`Password reset for ${resetTarget.name}. They will be forced to change it on next login.`)
-    setResetTarget(null)
+
+    setIsSubmitting(true)
+    try {
+      const res = await fetch("/api/admin/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: resetTarget.id }),
+      })
+
+      const result = await res.json()
+
+      if (!res.ok) {
+        toast.error(result.error || "Failed to reset password", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      } else {
+        toast.success(`Password reset for ${resetTarget.name}. They will be forced to change it on next login.`)
+      }
+    } catch {
+      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+    } finally {
+      setResetTarget(null)
+      setIsSubmitting(false)
+    }
   }
 
-  function handleDisableAccount() {
+  async function handleDisableAccount() {
     if (!disableTarget) return
-    setTeachers((prev) =>
-      prev.map((t) =>
-        t.id === disableTarget.id
-          ? { ...t, status: t.status === "Active" ? "Disabled" : "Active" }
-          : t
-      )
+
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+      const newStatus = disableTarget.status === "Active" ? false : true
+
+      const { error } = await supabase
+        .from("teachers")
+        .update({ is_active: newStatus })
+        .eq("id", disableTarget.id)
+
+      if (error) {
+        toast.error(`Failed to update account: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      } else {
+        const action = disableTarget.status === "Active" ? "disabled" : "enabled"
+        toast.success(`${disableTarget.name}'s account has been ${action}.`)
+        // Update local state immediately
+        setTeachers((prev) =>
+          prev.map((t) =>
+            t.id === disableTarget.id
+              ? { ...t, status: newStatus ? "Active" : "Disabled" }
+              : t
+          )
+        )
+      }
+    } catch {
+      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+    } finally {
+      setDisableTarget(null)
+      setIsSubmitting(false)
+    }
+  }
+
+  // Skeleton row for loading state
+  function SkeletonRows() {
+    return (
+      <>
+        {[1, 2, 3].map((i) => (
+          <tr key={i} className="border-b border-border last:border-0 animate-pulse">
+            <td className="px-5 py-3">
+              <div className="flex items-center gap-3">
+                <div className="size-9 rounded-full bg-muted" />
+                <div className="h-4 w-28 rounded bg-muted" />
+              </div>
+            </td>
+            <td className="px-5 py-3"><div className="h-4 w-16 rounded bg-muted" /></td>
+            <td className="px-5 py-3"><div className="h-4 w-12 rounded bg-muted" /></td>
+            <td className="px-5 py-3 text-center"><div className="h-4 w-6 mx-auto rounded bg-muted" /></td>
+            <td className="px-5 py-3"><div className="h-5 w-14 rounded-full bg-muted" /></td>
+            <td className="px-5 py-3 text-right"><div className="size-8 ml-auto rounded bg-muted" /></td>
+          </tr>
+        ))}
+      </>
     )
-    const action = disableTarget.status === "Active" ? "disabled" : "enabled"
-    toast.success(`${disableTarget.name}'s account has been ${action}.`)
-    setDisableTarget(null)
+  }
+
+  function MobileSkeletonCards() {
+    return (
+      <>
+        {[1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-4 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-full bg-muted" />
+                <div className="flex flex-col gap-2">
+                  <div className="h-4 w-28 rounded bg-muted" />
+                  <div className="h-3 w-16 rounded bg-muted" />
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-3 w-10 rounded bg-muted" />
+                <div className="h-3 w-20 rounded bg-muted" />
+                <div className="ml-auto h-5 w-14 rounded-full bg-muted" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </>
+    )
   }
 
   return (
@@ -132,6 +356,18 @@ export default function TeacherManagementPage() {
           <span className="sm:hidden">Add</span>
         </Button>
       </div>
+
+      {/* Error state */}
+      {fetchError && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-destructive">{fetchError}</p>
+            <Button variant="outline" size="sm" className="mt-3" onClick={fetchTeachers}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Desktop table */}
       <Card className="hidden md:block">
@@ -149,54 +385,64 @@ export default function TeacherManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {teachers.map((t) => (
-                  <tr key={t.id} className="border-b border-border last:border-0">
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="size-9">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                            {t.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-foreground">{t.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 font-mono text-muted-foreground">{t.teacherId}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{t.department}</td>
-                    <td className="px-5 py-3 text-center font-semibold text-foreground">{t.subjects}</td>
-                    <td className="px-5 py-3">
-                      <Badge variant={t.status === "Active" ? "secondary" : "outline"} className={t.status === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-200" : "bg-muted text-muted-foreground"}>
-                        {t.status}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon-sm" aria-label="Teacher actions">
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Pencil className="size-4" />
-                            Edit Teacher
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setResetTarget(t)}>
-                            <KeyRound className="size-4" />
-                            Reset Password
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => setDisableTarget(t)}
-                          >
-                            <ShieldOff className="size-4" />
-                            {t.status === "Active" ? "Disable Account" : "Enable Account"}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                {isLoadingTeachers ? (
+                  <SkeletonRows />
+                ) : teachers.length === 0 && !fetchError ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-12 text-center text-muted-foreground">
+                      No teachers found. Click &ldquo;Add Teacher&rdquo; to create one.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  teachers.map((t) => (
+                    <tr key={t.id} className="border-b border-border last:border-0">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-9">
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                              {t.initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-foreground">{t.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 font-mono text-muted-foreground">{t.teacherId}</td>
+                      <td className="px-5 py-3 text-muted-foreground">{t.department}</td>
+                      <td className="px-5 py-3 text-center font-semibold text-foreground">{t.subjects}</td>
+                      <td className="px-5 py-3">
+                        <Badge variant={t.status === "Active" ? "secondary" : "outline"} className={t.status === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-200" : "bg-muted text-muted-foreground"}>
+                          {t.status}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon-sm" aria-label="Teacher actions">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Pencil className="size-4" />
+                              Edit Teacher
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setResetTarget(t)}>
+                              <KeyRound className="size-4" />
+                              Reset Password
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setDisableTarget(t)}
+                            >
+                              <ShieldOff className="size-4" />
+                              {t.status === "Active" ? "Disable Account" : "Enable Account"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -205,57 +451,67 @@ export default function TeacherManagementPage() {
 
       {/* Mobile cards */}
       <div className="flex flex-col gap-3 md:hidden">
-        {teachers.map((t) => (
-          <Card key={t.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="size-10">
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
-                      {t.initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-foreground">{t.name}</span>
-                    <span className="text-xs text-muted-foreground font-mono">{t.teacherId}</span>
-                  </div>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-sm" aria-label="Teacher actions">
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Pencil className="size-4" />
-                      Edit Teacher
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setResetTarget(t)}>
-                      <KeyRound className="size-4" />
-                      Reset Password
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => setDisableTarget(t)}
-                    >
-                      <ShieldOff className="size-4" />
-                      {t.status === "Active" ? "Disable Account" : "Enable Account"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="mt-3 flex items-center gap-3 text-sm">
-                <span className="text-muted-foreground">{t.department}</span>
-                <span className="text-muted-foreground">{'|'}</span>
-                <span className="text-muted-foreground">{t.subjects} subjects</span>
-                <Badge variant={t.status === "Active" ? "secondary" : "outline"} className={t.status === "Active" ? "ml-auto bg-emerald-500/10 text-emerald-600 border-emerald-200" : "ml-auto bg-muted text-muted-foreground"}>
-                  {t.status}
-                </Badge>
-              </div>
+        {isLoadingTeachers ? (
+          <MobileSkeletonCards />
+        ) : teachers.length === 0 && !fetchError ? (
+          <Card>
+            <CardContent className="py-8 text-center text-sm text-muted-foreground">
+              No teachers found. Tap &ldquo;Add&rdquo; to create one.
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          teachers.map((t) => (
+            <Card key={t.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="size-10">
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                        {t.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-foreground">{t.name}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{t.teacherId}</span>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon-sm" aria-label="Teacher actions">
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Pencil className="size-4" />
+                        Edit Teacher
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setResetTarget(t)}>
+                        <KeyRound className="size-4" />
+                        Reset Password
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() => setDisableTarget(t)}
+                      >
+                        <ShieldOff className="size-4" />
+                        {t.status === "Active" ? "Disable Account" : "Enable Account"}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="mt-3 flex items-center gap-3 text-sm">
+                  <span className="text-muted-foreground">{t.department}</span>
+                  <span className="text-muted-foreground">{'|'}</span>
+                  <span className="text-muted-foreground">{t.subjects} subjects</span>
+                  <Badge variant={t.status === "Active" ? "secondary" : "outline"} className={t.status === "Active" ? "ml-auto bg-emerald-500/10 text-emerald-600 border-emerald-200" : "ml-auto bg-muted text-muted-foreground"}>
+                    {t.status}
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Add Teacher Sheet */}
@@ -293,8 +549,11 @@ export default function TeacherManagementPage() {
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CSE">CSE</SelectItem>
-                  <SelectItem value="ECE">ECE</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.name}>
+                      {d.name} ({d.code})
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -313,8 +572,15 @@ export default function TeacherManagementPage() {
                 Default password will be assigned automatically. The teacher will be forced to change it on first login.
               </p>
             </div>
-            <Button onClick={handleAddTeacher} className="mt-2">
-              Add Teacher
+            <Button onClick={handleAddTeacher} className="mt-2" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Add Teacher"
+              )}
             </Button>
           </div>
         </SheetContent>
@@ -332,7 +598,9 @@ export default function TeacherManagementPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetPassword}>Reset</AlertDialogAction>
+            <AlertDialogAction onClick={handleResetPassword} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Reset"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -362,9 +630,14 @@ export default function TeacherManagementPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDisableAccount}
+              disabled={isSubmitting}
               className={disableTarget?.status === "Active" ? "bg-destructive text-white hover:bg-destructive/90" : ""}
             >
-              {disableTarget?.status === "Active" ? "Disable" : "Enable"}
+              {isSubmitting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                disableTarget?.status === "Active" ? "Disable" : "Enable"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

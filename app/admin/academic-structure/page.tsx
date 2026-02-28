@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -21,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus } from "lucide-react"
+import { Plus, Loader2 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
-/* ---------- Departments ---------- */
+/* ---------- Interfaces ---------- */
 
 interface Department {
   id: string
@@ -33,29 +34,12 @@ interface Department {
   subjects: number
 }
 
-const initialDepartments: Department[] = [
-  { id: "1", name: "Computer Science Engineering", code: "CSE", classes: 2, subjects: 5 },
-  { id: "2", name: "Electronics and Communication", code: "ECE", classes: 1, subjects: 3 },
-]
-
-/* ---------- Subjects ---------- */
-
 interface Subject {
   id: string
   name: string
   code: string
   department: string
 }
-
-const initialSubjects: Subject[] = [
-  { id: "1", name: "Data Structures", code: "DS", department: "CSE" },
-  { id: "2", name: "Operating Systems", code: "OS", department: "CSE" },
-  { id: "3", name: "DBMS", code: "DB", department: "CSE" },
-  { id: "4", name: "Computer Networks", code: "CN", department: "CSE" },
-  { id: "5", name: "Circuit Theory", code: "CT", department: "ECE" },
-]
-
-/* ---------- Periods ---------- */
 
 interface Period {
   id: string
@@ -65,20 +49,63 @@ interface Period {
   duration: string
 }
 
-const initialPeriods: Period[] = [
-  { id: "1", number: 1, start: "09:15", end: "10:10", duration: "55 min" },
-  { id: "2", number: 2, start: "10:10", end: "11:00", duration: "50 min" },
-  { id: "3", number: 3, start: "11:10", end: "12:00", duration: "50 min" },
-  { id: "4", number: 4, start: "12:00", end: "12:50", duration: "50 min" },
-  { id: "5", number: 5, start: "13:30", end: "14:20", duration: "50 min" },
-]
+/* ---------- Helpers ---------- */
+
+function computeDuration(start: string, end: string): string {
+  const [sh, sm] = start.split(":").map(Number)
+  const [eh, em] = end.split(":").map(Number)
+  const dur = (eh * 60 + em) - (sh * 60 + sm)
+  return `${dur} min`
+}
+
+/* ---------- Skeleton Components ---------- */
+
+function TableSkeleton({ cols }: { cols: number }) {
+  return (
+    <>
+      {[1, 2, 3].map((i) => (
+        <tr key={i} className="border-b border-border last:border-0 animate-pulse">
+          {Array.from({ length: cols }).map((_, j) => (
+            <td key={j} className="px-5 py-3">
+              <div className="h-4 w-20 rounded bg-muted" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
+}
+
+function MobileSkeleton() {
+  return (
+    <>
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
+          <CardContent className="p-4 animate-pulse">
+            <div className="h-4 w-32 rounded bg-muted" />
+            <div className="mt-2 h-3 w-20 rounded bg-muted" />
+          </CardContent>
+        </Card>
+      ))}
+    </>
+  )
+}
 
 /* ---------- Component ---------- */
 
 export default function AcademicStructurePage() {
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments)
-  const [subjects, setSubjects] = useState<Subject[]>(initialSubjects)
-  const [periods, setPeriods] = useState<Period[]>(initialPeriods)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [periods, setPeriods] = useState<Period[]>([])
+
+  // Loading & error states
+  const [loadingDepts, setLoadingDepts] = useState(true)
+  const [loadingSubjects, setLoadingSubjects] = useState(true)
+  const [loadingPeriods, setLoadingPeriods] = useState(true)
+  const [deptError, setDeptError] = useState<string | null>(null)
+  const [subjectError, setSubjectError] = useState<string | null>(null)
+  const [periodError, setPeriodError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Dialogs
   const [deptDialog, setDeptDialog] = useState(false)
@@ -98,55 +125,265 @@ export default function AcademicStructurePage() {
   const [perStart, setPerStart] = useState("")
   const [perEnd, setPerEnd] = useState("")
 
-  function handleAddDept() {
+  /* ---------- Fetch functions ---------- */
+
+  const fetchDepartments = useCallback(async () => {
+    setLoadingDepts(true)
+    setDeptError(null)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id, name, code")
+        .order("name")
+
+      if (error) {
+        console.error("Fetch departments error:", error)
+        setDeptError("Failed to load departments.")
+        return
+      }
+
+      setDepartments(
+        (data || []).map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          code: d.code,
+          classes: 0,
+          subjects: 0,
+        }))
+      )
+    } catch {
+      setDeptError("An unexpected error occurred.")
+    } finally {
+      setLoadingDepts(false)
+    }
+  }, [])
+
+  const fetchSubjects = useCallback(async () => {
+    setLoadingSubjects(true)
+    setSubjectError(null)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("subjects")
+        .select(`
+          id, name, code,
+          department:departments ( name, code )
+        `)
+        .order("name")
+
+      if (error) {
+        console.error("Fetch subjects error:", error)
+        setSubjectError("Failed to load subjects.")
+        return
+      }
+
+      setSubjects(
+        (data || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          code: s.code,
+          department: s.department?.code ?? "—",
+        }))
+      )
+    } catch {
+      setSubjectError("An unexpected error occurred.")
+    } finally {
+      setLoadingSubjects(false)
+    }
+  }, [])
+
+  const fetchPeriods = useCallback(async () => {
+    setLoadingPeriods(true)
+    setPeriodError(null)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("periods")
+        .select("id, period_number, start_time, end_time")
+        .order("period_number")
+
+      if (error) {
+        console.error("Fetch periods error:", error)
+        setPeriodError("Failed to load periods.")
+        return
+      }
+
+      setPeriods(
+        (data || []).map((p: any) => ({
+          id: p.id,
+          number: p.period_number,
+          start: p.start_time,
+          end: p.end_time,
+          duration: computeDuration(p.start_time, p.end_time),
+        }))
+      )
+    } catch {
+      setPeriodError("An unexpected error occurred.")
+    } finally {
+      setLoadingPeriods(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchDepartments()
+    fetchSubjects()
+    fetchPeriods()
+  }, [fetchDepartments, fetchSubjects, fetchPeriods])
+
+  /* ---------- Submit handlers ---------- */
+
+  async function handleAddDept() {
     if (!deptName || !deptCode) {
       toast.error("Please fill all fields")
       return
     }
-    setDepartments((prev) => [
-      ...prev,
-      { id: String(Date.now()), name: deptName, code: deptCode, classes: 0, subjects: 0 },
-    ])
-    setDeptDialog(false)
-    setDeptName("")
-    setDeptCode("")
-    toast.success(`Department "${deptCode}" added successfully`)
+
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase.from("departments").insert({
+        name: deptName,
+        code: deptCode,
+      })
+
+      if (error) {
+        toast.error(`Failed: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        return
+      }
+
+      // System log
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "create",
+          description: `Department added: ${deptName}`,
+        })
+      }
+
+      toast.success(`Department "${deptCode}" added successfully`)
+      setDeptDialog(false)
+      setDeptName("")
+      setDeptCode("")
+      fetchDepartments()
+    } catch {
+      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  function handleAddSubject() {
+  async function handleAddSubject() {
     if (!subjName || !subjCode || !subjDept) {
       toast.error("Please fill all fields")
       return
     }
-    setSubjects((prev) => [
-      ...prev,
-      { id: String(Date.now()), name: subjName, code: subjCode, department: subjDept },
-    ])
-    setSubjectDialog(false)
-    setSubjName("")
-    setSubjCode("")
-    setSubjDept("")
-    toast.success(`Subject "${subjName}" added successfully`)
+
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+
+      // Find department id
+      const selectedDept = departments.find((d) => d.code === subjDept)
+      if (!selectedDept) {
+        toast.error(`Department "${subjDept}" not found.`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        return
+      }
+
+      const { error } = await supabase.from("subjects").insert({
+        name: subjName,
+        code: subjCode,
+        department_id: selectedDept.id,
+      })
+
+      if (error) {
+        toast.error(`Failed: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        return
+      }
+
+      // System log
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "create",
+          description: `Subject added: ${subjName}`,
+        })
+      }
+
+      toast.success(`Subject "${subjName}" added successfully`)
+      setSubjectDialog(false)
+      setSubjName("")
+      setSubjCode("")
+      setSubjDept("")
+      fetchSubjects()
+    } catch {
+      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  function handleAddPeriod() {
+  async function handleAddPeriod() {
     if (!perStart || !perEnd) {
       toast.error("Please fill all fields")
       return
     }
-    const nextNum = periods.length + 1
-    // Compute duration
-    const [sh, sm] = perStart.split(":").map(Number)
-    const [eh, em] = perEnd.split(":").map(Number)
-    const dur = (eh * 60 + em) - (sh * 60 + sm)
-    setPeriods((prev) => [
-      ...prev,
-      { id: String(Date.now()), number: nextNum, start: perStart, end: perEnd, duration: `${dur} min` },
-    ])
-    setPeriodDialog(false)
-    setPerStart("")
-    setPerEnd("")
-    toast.success(`Period ${nextNum} added successfully`)
+
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+
+      const nextNum = periods.length + 1
+
+      const { error } = await supabase.from("periods").insert({
+        period_number: nextNum,
+        start_time: perStart,
+        end_time: perEnd,
+      })
+
+      if (error) {
+        toast.error(`Failed: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        return
+      }
+
+      toast.success(`Period ${nextNum} added successfully`)
+      setPeriodDialog(false)
+      setPerStart("")
+      setPerEnd("")
+      fetchPeriods()
+    } catch {
+      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  /* ---------- Render helpers ---------- */
+
+  function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <p className="text-sm text-destructive">{message}</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  function EmptyCard({ message }: { message: string }) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          {message}
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -169,50 +406,67 @@ export default function AcademicStructurePage() {
                 <span className="sm:hidden">Add</span>
               </Button>
             </div>
-            {/* Desktop table */}
-            <Card className="hidden sm:block">
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Name</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Code</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground text-center">Classes</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground text-center">Subjects</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {departments.map((d) => (
-                      <tr key={d.id} className="border-b border-border last:border-0">
-                        <td className="px-5 py-3 font-medium text-foreground">{d.name}</td>
-                        <td className="px-5 py-3 font-mono text-muted-foreground">{d.code}</td>
-                        <td className="px-5 py-3 text-center text-foreground">{d.classes}</td>
-                        <td className="px-5 py-3 text-center text-foreground">{d.subjects}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-            {/* Mobile cards */}
-            <div className="flex flex-col gap-3 sm:hidden">
-              {departments.map((d) => (
-                <Card key={d.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">{d.name}</span>
-                        <span className="text-xs text-muted-foreground font-mono">{d.code}</span>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{d.classes} classes</span>
-                      <span>{d.subjects} subjects</span>
-                    </div>
+
+            {deptError ? (
+              <ErrorCard message={deptError} onRetry={fetchDepartments} />
+            ) : !loadingDepts && departments.length === 0 ? (
+              <EmptyCard message="No departments found. Click &ldquo;Add Department&rdquo; to create one." />
+            ) : (
+              <>
+                {/* Desktop table */}
+                <Card className="hidden sm:block">
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Name</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Code</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground text-center">Classes</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground text-center">Subjects</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loadingDepts ? (
+                          <TableSkeleton cols={4} />
+                        ) : (
+                          departments.map((d) => (
+                            <tr key={d.id} className="border-b border-border last:border-0">
+                              <td className="px-5 py-3 font-medium text-foreground">{d.name}</td>
+                              <td className="px-5 py-3 font-mono text-muted-foreground">{d.code}</td>
+                              <td className="px-5 py-3 text-center text-foreground">{d.classes}</td>
+                              <td className="px-5 py-3 text-center text-foreground">{d.subjects}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+                {/* Mobile cards */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {loadingDepts ? (
+                    <MobileSkeleton />
+                  ) : (
+                    departments.map((d) => (
+                      <Card key={d.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{d.name}</span>
+                              <span className="text-xs text-muted-foreground font-mono">{d.code}</span>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>{d.classes} classes</span>
+                            <span>{d.subjects} subjects</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </TabsContent>
 
@@ -227,45 +481,62 @@ export default function AcademicStructurePage() {
                 <span className="sm:hidden">Add</span>
               </Button>
             </div>
-            {/* Desktop table */}
-            <Card className="hidden sm:block">
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Subject Name</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Code</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Department</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subjects.map((s) => (
-                      <tr key={s.id} className="border-b border-border last:border-0">
-                        <td className="px-5 py-3 font-medium text-foreground">{s.name}</td>
-                        <td className="px-5 py-3 font-mono text-muted-foreground">{s.code}</td>
-                        <td className="px-5 py-3 text-muted-foreground">{s.department}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-            {/* Mobile cards */}
-            <div className="flex flex-col gap-3 sm:hidden">
-              {subjects.map((s) => (
-                <Card key={s.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="font-medium text-foreground">{s.name}</span>
-                        <span className="text-xs text-muted-foreground font-mono">{s.code}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">{s.department}</span>
-                    </div>
+
+            {subjectError ? (
+              <ErrorCard message={subjectError} onRetry={fetchSubjects} />
+            ) : !loadingSubjects && subjects.length === 0 ? (
+              <EmptyCard message="No subjects found. Click &ldquo;Add Subject&rdquo; to create one." />
+            ) : (
+              <>
+                {/* Desktop table */}
+                <Card className="hidden sm:block">
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Subject Name</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Code</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Department</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loadingSubjects ? (
+                          <TableSkeleton cols={3} />
+                        ) : (
+                          subjects.map((s) => (
+                            <tr key={s.id} className="border-b border-border last:border-0">
+                              <td className="px-5 py-3 font-medium text-foreground">{s.name}</td>
+                              <td className="px-5 py-3 font-mono text-muted-foreground">{s.code}</td>
+                              <td className="px-5 py-3 text-muted-foreground">{s.department}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+                {/* Mobile cards */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {loadingSubjects ? (
+                    <MobileSkeleton />
+                  ) : (
+                    subjects.map((s) => (
+                      <Card key={s.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{s.name}</span>
+                              <span className="text-xs text-muted-foreground font-mono">{s.code}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{s.department}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </TabsContent>
 
@@ -280,49 +551,66 @@ export default function AcademicStructurePage() {
                 <span className="sm:hidden">Add</span>
               </Button>
             </div>
-            {/* Desktop table */}
-            <Card className="hidden sm:block">
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Period</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Start Time</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground">End Time</th>
-                      <th className="px-5 py-3 font-medium text-muted-foreground">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {periods.map((p) => (
-                      <tr key={p.id} className="border-b border-border last:border-0">
-                        <td className="px-5 py-3 font-semibold text-foreground">Period {p.number}</td>
-                        <td className="px-5 py-3 font-mono text-foreground">{p.start}</td>
-                        <td className="px-5 py-3 font-mono text-foreground">{p.end}</td>
-                        <td className="px-5 py-3 text-muted-foreground">{p.duration}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </CardContent>
-            </Card>
-            {/* Mobile cards */}
-            <div className="flex flex-col gap-3 sm:hidden">
-              {periods.map((p) => (
-                <Card key={p.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground">Period {p.number}</span>
-                      <span className="text-xs text-muted-foreground">{p.duration}</span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground font-mono">
-                      <span>{p.start}</span>
-                      <span>{'—'}</span>
-                      <span>{p.end}</span>
-                    </div>
+
+            {periodError ? (
+              <ErrorCard message={periodError} onRetry={fetchPeriods} />
+            ) : !loadingPeriods && periods.length === 0 ? (
+              <EmptyCard message="No periods configured. Click &ldquo;Add Period&rdquo; to create one." />
+            ) : (
+              <>
+                {/* Desktop table */}
+                <Card className="hidden sm:block">
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Period</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Start Time</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">End Time</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loadingPeriods ? (
+                          <TableSkeleton cols={4} />
+                        ) : (
+                          periods.map((p) => (
+                            <tr key={p.id} className="border-b border-border last:border-0">
+                              <td className="px-5 py-3 font-semibold text-foreground">Period {p.number}</td>
+                              <td className="px-5 py-3 font-mono text-foreground">{p.start}</td>
+                              <td className="px-5 py-3 font-mono text-foreground">{p.end}</td>
+                              <td className="px-5 py-3 text-muted-foreground">{p.duration}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+                {/* Mobile cards */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {loadingPeriods ? (
+                    <MobileSkeleton />
+                  ) : (
+                    periods.map((p) => (
+                      <Card key={p.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-foreground">Period {p.number}</span>
+                            <span className="text-xs text-muted-foreground">{p.duration}</span>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground font-mono">
+                            <span>{p.start}</span>
+                            <span>{'—'}</span>
+                            <span>{p.end}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </TabsContent>
       </Tabs>
@@ -353,7 +641,16 @@ export default function AcademicStructurePage() {
                 onChange={(e) => setDeptCode(e.target.value)}
               />
             </div>
-            <Button onClick={handleAddDept}>Add Department</Button>
+            <Button onClick={handleAddDept} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Department"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -393,13 +690,22 @@ export default function AcademicStructurePage() {
                 <SelectContent>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.code}>
-                      {d.code}
+                      {d.name} ({d.code})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAddSubject}>Add Subject</Button>
+            <Button onClick={handleAddSubject} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Subject"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -432,7 +738,16 @@ export default function AcademicStructurePage() {
                 onChange={(e) => setPerEnd(e.target.value)}
               />
             </div>
-            <Button onClick={handleAddPeriod}>Add Period</Button>
+            <Button onClick={handleAddPeriod} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Period"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
