@@ -147,26 +147,29 @@ export default function TeacherManagementPage() {
     try {
       const supabase = createClient()
 
-      // Step 1: Create auth user via signUp
+      // Step 1: Create auth user via admin API route
       const teacherEmail = `${formTeacherId.toLowerCase()}@nnrg.edu.in`
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: teacherEmail,
-        password: "Teacher@1234",
-        options: {
-          data: {
-            full_name: formName,
-            role: "teacher",
-          },
-        },
+      
+      const res = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: teacherEmail,
+          password: "Teacher@1234",
+          full_name: formName,
+          role: "teacher"
+        }),
       })
 
-      if (signUpError) {
-        toast.error(signUpError.message, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      const result = await res.json()
+
+      if (!res.ok) {
+        toast.error(result.error || "Failed to create user", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
         setIsSubmitting(false)
         return
       }
 
-      const newUserId = signUpData.user?.id
+      const newUserId = result.userId
       if (!newUserId) {
         toast.error("Failed to create auth user — no user ID returned.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
         setIsSubmitting(false)

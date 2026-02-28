@@ -4,17 +4,13 @@ import { useEffect, useRef } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
-// Fix Leaflet's default icon paths for bundlers
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png"
-import markerIcon from "leaflet/dist/images/marker-icon.png"
-import markerShadow from "leaflet/dist/images/marker-shadow.png"
-
+// Fix Leaflet's default icon paths for bundlers (use CDN URLs to avoid TS import issues)
 // @ts-expect-error — overriding protected property
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x.src ?? markerIcon2x,
-  iconUrl: markerIcon.src ?? markerIcon,
-  shadowUrl: markerShadow.src ?? markerShadow,
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 })
 
 interface GeofenceMapProps {

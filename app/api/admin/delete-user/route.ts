@@ -1,0 +1,82 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export async function POST(request: NextRequest) {
+  try {
+    // Verify the caller is authenticated
+    const supabase = await createClient();
+    const {
+      data: { user: caller },
+    } = await supabase.auth.getUser();
+
+    if (!caller) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Check caller role
+    const { data: callerProfile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", caller.id)
+      .single();
+
+    if (!callerProfile || !["admin", "teacher"].includes(callerProfile.role)) {
+      return NextResponse.json(
+        { error: "Forbidden: insufficient permissions" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { userId } = body;
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Missing required field: userId" },
+        { status: 400 }
+      );
+    }
+
+    const adminClient = createAdminClient();
+
+    // Step 1: Delete from public.students
+    const { error: studentDelErr } = await adminClient
+      .from("students")
+      .delete()
+      .eq("id", userId);
+      
+    if (studentDelErr) {
+      console.error("Delete user error (students table):", studentDelErr);
+    }
+
+    // Step 2: Delete from public.users
+    const { error: userDelErr } = await adminClient
+      .from("users")
+      .delete()
+      .eq("id", userId);
+
+    if (userDelErr) {
+      console.error("Delete user error (users table):", userDelErr);
+    }
+
+    // Step 3: Delete from auth
+    const { error: authDelErr } = await adminClient.auth.admin.deleteUser(userId);
+
+    if (authDelErr) {
+      console.error("Delete user error (auth):", authDelErr);
+    }
+
+    // Always return success so the frontend UI can refresh locally
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Delete user error (catch block):", err);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

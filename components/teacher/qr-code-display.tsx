@@ -120,7 +120,7 @@ export function QRCodeDisplay({
 /**
  * Hook that manages the 15-second countdown timer for QR rotation.
  */
-export function useQRTimer(isActive: boolean, isPaused: boolean) {
+export function useQRTimer(isActive: boolean, isPaused: boolean, onRotate?: () => void) {
   const TOTAL = 15
   const [secondsLeft, setSecondsLeft] = useState(TOTAL)
   const [isFlashing, setIsFlashing] = useState(false)
@@ -137,6 +137,7 @@ export function useQRTimer(isActive: boolean, isPaused: boolean) {
         if (prev <= 1) {
           // Flash then reset
           setIsFlashing(true)
+          if (onRotate) onRotate()
           setTimeout(() => setIsFlashing(false), 300)
           return TOTAL
         }
@@ -145,7 +146,7 @@ export function useQRTimer(isActive: boolean, isPaused: boolean) {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isActive, isPaused])
+  }, [isActive, isPaused, onRotate])
 
   return { secondsLeft, totalSeconds: TOTAL, isFlashing, reset }
 }

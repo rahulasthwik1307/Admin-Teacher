@@ -9,9 +9,19 @@ import { Label } from "@/components/ui/label"
 import { MapPin, Info, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
+import type { ComponentType } from "react"
+
+interface GeofenceMapProps {
+  center: { lat: number; lng: number }
+  radius: number
+  collegeName: string
+}
 
 // Dynamically import the map component to avoid SSR issues with Leaflet
-const GeofenceMap = dynamic(() => import("./geofence-map"), { ssr: false })
+const GeofenceMap = dynamic(
+  () => import("./geofence-map") as Promise<{ default: ComponentType<GeofenceMapProps> }>,
+  { ssr: false }
+)
 
 export default function GeofencePage() {
   const [lat, setLat] = useState("17.4944")

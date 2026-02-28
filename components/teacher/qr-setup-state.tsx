@@ -11,12 +11,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  classOptions,
-  subjectOptions,
-  periodOptions,
-  recentSessions,
-} from "@/lib/qr-attendance-data"
+
+export interface DropdownOption {
+  value: string
+  label: string
+}
+
+export interface RecentSessionData {
+  subject: string
+  class: string
+  period: string
+  date: string
+  present: number
+  total: number
+  status: string
+}
 
 interface QRSetupStateProps {
   selectedClass: string
@@ -27,6 +36,10 @@ interface QRSetupStateProps {
   onPeriodChange: (val: string) => void
   onStart: () => void
   canStart: boolean
+  classOptions: DropdownOption[]
+  subjectOptions: DropdownOption[]
+  periodOptions: DropdownOption[]
+  recentSessions: RecentSessionData[]
 }
 
 export function QRSetupState({
@@ -38,6 +51,10 @@ export function QRSetupState({
   onPeriodChange,
   onStart,
   canStart,
+  classOptions,
+  subjectOptions,
+  periodOptions,
+  recentSessions,
 }: QRSetupStateProps) {
   return (
     <div className="flex flex-col gap-6">

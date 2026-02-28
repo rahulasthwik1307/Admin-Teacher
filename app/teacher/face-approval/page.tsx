@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import {
   CheckCircle2,
@@ -8,6 +8,7 @@ import {
   ScanFace,
   Check,
   X,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,9 +24,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { createClient } from "@/lib/supabase/client"
 
 interface PendingStudent {
   id: string
+  studentId: string
   name: string
   roll: string
   class: string
@@ -34,6 +37,7 @@ interface PendingStudent {
 
 interface HistoryItem {
   id: string
+  studentId: string
   name: string
   roll: string
   decision: "Approved" | "Rejected"
@@ -41,26 +45,32 @@ interface HistoryItem {
   reason: string
 }
 
-const initialPending: PendingStudent[] = [
-  { id: "1", name: "Arjun Singh", roll: "21CSE049", class: "CSE-B", submittedAt: "2 hours ago" },
-  { id: "2", name: "Meena Joshi", roll: "21CSE050", class: "CSE-B", submittedAt: "5 hours ago" },
-  { id: "3", name: "Suresh Kumar", roll: "21CSE054", class: "CSE-B", submittedAt: "Yesterday" },
-]
-
-const historyData: HistoryItem[] = [
-  { id: "h1", name: "Rahul Sharma", roll: "21CSE047", decision: "Approved", date: "Feb 24, 2026", reason: "-" },
-  { id: "h2", name: "Priya Patel", roll: "21CSE048", decision: "Approved", date: "Feb 23, 2026", reason: "-" },
-  { id: "h3", name: "Kiran Rao", roll: "21CSE051", decision: "Approved", date: "Feb 22, 2026", reason: "-" },
-  { id: "h4", name: "Farhan Ali", roll: "21CSE052", decision: "Rejected", date: "Feb 21, 2026", reason: "Face not clearly visible, eyes closed in photo" },
-  { id: "h5", name: "Divya Sharma", roll: "21CSE053", decision: "Approved", date: "Feb 20, 2026", reason: "-" },
-]
-
 function getInitials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").toUpperCase()
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+}
+
+function formatTimeAgo(dateString: string) {
+  if (!dateString) return "Unknown"
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (diffInSeconds < 60) return "Just now"
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays === 1) return "Yesterday"
+  
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export default function FaceApprovalPage() {
-  const [pending, setPending] = useState<PendingStudent[]>(initialPending)
+  const [pending, setPending] = useState<PendingStudent[]>([])
+  const [historyData, setHistoryData] = useState<HistoryItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [teacherId, setTeacherId] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   // Approve dialog state
@@ -70,31 +80,180 @@ export default function FaceApprovalPage() {
   const [rejectTarget, setRejectTarget] = useState<PendingStudent | null>(null)
   const [rejectReason, setRejectReason] = useState("")
 
-  function handleApprove() {
-    if (!approveTarget) return
+  const fetchData = useCallback(async (uid: string) => {
+    setIsLoading(true)
+    try {
+      const supabase = createClient()
+      
+      // 1. Get teacher's students
+      const { data: students } = await supabase
+        .from("students")
+        .select(`
+          id,
+          roll_number,
+          class:classes ( name, section, department:departments ( code ) ),
+          user:users ( full_name )
+        `)
+        .eq("created_by", uid)
+
+      if (!students || students.length === 0) {
+        setPending([])
+        setHistoryData([])
+        setIsLoading(false)
+        return
+      }
+
+      const studentMap: Record<string, any> = {}
+      students.forEach((s: any) => {
+        studentMap[s.id] = {
+          roll: s.roll_number,
+          name: s.user?.full_name || "Unknown",
+          className: s.class ? `${s.class.department?.code || ""}-${s.class.section}` : "—"
+        }
+      })
+
+      const studentIds = Object.keys(studentMap)
+
+      // 2. Get pending
+      const { data: pendingRes } = await supabase
+        .from("face_registrations")
+        .select("*")
+        .eq("status", "pending")
+        .in("student_id", studentIds)
+        .order("submitted_at", { ascending: false })
+
+      // 3. Get history
+      const { data: historyRes } = await supabase
+        .from("face_registrations")
+        .select("*")
+        .in("status", ["approved", "rejected"])
+        .in("student_id", studentIds)
+        .order("reviewed_at", { ascending: false })
+
+      if (pendingRes) {
+        setPending(
+          pendingRes.map((p) => ({
+            id: p.id,
+            studentId: p.student_id,
+            name: studentMap[p.student_id]?.name || "Unknown",
+            roll: studentMap[p.student_id]?.roll || "—",
+            class: studentMap[p.student_id]?.className || "—",
+            submittedAt: formatTimeAgo(p.submitted_at),
+          }))
+        )
+      }
+
+      if (historyRes) {
+        setHistoryData(
+          historyRes.map((h) => ({
+            id: h.id,
+            studentId: h.student_id,
+            name: studentMap[h.student_id]?.name || "Unknown",
+            roll: studentMap[h.student_id]?.roll || "—",
+            decision: h.status === "approved" ? "Approved" : "Rejected",
+            date: new Date(h.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+            reason: h.rejection_reason || "-",
+          }))
+        )
+      }
+
+    } catch (err) {
+      console.error("Fetch face approvals error:", err)
+      toast.error("Failed to load face registration data")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    async function init() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setTeacherId(user.id)
+        fetchData(user.id)
+      } else {
+        setIsLoading(false)
+      }
+    }
+    init()
+  }, [fetchData])
+
+  async function handleApprove() {
+    if (!approveTarget || !teacherId) return
     const name = approveTarget.name
     const id = approveTarget.id
-    setApproveTarget(null)
+    
     setRemovingId(id)
-    setTimeout(() => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("face_registrations")
+        .update({
+          status: "approved",
+          reviewed_by: teacherId,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq("id", id)
+
+      if (error) throw error
+
+      await supabase.from("system_logs").insert({
+        performed_by: teacherId,
+        action_type: "update",
+        description: `Face approved for ${name}`,
+      })
+
       setPending((prev) => prev.filter((s) => s.id !== id))
-      setRemovingId(null)
+      fetchData(teacherId) // Refresh to update history
       toast.success(`Face approved for ${name}`)
-    }, 300)
+      window.dispatchEvent(new Event("face-approval-updated"))
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve registration")
+    } finally {
+      setRemovingId(null)
+      setApproveTarget(null)
+    }
   }
 
-  function handleReject() {
-    if (!rejectTarget) return
+  async function handleReject() {
+    if (!rejectTarget || !teacherId) return
     const name = rejectTarget.name
     const id = rejectTarget.id
-    setRejectTarget(null)
-    setRejectReason("")
+    const reason = rejectReason.trim()
+    
     setRemovingId(id)
-    setTimeout(() => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("face_registrations")
+        .update({
+          status: "rejected",
+          rejection_reason: reason,
+          reviewed_by: teacherId,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq("id", id)
+
+      if (error) throw error
+
+      await supabase.from("system_logs").insert({
+        performed_by: teacherId,
+        action_type: "update",
+        description: `Face rejected for ${name}`,
+      })
+
       setPending((prev) => prev.filter((s) => s.id !== id))
-      setRemovingId(null)
+      fetchData(teacherId) // Refresh to update history
       toast.warning(`Face rejected for ${name}`)
-    }, 300)
+      window.dispatchEvent(new Event("face-approval-updated"))
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reject registration")
+    } finally {
+      setRemovingId(null)
+      setRejectTarget(null)
+      setRejectReason("")
+    }
   }
 
   return (
@@ -118,7 +277,11 @@ export default function FaceApprovalPage() {
 
         {/* Pending tab */}
         <TabsContent value="pending" className="mt-4">
-          {pending.length === 0 ? (
+          {isLoading ? (
+            <div className="flex h-40 items-center justify-center rounded-lg border border-border bg-card">
+              <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : pending.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card py-16 px-4">
               <div className="flex size-16 items-center justify-center rounded-full bg-emerald-50">
                 <CheckCircle2 className="size-8 text-emerald-600" />
@@ -184,9 +347,15 @@ export default function FaceApprovalPage() {
 
         {/* History tab */}
         <TabsContent value="history" className="mt-4">
-          {/* Desktop table */}
-          <div className="hidden rounded-lg border border-border bg-card md:block">
-            <div className="overflow-x-auto">
+          {isLoading ? (
+            <div className="flex h-40 items-center justify-center rounded-lg border border-border bg-card">
+              <Loader2 className="size-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden rounded-lg border border-border bg-card md:block">
+                <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
@@ -242,6 +411,8 @@ export default function FaceApprovalPage() {
               </div>
             ))}
           </div>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 

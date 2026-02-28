@@ -26,6 +26,7 @@ interface QRActiveSessionProps {
   isPaused: boolean
   onTogglePause: () => void
   onFinalize: () => void
+  onRotate?: () => void
 }
 
 export function QRActiveSession({
@@ -36,8 +37,9 @@ export function QRActiveSession({
   isPaused,
   onTogglePause,
   onFinalize,
+  onRotate,
 }: QRActiveSessionProps) {
-  const { secondsLeft, totalSeconds, isFlashing } = useQRTimer(true, isPaused)
+  const { secondsLeft, totalSeconds, isFlashing } = useQRTimer(true, isPaused, onRotate)
   const progressPercent = (secondsLeft / totalSeconds) * 100
 
   return (

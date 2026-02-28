@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { FALogo } from "@/components/fa-logo"
 import { createClient } from "@/lib/supabase/client"
-
+import { toast } from "sonner"
 type Strength = "weak" | "fair" | "strong"
 
 function getPasswordStrength(password: string): { strength: Strength; percent: number } {
@@ -101,16 +101,16 @@ export default function ChangePasswordPage() {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (user) {
-        // Set must_change_password to false in public.users
-        const { error: dbError } = await supabase
-          .from("users")
-          .update({ must_change_password: false })
-          .eq("id", user.id)
+        // Complete onboarding via API route to bypass RLS issues
+        const res = await fetch("/api/teacher/complete-onboarding", {
+          method: "POST"
+        })
+        const updateResult = await res.json()
+        
+        console.log("Update must_change_password result:", updateResult)
 
-        if (dbError) {
-          setAuthError("Password updated but failed to update profile. Please contact admin.")
-          setIsLoading(false)
-          return
+        if (!res.ok) {
+          toast.error(updateResult.error || "Failed to complete onboarding", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
         }
       }
 
