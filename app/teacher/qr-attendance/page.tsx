@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { QRSetupState, DropdownOption, RecentSessionData } from "@/components/teacher/qr-setup-state"
 import { QRActiveSession } from "@/components/teacher/qr-active-session"
@@ -18,6 +18,20 @@ export default function QRAttendancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState("")
   const [isTransitioning, setIsTransitioning] = useState(false)
   
+  // Auth session tracking
+  const sessionRef = useRef<any>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      sessionRef.current = session
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      sessionRef.current = session
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   // Data State
   const [teacherId, setTeacherId] = useState<string | null>(null)
   const [teacherName, setTeacherName] = useState<string>("")
@@ -26,6 +40,7 @@ export default function QRAttendancePage() {
   const [periodOptions, setPeriodOptions] = useState<DropdownOption[]>([])
   const [recentSessions, setRecentSessions] = useState<RecentSessionData[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [currentQrToken, setCurrentQrToken] = useState<string>("")
   const [liveStudents, setLiveStudents] = useState<Student[]>([])
 
   const canStart = !!selectedClass && !!selectedSubject && !!selectedPeriod
@@ -132,6 +147,7 @@ export default function QRAttendancePage() {
 
       if (active) {
         setActiveSessionId(active.id)
+        setCurrentQrToken(active.current_qr_token || "")
         setSelectedClass(active.class_id)
         setSelectedSubject(active.subject_id)
         setSelectedPeriod(active.period_id)
@@ -165,107 +181,127 @@ export default function QRAttendancePage() {
     }
     init()
   }, [fetchSetupData, checkForActiveSession])
-  // Real-time Student List
+
+  // Fetch complete student list with attendance status
+  const fetchStudentList = useCallback(async () => {
+    if (!activeSessionId || !selectedClass) return
+
+    const supabase = createClient()
+
+    // Guard: skip if no authenticated session yet
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      console.log('fetchStudentList: no session yet, skipping')
+      return
+    }
+
+    // 1. Fetch all students in the class
+    const { data: classStudents } = await supabase
+      .from('students')
+      .select('id, roll_number')
+      .eq('class_id', selectedClass)
+
+    if (!classStudents || classStudents.length === 0) return
+
+    // 2. Fetch names from users table for each student
+    const nameMap = new Map<string, string>()
+    await Promise.all(classStudents.map(async (s: any) => {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', s.id)
+        .single()
+      if (userData?.full_name) {
+        nameMap.set(s.id, userData.full_name)
+      }
+    }))
+
+    // 3. Fetch attendance records for this session
+    const { data: attendance } = await supabase
+      .from('period_attendance')
+      .select('student_id, status, marked_at')
+      .eq('session_id', activeSessionId)
+
+    const attendanceMap = new Map()
+    if (attendance) {
+      console.log('[fetchStudentList] attendance records:', attendance)
+      attendance.forEach((a: any) => attendanceMap.set(a.student_id, a))
+    }
+
+    // 4. Merge all results
+    const studentList: Student[] = classStudents.map((s: any) => {
+      const att = attendanceMap.get(s.id)
+      let status: "present" | "absent" | "pending" = "pending"
+      let time = undefined
+
+      if (att) {
+        status = att.status as "present" | "absent" | "pending"
+        if (att.marked_at) {
+          time = new Date(att.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      }
+
+      const name = nameMap.get(s.id) || "Unknown Student"
+      const initials = name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
+
+      return {
+        id: s.id,
+        name,
+        roll: s.roll_number,
+        initials,
+        status,
+        time
+      }
+    })
+
+    // Sort: present first, then absent, then pending
+    studentList.sort((a, b) => {
+      const order = { present: 0, absent: 1, pending: 2 }
+      return (order[a.status as keyof typeof order] ?? 2) - (order[b.status as keyof typeof order] ?? 2)
+    })
+
+    setLiveStudents(studentList)
+  }, [activeSessionId, selectedClass])
+
+  // Real-time Student List + polling fallback
+  const liveRefreshInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
     if (!activeSessionId || pageState !== "active") return
 
-    let channel: any
-    
-    async function fetchInitialStudents() {
-      const supabase = createClient()
-      
-      // 1. Fetch all students in the class
-      const { data: classStudents } = await supabase
-        .from('students')
-        .select('id, user_id, roll_number, users(full_name)')
-        .eq('class_id', selectedClass)
-        
-      if (!classStudents) return
+    // Initial fetch
+    fetchStudentList()
 
-      // 2. Fetch existing attendance records
-      const { data: attendance } = await supabase
-        .from('period_attendance')
-        .select('*')
-        .eq('session_id', activeSessionId)
-
-      const attendanceMap = new Map()
-      if (attendance) {
-        attendance.forEach((a: any) => attendanceMap.set(a.student_id, a))
-      }
-
-      // 3. Merge
-      const initialList: Student[] = classStudents.map((s: any) => {
-        const att = attendanceMap.get(s.id)
-        let status: "present" | "failed" | "pending" = "pending"
-        let time = undefined
-
-        if (att) {
-          status = att.status as "present" | "failed"
-          time = new Date(att.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-
-        const name = s.users?.full_name || "Unknown Student"
-        const initials = name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
-
-        return {
-          id: s.id,
-          name,
-          roll: s.roll_number,
-          initials,
-          status,
-          time
-        }
-      })
-
-      // Sort: Present/Failed first, then pending
-      initialList.sort((a, b) => {
-        if (a.status !== "pending" && b.status === "pending") return -1
-        if (a.status === "pending" && b.status !== "pending") return 1
-        return 0
-      })
-
-      setLiveStudents(initialList)
-
-      // 4. Subscribe to Realtime
-      channel = supabase
-        .channel(`attendance_${activeSessionId}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'period_attendance', filter: `session_id=eq.${activeSessionId}` },
-          (payload) => {
-            const newRecord = payload.new as any
-            setLiveStudents((prev) => {
-              const copy = [...prev]
-              const idx = copy.findIndex((s) => s.id === newRecord.student_id)
-              if (idx !== -1) {
-                copy[idx] = {
-                  ...copy[idx],
-                  status: newRecord.status,
-                  time: new Date(newRecord.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }
-                // Re-sort
-                copy.sort((a, b) => {
-                  if (a.status !== "pending" && b.status === "pending") return -1
-                  if (a.status === "pending" && b.status !== "pending") return 1
-                  return 0
-                })
-              }
-              return copy
-            })
+    // Subscribe to all period_attendance changes and filter by session_id in JS
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`attendance_${activeSessionId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'period_attendance' },
+        (payload) => {
+          const record = (payload.new as any)
+          console.log('[Realtime] period_attendance event:', payload.eventType, 'session_id:', record?.session_id, 'active:', activeSessionId)
+          if (record?.session_id === activeSessionId) {
+            fetchStudentList()
           }
-        )
-        .subscribe()
-    }
+        }
+      )
+      .subscribe()
 
-    fetchInitialStudents()
+    // Fallback: poll every 5 seconds in case realtime doesn't fire
+    liveRefreshInterval.current = setInterval(() => {
+      fetchStudentList()
+    }, 5000)
 
     return () => {
-      if (channel) {
-        const supabase = createClient()
-        supabase.removeChannel(channel)
+      supabase.removeChannel(channel)
+      if (liveRefreshInterval.current) {
+        clearInterval(liveRefreshInterval.current)
+        liveRefreshInterval.current = null
       }
     }
-  }, [activeSessionId, pageState, selectedClass])
+  }, [activeSessionId, pageState, fetchStudentList])
 
   async function handleStart() {
     if (!teacherId || !selectedClass || !selectedSubject || !selectedPeriod) return
@@ -305,6 +341,7 @@ export default function QRAttendancePage() {
         })
 
       setActiveSessionId(session.id)
+      setCurrentQrToken(token)
       
       setTimeout(() => {
         setPageState("active")
@@ -323,6 +360,7 @@ export default function QRAttendancePage() {
       const supabase = createClient()
       const newToken = crypto.randomUUID()
       const expiry = new Date(Date.now() + 15000).toISOString()
+      setCurrentQrToken(newToken)
 
       // Invalidate old tokens
       await supabase
@@ -432,6 +470,7 @@ export default function QRAttendancePage() {
           periodLabel={periodLabel}
           teacherName={teacherName}
           students={liveStudents}
+          currentQrToken={currentQrToken}
           onFinalize={handleFinalize}
           onRotate={handleRotate}
         />

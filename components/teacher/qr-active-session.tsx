@@ -25,6 +25,7 @@ interface QRActiveSessionProps {
   periodLabel: string
   teacherName: string
   students: Student[]
+  currentQrToken: string
   onFinalize: () => void
   onRotate?: () => void
 }
@@ -35,6 +36,7 @@ export function QRActiveSession({
   periodLabel,
   teacherName,
   students,
+  currentQrToken,
   onFinalize,
   onRotate,
 }: QRActiveSessionProps) {
@@ -49,15 +51,20 @@ export function QRActiveSession({
       setSessionSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval)
-          // Auto finalize when countdown reaches zero
-          onFinalize()
           return 0
         }
         return prev - 1
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [onFinalize])
+  }, [])
+
+  // Auto finalize when countdown reaches zero (outside of setState to avoid updating parent during render)
+  useEffect(() => {
+    if (sessionSecondsLeft === 0) {
+      onFinalize()
+    }
+  }, [sessionSecondsLeft, onFinalize])
 
   const progressPercent = (sessionSecondsLeft / SESSION_TOTAL) * 100
   
@@ -97,6 +104,7 @@ export function QRActiveSession({
           secondsLeft={qrSecondsLeft}
           totalSeconds={qrTotalSeconds}
           isFlashing={isFlashing}
+          tokenValue={currentQrToken}
         />
 
         {/* Countdown Timer */}

@@ -24,6 +24,12 @@ const statusConfig: Record<
     row: "bg-red-50",
     avatar: "bg-red-100 text-red-700",
   },
+  absent: {
+    label: "Absent",
+    badge: "bg-red-100 text-red-700 border-0",
+    row: "bg-red-50",
+    avatar: "bg-red-100 text-red-700",
+  },
   pending: {
     label: "Pending",
     badge: "bg-muted text-muted-foreground border-0",
@@ -37,6 +43,7 @@ function sortStudents(students: Student[]): Student[] {
   const order: Record<StudentStatus, number> = {
     present: 0,
     failed: 1,
+    absent: 1,
     pending: 2,
   }
   return [...students].sort((a, b) => order[a.status] - order[b.status])
@@ -50,7 +57,7 @@ export function LiveStudentList({ students }: LiveStudentListProps) {
   const [search, setSearch] = useState("")
 
   const presentCount = students.filter((s) => s.status === "present").length
-  const failedCount = students.filter((s) => s.status === "failed").length
+  const absentCount = students.filter((s) => s.status === "absent" || s.status === "failed").length
   const pendingCount = students.filter((s) => s.status === "pending").length
   const total = students.length
 
@@ -141,8 +148,8 @@ export function LiveStudentList({ students }: LiveStudentListProps) {
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-red-500" />
           <span className="text-muted-foreground">
-            Failed{" "}
-            <span className="font-medium text-foreground">{failedCount}</span>
+            Absent{" "}
+            <span className="font-medium text-foreground">{absentCount}</span>
           </span>
         </span>
         <span className="flex items-center gap-1.5">
