@@ -7,18 +7,20 @@ import { QRActiveSession } from "@/components/teacher/qr-active-session"
 import { createClient } from "@/lib/supabase/client"
 import type { Student } from "@/lib/qr-attendance-data"
 
-type PageState = "setup" | "active" // active encompasses "paused" too via isPaused
+import { QRSummaryState } from "@/components/teacher/qr-summary-state"
+
+type PageState = "setup" | "active" | "summary"
 
 export default function QRAttendancePage() {
   const [pageState, setPageState] = useState<PageState>("setup")
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedSubject, setSelectedSubject] = useState("")
   const [selectedPeriod, setSelectedPeriod] = useState("")
-  const [isPaused, setIsPaused] = useState(false)
   const [isTransitioning, setIsTransitioning] = useState(false)
   
   // Data State
   const [teacherId, setTeacherId] = useState<string | null>(null)
+  const [teacherName, setTeacherName] = useState<string>("")
   const [classOptions, setClassOptions] = useState<DropdownOption[]>([])
   const [subjectOptions, setSubjectOptions] = useState<DropdownOption[]>([])
   const [periodOptions, setPeriodOptions] = useState<DropdownOption[]>([])
@@ -125,7 +127,7 @@ export default function QRAttendancePage() {
         .from('attendance_sessions')
         .select('*')
         .eq('teacher_id', uid)
-        .in('status', ['active', 'paused'])
+        .eq('status', 'active')
         .single()
 
       if (active) {
@@ -133,7 +135,6 @@ export default function QRAttendancePage() {
         setSelectedClass(active.class_id)
         setSelectedSubject(active.subject_id)
         setSelectedPeriod(active.period_id)
-        setIsPaused(active.status === 'paused')
         setPageState('active')
       }
     } catch (err) {
@@ -147,6 +148,17 @@ export default function QRAttendancePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setTeacherId(user.id)
+        
+        const { data: userData } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', user.id)
+          .single()
+          
+        if (userData?.full_name) {
+          setTeacherName(userData.full_name)
+        }
+
         await fetchSetupData(user.id)
         await checkForActiveSession(user.id)
       }
@@ -296,7 +308,6 @@ export default function QRAttendancePage() {
       
       setTimeout(() => {
         setPageState("active")
-        setIsPaused(false)
         setIsTransitioning(false)
       }, 200)
     } catch (err: any) {
@@ -343,30 +354,7 @@ export default function QRAttendancePage() {
     }
   }
 
-  async function handleTogglePause() {
-    if (!activeSessionId) return
-    try {
-      const supabase = createClient()
-      const newStatus = isPaused ? 'active' : 'paused'
-      
-      const { error } = await supabase
-        .from('attendance_sessions')
-        .update({ status: newStatus })
-        .eq('id', activeSessionId)
 
-      if (error) throw error
-
-      setIsPaused((p) => !p)
-      
-      // If resuming, manually fire an immediate rotation to ensure a fresh token
-      if (newStatus === 'active') {
-         await handleRotate()
-      }
-    } catch (err) {
-      console.error(err)
-      toast.error("Failed to update session status")
-    }
-  }
 
   async function handleFinalize() {
     if (!activeSessionId) return
@@ -374,7 +362,7 @@ export default function QRAttendancePage() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error: sessionError } = await supabase
         .from('attendance_sessions')
         .update({ 
           status: 'finalized',
@@ -382,7 +370,14 @@ export default function QRAttendancePage() {
         })
         .eq('id', activeSessionId)
 
-      if (error) throw error
+      if (sessionError) throw sessionError
+
+      // Mark all remaining pending students as absent
+      await supabase
+        .from('period_attendance')
+        .update({ status: 'absent' })
+        .eq('session_id', activeSessionId)
+        .eq('status', 'pending')
 
       await supabase.from("system_logs").insert({
         performed_by: teacherId,
@@ -391,21 +386,15 @@ export default function QRAttendancePage() {
       })
 
       setTimeout(async () => {
-        setPageState("setup")
-        setSelectedClass("")
-        setSelectedSubject("")
-        setSelectedPeriod("")
-        setActiveSessionId(null)
-        setLiveStudents([])
-        setIsPaused(false)
+        setPageState("summary")
         setIsTransitioning(false)
         toast.success("Attendance finalized successfully", {
           description: `${subjectLabel} — ${classLabel} — ${periodLabel}`,
         })
         
-        // Refresh recent sessions table
+        // Refresh recent sessions table quietly
         if (teacherId) {
-          await fetchSetupData(teacherId)
+          fetchSetupData(teacherId)
         }
       }, 200)
     } catch (err) {
@@ -436,16 +425,33 @@ export default function QRAttendancePage() {
           periodOptions={periodOptions}
           recentSessions={recentSessions}
         />
-      ) : (
+      ) : pageState === "active" ? (
         <QRActiveSession
           subjectLabel={subjectLabel}
           classLabel={classLabel}
           periodLabel={periodLabel}
+          teacherName={teacherName}
           students={liveStudents}
-          isPaused={isPaused}
-          onTogglePause={handleTogglePause}
           onFinalize={handleFinalize}
           onRotate={handleRotate}
+        />
+      ) : (
+        <QRSummaryState
+          subjectLabel={subjectLabel}
+          classLabel={classLabel}
+          periodLabel={periodLabel}
+          dateLabel={new Date().toLocaleDateString()}
+          initialStudents={liveStudents}
+          teacherId={teacherId!}
+          sessionId={activeSessionId!}
+          onDone={() => {
+            setPageState("setup")
+            setSelectedClass("")
+            setSelectedSubject("")
+            setSelectedPeriod("")
+            setActiveSessionId(null)
+            setLiveStudents([])
+          }}
         />
       )}
     </div>

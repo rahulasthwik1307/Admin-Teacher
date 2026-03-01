@@ -19,7 +19,7 @@ export const periodOptions = [
   { value: "5", label: "5th Period  01:30 - 02:20" },
 ]
 
-export type StudentStatus = "present" | "failed" | "pending"
+export type StudentStatus = "present" | "failed" | "pending" | "absent"
 
 export interface Student {
   id: string
