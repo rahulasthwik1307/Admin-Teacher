@@ -182,85 +182,20 @@ export default function QRAttendancePage() {
     init()
   }, [fetchSetupData, checkForActiveSession])
 
-  // Fetch complete student list with attendance status
+  // Fetch complete student list with attendance status via API route
   const fetchStudentList = useCallback(async () => {
     if (!activeSessionId || !selectedClass) return
 
-    const supabase = createClient()
-
-    // Guard: skip if no authenticated session yet
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      console.log('fetchStudentList: no session yet, skipping')
-      return
+    try {
+      const res = await fetch(`/api/teacher/student-list?class_id=${selectedClass}&session_id=${activeSessionId}`)
+      const data = await res.json()
+      console.log('full API response data:', JSON.stringify(data))
+      if (data.students) {
+        setLiveStudents(data.students)
+      }
+    } catch (err) {
+      console.error('fetchStudentList error:', err)
     }
-
-    // 1. Fetch all students in the class
-    const { data: classStudents } = await supabase
-      .from('students')
-      .select('id, roll_number')
-      .eq('class_id', selectedClass)
-
-    if (!classStudents || classStudents.length === 0) return
-
-    // 2. Fetch names from users table for each student
-    const nameMap = new Map<string, string>()
-    await Promise.all(classStudents.map(async (s: any) => {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('full_name')
-        .eq('id', s.id)
-        .single()
-      if (userData?.full_name) {
-        nameMap.set(s.id, userData.full_name)
-      }
-    }))
-
-    // 3. Fetch attendance records for this session
-    const { data: attendance } = await supabase
-      .from('period_attendance')
-      .select('student_id, status, marked_at')
-      .eq('session_id', activeSessionId)
-
-    const attendanceMap = new Map()
-    if (attendance) {
-      console.log('[fetchStudentList] attendance records:', attendance)
-      attendance.forEach((a: any) => attendanceMap.set(a.student_id, a))
-    }
-
-    // 4. Merge all results
-    const studentList: Student[] = classStudents.map((s: any) => {
-      const att = attendanceMap.get(s.id)
-      let status: "present" | "absent" | "pending" = "pending"
-      let time = undefined
-
-      if (att) {
-        status = att.status as "present" | "absent" | "pending"
-        if (att.marked_at) {
-          time = new Date(att.marked_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      }
-
-      const name = nameMap.get(s.id) || "Unknown Student"
-      const initials = name.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase()
-
-      return {
-        id: s.id,
-        name,
-        roll: s.roll_number,
-        initials,
-        status,
-        time
-      }
-    })
-
-    // Sort: present first, then absent, then pending
-    studentList.sort((a, b) => {
-      const order = { present: 0, absent: 1, pending: 2 }
-      return (order[a.status as keyof typeof order] ?? 2) - (order[b.status as keyof typeof order] ?? 2)
-    })
-
-    setLiveStudents(studentList)
   }, [activeSessionId, selectedClass])
 
   // Real-time Student List + polling fallback
