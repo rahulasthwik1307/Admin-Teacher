@@ -70,6 +70,7 @@ interface ClassOption {
   section: string
   deptName: string
   deptCode: string
+  deptId: string
 }
 
 interface DeptOption {
@@ -163,6 +164,11 @@ export default function StudentsPage() {
   const [formClassId, setFormClassId] = useState("")
   const [formDeptId, setFormDeptId] = useState("")
   const [formYear, setFormYear] = useState("")
+
+  const filteredClassOptions = useMemo(() => {
+    if (!formDeptId) return []
+    return classOptions.filter((c) => c.deptId === formDeptId)
+  }, [formDeptId, classOptions])
 
   /* ---------- Fetch teacher id ---------- */
 
@@ -285,6 +291,7 @@ export default function StudentsPage() {
           section: c.section,
           deptName: c.department?.name ?? "",
           deptCode: c.department?.code ?? "",
+          deptId: c.department?.id ?? "",
         }))
       )
     }
@@ -716,7 +723,16 @@ export default function StudentsPage() {
       </AlertDialog>
 
       {/* Add Student Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={(open) => {
+        if (!open) {
+          setFormName("")
+          setFormRoll("")
+          setFormClassId("")
+          setFormDeptId("")
+          setFormYear("")
+        }
+        setSheetOpen(open)
+      }}>
         <SheetContent side="right" className="sm:max-w-md">
           <SheetHeader>
             <SheetTitle>Add New Student</SheetTitle>
@@ -744,23 +760,11 @@ export default function StudentsPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="student-class">Class & Section</Label>
-              <Select value={formClassId} onValueChange={setFormClassId}>
-                <SelectTrigger id="student-class">
-                  <SelectValue placeholder="Select class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classOptions.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2">
               <Label htmlFor="student-dept">Department</Label>
-              <Select value={formDeptId} onValueChange={setFormDeptId}>
+              <Select value={formDeptId} onValueChange={(v) => {
+                setFormDeptId(v)
+                setFormClassId("")
+              }}>
                 <SelectTrigger id="student-dept">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
@@ -770,6 +774,27 @@ export default function StudentsPage() {
                       {d.name} ({d.code})
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="student-class">Class & Section</Label>
+              <Select value={formClassId} onValueChange={setFormClassId}>
+                <SelectTrigger id="student-class" disabled={!formDeptId}>
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredClassOptions.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      {formDeptId ? "No classes found for this department" : "Select a department first"}
+                    </SelectItem>
+                  ) : (
+                    filteredClassOptions.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.label}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

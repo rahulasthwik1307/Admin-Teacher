@@ -41,6 +41,7 @@ interface PendingStudent {
   registration_photo: string | null
   created_at: string
   class?: string
+  year?: string
 }
 
 export default function FaceApprovalPage() {
@@ -180,18 +181,19 @@ export default function FaceApprovalPage() {
                   <img
                     src={student.registration_photo}
                     alt={student.name}
-                    className="w-14 h-14 rounded-full object-cover border border-border flex-shrink-0"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-border flex-shrink-0 cursor-pointer"
                   />
                 ) : (
-                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center border border-border flex-shrink-0">
-                    <ScanFace className="size-6 text-muted-foreground/50" />
+                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-border flex-shrink-0">
+                    <ScanFace className="size-8 text-muted-foreground/50" />
                   </div>
                 )}
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{student.name}</p>
+                  <p className="font-semibold text-foreground truncate">{student.name}</p>
+                  <p className="text-xs text-muted-foreground">{student.roll}</p>
                   <p className="text-xs text-muted-foreground">
-                    {student.roll} {student.class ? `· ${student.class}` : ""}
+                    {student.class || "N/A"}{student.year ? ` · ${student.year}` : ""}
                   </p>
                 </div>
                 {/* Actions */}
@@ -255,9 +257,7 @@ export default function FaceApprovalPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reject Face Registration</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to reject the face registration for{" "}
-              <strong>{rejectTarget?.name}</strong>? This will clear their face data and they will
-              need to register again.
+              Are you sure you want to reject this registration? Student will need to re-register.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

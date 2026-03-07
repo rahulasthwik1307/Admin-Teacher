@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // Fetch students needing approval
     const { data: students, error } = await supabaseAdmin
       .from("students")
-      .select("id, roll_number, registration_photo, created_at")
+      .select("id, roll_number, registration_photo, created_at, year")
       .eq("created_by", teacherId)
       .eq("is_approved", false)
       .not("embedding_a", "is", null);
@@ -30,17 +30,39 @@ export async function GET(request: NextRequest) {
 
     // For each student fetch name from users table
     const studentsWithNames = await Promise.all(
-      students.map(async (student: { id: string; roll_number: string; registration_photo: string | null; created_at: string }) => {
+      students.map(async (student: { id: string; roll_number: string; registration_photo: string | null; created_at: string; year: string | null }) => {
         const { data: userData } = await supabaseAdmin
           .from("users")
           .select("full_name")
           .eq("id", student.id)
           .single();
 
+        const { data: studentRow } = await supabaseAdmin
+          .from("students")
+          .select(`
+            year,
+            class:classes (
+              section,
+              department:departments ( code )
+            )
+          `)
+          .eq("id", student.id)
+          .single();
+
+        const classData = studentRow?.class as any;
+        const section = classData?.section ?? "N/A";
+        const deptCode = classData?.department?.code ?? "N/A";
+        const classLabel = deptCode !== "N/A" && section !== "N/A" 
+          ? `${deptCode}-${section}` 
+          : "N/A";
+
         return {
           id: student.id,
+          studentId: student.id,
           name: userData?.full_name || "Unknown",
           roll: student.roll_number,
+          class: classLabel,
+          year: studentRow?.year ?? "N/A",
           registration_photo: student.registration_photo,
           created_at: student.created_at,
         };
