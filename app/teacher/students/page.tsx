@@ -199,6 +199,8 @@ export default function StudentsPage() {
           roll_number,
           year,
           is_active,
+          embedding_a,
+          is_approved,
           class:classes ( name, section, department:departments ( code ) ),
           user:users ( full_name )
         `)
@@ -211,41 +213,18 @@ export default function StudentsPage() {
         return
       }
 
-      // Fetch latest face registration status for each student
-      const studentIds = (data || []).map((s: any) => s.id)
-      let faceMap: Record<string, string> = {}
-
-      if (studentIds.length > 0) {
-        const { data: faceData } = await supabase
-          .from("face_registrations")
-          .select("student_id, status, submitted_at")
-          .in("student_id", studentIds)
-          .order("submitted_at", { ascending: false })
-
-        if (faceData) {
-          // Keep only the latest per student
-          for (const fr of faceData as any[]) {
-            if (!faceMap[fr.student_id]) {
-              faceMap[fr.student_id] = fr.status
-            }
-          }
-        }
-      }
-
       const mapped: Student[] = (data || []).map((s: any) => {
         const classData = s.class
         const className = classData
           ? `${classData.department?.code ?? ""}-${classData.section}`
           : "—"
-        const rawStatus = faceMap[s.id] || "None"
-        const faceStatus =
-          rawStatus === "approved"
-            ? "Approved"
-            : rawStatus === "pending"
-              ? "Pending"
-              : rawStatus === "rejected"
-                ? "Rejected"
-                : "None"
+        
+        const hasEmbedding = !!s.embedding_a
+        const isApproved = s.is_approved === true
+
+        const faceStatus: Student["faceStatus"] = 
+          !hasEmbedding ? "None" :
+          isApproved ? "Approved" : "Pending"
 
         return {
           id: s.id,
@@ -523,9 +502,13 @@ export default function StudentsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Classes</SelectItem>
-              {uniqueClasses.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
+              {uniqueClasses.length > 0 ? (
+                uniqueClasses.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))
+              ) : (
+                <SelectItem value="none" disabled>No classes available</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
