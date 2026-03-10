@@ -43,17 +43,38 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // Step 1: Delete from public.students
+    // Step 1: Delete all storage files for this student (entire folder)
+    try {
+      const { data: fileList, error: listErr } = await adminClient.storage
+        .from("face-registrations")
+        .list(userId);
+
+      if (!listErr && fileList && fileList.length > 0) {
+        const filePaths = fileList.map((file: { name: string }) => `${userId}/${file.name}`);
+        const { error: storageErr } = await adminClient.storage
+          .from("face-registrations")
+          .remove(filePaths);
+        if (storageErr) {
+          console.error("Delete user error (storage):", storageErr);
+        } else {
+          console.log(`Storage: deleted ${filePaths.length} files for user ${userId}`);
+        }
+      }
+    } catch (storageErr) {
+      console.error("Delete user error (storage fetch):", storageErr);
+    }
+
+    // Step 2: Delete from public.students
     const { error: studentDelErr } = await adminClient
       .from("students")
       .delete()
       .eq("id", userId);
-      
+
     if (studentDelErr) {
       console.error("Delete user error (students table):", studentDelErr);
     }
 
-    // Step 2: Delete from public.users
+    // Step 3: Delete from public.users
     const { error: userDelErr } = await adminClient
       .from("users")
       .delete()
@@ -63,7 +84,7 @@ export async function POST(request: NextRequest) {
       console.error("Delete user error (users table):", userDelErr);
     }
 
-    // Step 3: Delete from auth
+    // Step 4: Delete from auth
     const { error: authDelErr } = await adminClient.auth.admin.deleteUser(userId);
 
     if (authDelErr) {

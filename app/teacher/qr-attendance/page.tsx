@@ -120,7 +120,11 @@ export default function QRAttendancePage() {
           return {
             subject: r.subject.name,
             class: `${r.class.department.code}-${r.class.section}`,
-            period: `${r.period.period_number}st`, 
+            period: (() => {
+              const n = r.period.period_number;
+              const suffix = n >= 11 && n <= 13 ? 'th' : ['th','st','nd','rd'][Math.min(n % 10, 3)] ?? 'th';
+              return `${n}${suffix}`;
+            })(), 
             date: new Date(r.date).toLocaleDateString(),
             present: presentCount || 0,
             total: totalCount || 0,

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // Fetch students needing approval
     const { data: students, error } = await supabaseAdmin
       .from("students")
-      .select("id, roll_number, registration_photo, created_at, year")
+      .select("id, roll_number, registration_photo_url, created_at, year")
       .eq("created_by", teacherId)
       .eq("is_approved", false)
       .not("embedding_a", "is", null);
@@ -25,12 +25,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (!students || students.length === 0) {
-      return Response.json({ pending: [] });
+      // Still need to fetch approved even if no pending
+      const { data: approvedStudents } = await supabaseAdmin
+        .from("students")
+        .select("id, roll_number, registration_photo_url, created_at, year")
+        .eq("created_by", teacherId)
+        .eq("is_approved", true)
+        .not("embedding_a", "is", null);
+
+      const approvedWithNames = await Promise.all(
+        (approvedStudents || []).map(async (student: any) => {
+          const { data: userData } = await supabaseAdmin
+            .from("users")
+            .select("full_name")
+            .eq("id", student.id)
+            .single();
+
+          return {
+            id: student.id,
+            name: userData?.full_name || "Unknown",
+            roll: student.roll_number,
+            registration_photo: student.registration_photo_url,
+          };
+        })
+      );
+
+      return Response.json({ pending: [], approved: approvedWithNames });
     }
 
     // For each student fetch name from users table
     const studentsWithNames = await Promise.all(
-      students.map(async (student: { id: string; roll_number: string; registration_photo: string | null; created_at: string; year: string | null }) => {
+      students.map(async (student: { id: string; roll_number: string; registration_photo_url: string | null; created_at: string; year: string | null }) => {
         const { data: userData } = await supabaseAdmin
           .from("users")
           .select("full_name")
@@ -63,13 +88,38 @@ export async function GET(request: NextRequest) {
           roll: student.roll_number,
           class: classLabel,
           year: studentRow?.year ?? "N/A",
-          registration_photo: student.registration_photo,
+          registration_photo: student.registration_photo_url,
           created_at: student.created_at,
         };
       })
     );
 
-    return Response.json({ pending: studentsWithNames });
+    // Fetch approved students
+    const { data: approvedStudents } = await supabaseAdmin
+      .from("students")
+      .select("id, roll_number, registration_photo_url, created_at, year")
+      .eq("created_by", teacherId)
+      .eq("is_approved", true)
+      .not("embedding_a", "is", null);
+
+    const approvedWithNames = await Promise.all(
+      (approvedStudents || []).map(async (student: any) => {
+        const { data: userData } = await supabaseAdmin
+          .from("users")
+          .select("full_name")
+          .eq("id", student.id)
+          .single();
+
+        return {
+          id: student.id,
+          name: userData?.full_name || "Unknown",
+          roll: student.roll_number,
+          registration_photo: student.registration_photo_url,
+        };
+      })
+    );
+
+    return Response.json({ pending: studentsWithNames, approved: approvedWithNames });
   } catch (error: any) {
     console.error("Face approvals API error:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });

@@ -1,0 +1,26 @@
+
+E:\Admin-Teacher
+├── app
+├── components
+├── components.json
+├── hooks
+├── lib
+├── next-env.d.ts
+├── next.config.mjs
+├── node_modules
+├── package-lock.json
+├── package.json
+├── pnpm-lock.yaml
+├── postcss.config.mjs
+├── project-structure.txt
+├── proxy.ts
+├── public
+├── styles
+├── tsconfig.json
+└── tsconfig.tsbuildinfo
+
+directory: 7 file: 11
+
+
+
+[2K[1G

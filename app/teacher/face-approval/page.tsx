@@ -46,6 +46,8 @@ interface PendingStudent {
 
 export default function FaceApprovalPage() {
   const [pending, setPending] = useState<PendingStudent[]>([])
+  const [approved, setApproved] = useState<PendingStudent[]>([])
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending')
   const [loading, setLoading] = useState(true)
   const [approveTarget, setApproveTarget] = useState<{ studentId: string; name: string } | null>(null)
   const [rejectTarget, setRejectTarget] = useState<{ studentId: string; name: string } | null>(null)
@@ -73,6 +75,7 @@ export default function FaceApprovalPage() {
       }
 
       setPending(data.pending || [])
+      setApproved(data.approved || [])
     } catch (error: any) {
       console.error("Error fetching face approvals:", error)
       toast.error("Failed to load pending approvals")
@@ -98,6 +101,10 @@ export default function FaceApprovalPage() {
       if (error) throw error
 
       toast.success(`Approved face registration for ${approveTarget.name}`)
+      const approvedStudent = pending.find(s => s.id === approveTarget.studentId)
+      if (approvedStudent) {
+        setApproved(prev => [approvedStudent, ...prev])
+      }
       setPending((prev) => prev.filter((s) => s.id !== approveTarget.studentId))
     } catch (error: any) {
       console.error("Error approving:", error)
@@ -151,6 +158,30 @@ export default function FaceApprovalPage() {
         </Button>
       </div>
 
+      <div className="flex gap-2 border-b border-border mb-6">
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'pending'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Pending {pending.length > 0 && `(${pending.length})`}
+        </button>
+        <button
+          onClick={() => setActiveTab('approved')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'approved'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Approved {approved.length > 0 && `(${approved.length})`}
+        </button>
+      </div>
+
+      {activeTab === 'pending' && (
       <div>
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-xl font-semibold">Pending Approvals</h2>
@@ -223,6 +254,44 @@ export default function FaceApprovalPage() {
           </div>
         )}
       </div>
+      )}
+
+      {activeTab === 'approved' && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-xl font-semibold">Approved Students</h2>
+            {approved.length > 0 && <Badge variant="secondary">{approved.length}</Badge>}
+          </div>
+          {approved.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <CheckCircle2 className="size-12 mb-4 text-muted-foreground/30" />
+                <p className="text-lg font-medium">No approved registrations yet</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              {approved.map((student) => (
+                <div key={student.id} className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0">
+                  {student.registration_photo ? (
+                    <img src={student.registration_photo} alt={student.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-border flex-shrink-0" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center border-2 border-border flex-shrink-0">
+                      <ScanFace className="size-6 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-foreground truncate">{student.name}</p>
+                    <p className="text-xs text-muted-foreground">{student.roll}</p>
+                  </div>
+                  <Badge className="bg-emerald-100 text-emerald-700 border-0">Approved</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Approve Confirmation Dialog */}
       <AlertDialog open={!!approveTarget} onOpenChange={() => setApproveTarget(null)}>
