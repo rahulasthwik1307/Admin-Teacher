@@ -41,10 +41,31 @@ export async function GET(request: NextRequest) {
             .eq("id", student.id)
             .single();
 
+          const { data: studentRow } = await supabaseAdmin
+            .from("students")
+            .select(`
+              year,
+              class:classes (
+                section,
+                department:departments ( code )
+              )
+            `)
+            .eq("id", student.id)
+            .single();
+
+          const classData = studentRow?.class as any;
+          const section = classData?.section ?? "N/A";
+          const deptCode = classData?.department?.code ?? "N/A";
+          const classLabel = deptCode !== "N/A" && section !== "N/A"
+            ? `${deptCode}-${section}`
+            : "N/A";
+
           return {
             id: student.id,
             name: userData?.full_name || "Unknown",
             roll: student.roll_number,
+            class: classLabel,
+            year: studentRow?.year ?? "N/A",
             registration_photo: student.registration_photo_url,
           };
         })
@@ -110,10 +131,31 @@ export async function GET(request: NextRequest) {
           .eq("id", student.id)
           .single();
 
+        const { data: studentRow } = await supabaseAdmin
+          .from("students")
+          .select(`
+            year,
+            class:classes (
+              section,
+              department:departments ( code )
+            )
+          `)
+          .eq("id", student.id)
+          .single();
+
+        const classData = studentRow?.class as any;
+        const section = classData?.section ?? "N/A";
+        const deptCode = classData?.department?.code ?? "N/A";
+        const classLabel = deptCode !== "N/A" && section !== "N/A"
+          ? `${deptCode}-${section}`
+          : "N/A";
+
         return {
           id: student.id,
           name: userData?.full_name || "Unknown",
           roll: student.roll_number,
+          class: classLabel,
+          year: studentRow?.year ?? "N/A",
           registration_photo: student.registration_photo_url,
         };
       })

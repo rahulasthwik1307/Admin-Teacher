@@ -284,6 +284,7 @@ export default function FaceApprovalPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-foreground truncate">{student.name}</p>
                     <p className="text-xs text-muted-foreground">{student.roll}</p>
+                    <p className="text-xs text-muted-foreground">{student.class} · Year {student.year}</p>
                   </div>
                   <Badge className="bg-emerald-100 text-emerald-700 border-0">Approved</Badge>
                 </div>
