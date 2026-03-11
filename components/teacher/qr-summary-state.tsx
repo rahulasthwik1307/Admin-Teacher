@@ -41,32 +41,59 @@ export function QRSummaryState({
   const failedCount = students.filter(s => s.status === "failed").length
 
   async function handleOverride(studentId: string, newStatus: "present" | "absent") {
-    try {
-      const studentName = students.find(s => s.id === studentId)?.name || "Student"
-      
-      // Optimistic upate
-      setStudents(prev => 
-        prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s)
-      )
+    const studentName = students.find(s => s.id === studentId)?.name || "Student"
+    
+    // Optimistic update
+    setStudents(prev => 
+      prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s)
+    )
 
+    try {
       const supabase = createClient()
-      const { error } = await supabase
+      
+      // Check if row exists
+      const { data: existing } = await supabase
         .from('period_attendance')
-        .update({
-          status: newStatus,
-          override_by_teacher: true,
-          override_reason: 'Manual override by teacher',
-          overridden_by: teacherId,
-          overridden_at: new Date().toISOString()
-        })
+        .select('student_id')
         .eq('session_id', sessionId)
         .eq('student_id', studentId)
+        .maybeSingle()
 
-      if (error) throw error
+      if (existing) {
+        // Update existing row
+        const { error } = await supabase
+          .from('period_attendance')
+          .update({
+            status: newStatus,
+            overridden_by: teacherId,
+            overridden_at: new Date().toISOString()
+          })
+          .eq('session_id', sessionId)
+          .eq('student_id', studentId)
+
+        if (error) throw error
+      } else {
+        // Insert new row for student who never scanned
+        const { error } = await supabase
+          .from('period_attendance')
+          .insert({
+            session_id: sessionId,
+            student_id: studentId,
+            status: newStatus,
+            overridden_by: teacherId,
+            overridden_at: new Date().toISOString()
+          })
+
+        if (error) throw error
+      }
 
       toast.success(`Status updated for ${studentName}`)
     } catch (err) {
       console.error(err)
+      // Revert optimistic update on failure
+      setStudents(prev => 
+        prev.map(s => s.id === studentId ? { ...s, status: s.status } : s)
+      )
       toast.error("Failed to update status")
     }
   }

@@ -22,6 +22,7 @@ export interface RecentSessionData {
   class: string
   period: string
   date: string
+  time: string
   present: number
   total: number
   status: string
@@ -164,6 +165,9 @@ export function QRSetupState({
                       Date
                     </th>
                     <th className="pb-3 pr-4 font-medium text-muted-foreground">
+                      Time
+                    </th>
+                    <th className="pb-3 pr-4 font-medium text-muted-foreground">
                       Present
                     </th>
                     <th className="pb-3 font-medium text-muted-foreground">
@@ -188,6 +192,9 @@ export function QRSetupState({
                       </td>
                       <td className="py-3 pr-4 text-muted-foreground">
                         {session.date}
+                      </td>
+                      <td className="py-3 pr-4 text-muted-foreground">
+                        {session.time}
                       </td>
                       <td className="py-3 pr-4 text-foreground">
                         {session.present}/{session.total}
@@ -223,6 +230,7 @@ export function QRSetupState({
                   <span>{session.class}</span>
                   <span>{session.period} Period</span>
                   <span>{session.date}</span>
+                  <span>{session.time}</span>
                 </div>
                 <span className="text-sm font-medium text-foreground">
                   {session.present}/{session.total} Present

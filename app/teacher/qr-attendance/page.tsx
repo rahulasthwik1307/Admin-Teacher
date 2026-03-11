@@ -93,15 +93,15 @@ export default function QRAttendancePage() {
       const { data: recent } = await supabase
         .from('attendance_sessions')
         .select(`
-          id, date, status,
+          id, session_date, finalized_at, status,
           subject:subjects(name),
           class:classes(section, department:departments(code)),
           period:periods(period_number)
         `)
         .eq('teacher_id', uid)
         .eq('status', 'finalized')
-        .order('date', { ascending: false })
-        .limit(5)
+        .order('finalized_at', { ascending: false })
+        .limit(10)
         
       if (recent) {
         // Needs parallel present/total count fetches per session
@@ -125,7 +125,8 @@ export default function QRAttendancePage() {
               const suffix = n >= 11 && n <= 13 ? 'th' : ['th','st','nd','rd'][Math.min(n % 10, 3)] ?? 'th';
               return `${n}${suffix}`;
             })(), 
-            date: new Date(r.date).toLocaleDateString(),
+            date: new Date(r.session_date).toLocaleDateString(),
+            time: r.finalized_at ? new Date(r.finalized_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
             present: presentCount || 0,
             total: totalCount || 0,
             status: 'Finalized'
@@ -349,7 +350,33 @@ export default function QRAttendancePage() {
 
       if (sessionError) throw sessionError
 
-      // Mark all remaining pending students as absent
+      // Get all students in the class
+      const { data: classStudents } = await supabase
+        .from('students')
+        .select('id')
+        .eq('class_id', selectedClass)
+
+      // Get existing attendance records for this session
+      const { data: existingAttendance } = await supabase
+        .from('period_attendance')
+        .select('student_id')
+        .eq('session_id', activeSessionId)
+
+      const existingIds = new Set((existingAttendance || []).map((r: any) => r.student_id))
+
+      // Insert absent records for students who never scanned
+      const missingStudents = (classStudents || []).filter((s: any) => !existingIds.has(s.id))
+      if (missingStudents.length > 0) {
+        await supabase
+          .from('period_attendance')
+          .insert(missingStudents.map((s: any) => ({
+            session_id: activeSessionId,
+            student_id: s.id,
+            status: 'absent',
+          })))
+      }
+
+      // Mark any pending (partial scan failures) as absent
       await supabase
         .from('period_attendance')
         .update({ status: 'absent' })
@@ -429,6 +456,9 @@ export default function QRAttendancePage() {
             setSelectedPeriod("")
             setActiveSessionId(null)
             setLiveStudents([])
+            if (teacherId) {
+              fetchSetupData(teacherId)
+            }
           }}
         />
       )}

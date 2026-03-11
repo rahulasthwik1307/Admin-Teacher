@@ -119,18 +119,14 @@ export default function FaceApprovalPage() {
     if (!rejectTarget) return
     setActionLoading(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("students")
-        .update({
-          is_approved: false,
-          embedding_a: null,
-          embedding_b: null,
-          registration_photo: null,
-        })
-        .eq("id", rejectTarget.studentId)
+      const response = await fetch("/api/teacher/reject-face", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: rejectTarget.studentId }),
+      })
 
-      if (error) throw error
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Failed to reject")
 
       toast.success(`Rejected face registration for ${rejectTarget.name}`)
       setPending((prev) => prev.filter((s) => s.id !== rejectTarget.studentId))
@@ -212,10 +208,10 @@ export default function FaceApprovalPage() {
                   <img
                     src={student.registration_photo}
                     alt={student.name}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-border flex-shrink-0 cursor-pointer"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-border shrink-0 cursor-pointer"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-border flex-shrink-0">
+                  <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center border-2 border-border shrink-0">
                     <ScanFace className="size-8 text-muted-foreground/50" />
                   </div>
                 )}
@@ -228,7 +224,7 @@ export default function FaceApprovalPage() {
                   </p>
                 </div>
                 {/* Actions */}
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2 shrink-0">
                   <Button
                     size="sm"
                     className="bg-emerald-600 text-white hover:bg-emerald-700 h-8 px-3"
@@ -275,9 +271,9 @@ export default function FaceApprovalPage() {
                 <div key={student.id} className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0">
                   {student.registration_photo ? (
                     <img src={student.registration_photo} alt={student.name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-border flex-shrink-0" />
+                      className="w-16 h-16 rounded-full object-cover border-2 border-border shrink-0" />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center border-2 border-border flex-shrink-0">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center border-2 border-border shrink-0">
                       <ScanFace className="size-6 text-muted-foreground/50" />
                     </div>
                   )}
