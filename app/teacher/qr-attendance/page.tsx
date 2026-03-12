@@ -343,7 +343,7 @@ export default function QRAttendancePage() {
       const { error: sessionError } = await supabase
         .from('attendance_sessions')
         .update({ 
-          status: 'finalized',
+          status: 'reviewing',
           finalized_at: new Date().toISOString()
         })
         .eq('id', activeSessionId)
@@ -449,7 +449,15 @@ export default function QRAttendancePage() {
           initialStudents={liveStudents}
           teacherId={teacherId!}
           sessionId={activeSessionId!}
-          onDone={() => {
+          onDone={async () => {
+            // Mark session truly finalized so students see updated attendance
+            if (activeSessionId) {
+              const supabase = createClient()
+              await supabase
+                .from('attendance_sessions')
+                .update({ status: 'finalized' })
+                .eq('id', activeSessionId)
+            }
             setPageState("setup")
             setSelectedClass("")
             setSelectedSubject("")
