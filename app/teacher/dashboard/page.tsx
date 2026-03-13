@@ -7,24 +7,47 @@ import { QuickActions } from "@/components/teacher/quick-actions"
 
 export default function TeacherDashboard() {
   return (
-    <div className="flex flex-col gap-6">
-      {/* Section 1 — Stats */}
-      <DashboardStats />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex flex-col gap-6 p-1">
+        <DashboardStats />
+        <FaceApprovalAlert />
+        <MyClasses />
+        <SummaryActivityPanel />
+        <QuickActions />
+      </div>
+    </div>
+  )
+}
 
-      {/* Section 2 — Face approval alert */}
-      <FaceApprovalAlert />
+function SummaryActivityPanel() {
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
 
-      {/* Section 3 — My classes */}
-      <MyClasses />
+      {/* ── Desktop layout ── */}
+      <div className="hidden lg:grid lg:grid-cols-[1fr_2px_1fr]">
+        <div className="p-6">
+          <TodayAttendanceSummary />
+        </div>
 
-      {/* Section 4 & 5 — Summary + Activity side by side on desktop */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <TodayAttendanceSummary />
-        <RecentActivity />
+        {/* Vertical divider — 2px wide, full height, clearly visible */}
+        <div className="bg-slate-300 dark:bg-slate-600" />
+
+        <div className="p-6">
+          <RecentActivity />
+        </div>
       </div>
 
-      {/* Section 6 — Quick actions */}
-      <QuickActions />
+      {/* ── Mobile layout ── */}
+      <div className="flex flex-col lg:hidden">
+        <div className="p-6">
+          <TodayAttendanceSummary />
+        </div>
+        <div className="h-0.5 bg-slate-300 dark:bg-slate-600 mx-6" />
+        <div className="p-6">
+          <RecentActivity />
+        </div>
+      </div>
+
     </div>
   )
 }

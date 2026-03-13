@@ -1,6 +1,5 @@
 import Link from "next/link"
-import { QrCode, ScanFace, UserPlus } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { QrCode, ScanFace, UserPlus, ArrowRight } from "lucide-react"
 
 const actions = [
   {
@@ -31,28 +30,29 @@ const actions = [
 
 export function QuickActions() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-6">
-      {actions.map((action) => (
-        <Link key={action.href} href={action.href} className="group">
-          <Card className="py-4 transition-shadow group-hover:shadow-md">
-            <CardContent className="flex items-center gap-4">
-              <div
-                className={`flex size-11 shrink-0 items-center justify-center rounded-lg ${action.iconBg}`}
-              >
-                <action.icon className={`size-5 ${action.iconColor}`} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">
-                  {action.label}
-                </span>
-                <span className="text-xs text-muted-foreground leading-snug mt-0.5">
-                  {action.description}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      ))}
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-border">
+        <h3 className="text-base font-semibold text-foreground">Quick Actions</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">Common tasks at a glance</p>
+      </div>
+      <div className="grid grid-cols-1 divide-y divide-border sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
+        {actions.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="group flex items-center gap-4 px-6 py-5 transition-colors duration-150 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+          >
+            <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${action.iconBg}`}>
+              <action.icon className={`size-5 ${action.iconColor}`} />
+            </div>
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-sm font-semibold text-foreground">{action.label}</span>
+              <span className="text-xs text-muted-foreground leading-snug mt-0.5">{action.description}</span>
+            </div>
+            <ArrowRight className="size-4 text-muted-foreground shrink-0 opacity-0 -translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
+          </Link>
+        ))}
+      </div>
     </div>
   )
 }
