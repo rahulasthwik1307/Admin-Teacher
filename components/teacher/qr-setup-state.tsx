@@ -43,6 +43,7 @@ interface QRSetupStateProps {
   subjectOptions: DropdownOption[]
   periodOptions: DropdownOption[]
   recentSessions: RecentSessionData[]
+  recentSessionsLoading?: boolean
 }
 
 /* ---------- Grouping helpers ---------- */
@@ -116,6 +117,7 @@ export function QRSetupState({
   subjectOptions,
   periodOptions,
   recentSessions,
+  recentSessionsLoading,
 }: QRSetupStateProps) {
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today")
   const [classFilterLocal, setClassFilterLocal] = useState("all")
@@ -289,7 +291,13 @@ export function QRSetupState({
           </div>
         </CardHeader>
         <CardContent className="pt-2">
-          {filteredSessions.length === 0 ? (
+          {recentSessionsLoading ? (
+            <div className="flex flex-col gap-3 py-4 border-t border-transparent">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className={`h-12 w-full rounded-lg bg-muted animate-pulse opacity-${Math.max(20, 100 - i * 20)}`} />
+              ))}
+            </div>
+          ) : filteredSessions.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               {recentSessions.length === 0 ? "No recent sessions found." : "No sessions match your filters."}
             </div>

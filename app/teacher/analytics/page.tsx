@@ -530,6 +530,29 @@ export default function AnalyticsPage() {
         Attendance insights for your subjects.
       </p>
 
+      {/* ── Period selector ────────────────────────────────── */}
+      <div className="flex items-center gap-1 self-start rounded-xl bg-muted p-1 shadow-sm">
+        {periods.map((p) => {
+          const Icon = p === "This Week" ? CalendarDays : p === "This Month" ? TrendingUp : BarChart3
+          const isActive = period === p
+          return (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className="size-3.5" />
+              {p}
+            </button>
+          )
+        })}
+      </div>
+
       {/* ── Summary strip ──────────────────────────────────── */}
       {!loading && (
         <div className="flex flex-wrap gap-3">
@@ -568,29 +591,6 @@ export default function AnalyticsPage() {
           )}
         </div>
       )}
-
-      {/* ── Period selector ────────────────────────────────── */}
-      <div className="flex items-center gap-1 self-start rounded-xl bg-muted p-1 shadow-sm">
-        {periods.map((p) => {
-          const Icon = p === "This Week" ? CalendarDays : p === "This Month" ? TrendingUp : BarChart3
-          const isActive = period === p
-          return (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Icon className="size-3.5" />
-              {p}
-            </button>
-          )
-        })}
-      </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-24">

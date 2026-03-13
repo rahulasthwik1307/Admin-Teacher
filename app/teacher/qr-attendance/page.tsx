@@ -42,6 +42,7 @@ export default function QRAttendancePage() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [currentQrToken, setCurrentQrToken] = useState<string>("")
   const [liveStudents, setLiveStudents] = useState<Student[]>([])
+  const [recentSessionsLoading, setRecentSessionsLoading] = useState(true)
 
   const canStart = !!selectedClass && !!selectedSubject && !!selectedPeriod
 
@@ -54,10 +55,24 @@ export default function QRAttendancePage() {
     try {
       const supabase = createClient()
       
+      const [
+        { data: classes },
+        { data: assignments },
+        { data: periods },
+        { data: recent }
+      ] = await Promise.all([
+        supabase.from('classes').select('id, section, department:departments(code)'),
+        supabase.from('teacher_assignments').select('subject:subjects(id, name)').eq('teacher_id', uid),
+        supabase.from('periods').select('*').order('period_number', { ascending: true }),
+        supabase.from('attendance_sessions').select(`
+          id, session_date, finalized_at, status,
+          subject:subjects(name),
+          class:classes(section, department:departments(code)),
+          period:periods(period_number)
+        `).eq('teacher_id', uid).eq('status', 'finalized').order('finalized_at', { ascending: false })
+      ])
+      
       // 1. Fetch Classes
-      const { data: classes } = await supabase
-        .from('classes')
-        .select('id, section, department:departments(code)')
       if (classes) {
         setClassOptions(classes.map((c: any) => ({
           value: c.id,
@@ -66,10 +81,6 @@ export default function QRAttendancePage() {
       }
 
       // 2. Fetch Subjects Assigned to Teacher
-      const { data: assignments } = await supabase
-        .from('teacher_assignments')
-        .select('subject:subjects(id, name)')
-        .eq('teacher_id', uid)
       if (assignments) {
         setSubjectOptions(assignments.map((a: any) => ({
           value: a.subject.id,
@@ -78,10 +89,6 @@ export default function QRAttendancePage() {
       }
 
       // 3. Fetch Periods
-      const { data: periods } = await supabase
-        .from('periods')
-        .select('*')
-        .order('period_number', { ascending: true })
       if (periods) {
         setPeriodOptions(periods.map((p: any) => ({
           value: p.id,
@@ -90,18 +97,6 @@ export default function QRAttendancePage() {
       }
 
       // 4. Fetch Recent Sessions
-      const { data: recent } = await supabase
-        .from('attendance_sessions')
-        .select(`
-          id, session_date, finalized_at, status,
-          subject:subjects(name),
-          class:classes(section, department:departments(code)),
-          period:periods(period_number)
-        `)
-        .eq('teacher_id', uid)
-        .eq('status', 'finalized')
-        .order('finalized_at', { ascending: false })
-        
       if (recent) {
         // Needs parallel present/total count fetches per session
         const processedRecent = await Promise.all(recent.map(async (r: any) => {
@@ -133,9 +128,11 @@ export default function QRAttendancePage() {
         }))
         setRecentSessions(processedRecent)
       }
+      setRecentSessionsLoading(false)
     } catch (err: any) {
       console.error("Setup fetch error:", err)
       toast.error("Failed to load setup data")
+      setRecentSessionsLoading(false)
     }
   }, [])
 
@@ -427,6 +424,7 @@ export default function QRAttendancePage() {
           subjectOptions={subjectOptions}
           periodOptions={periodOptions}
           recentSessions={recentSessions}
+          recentSessionsLoading={recentSessionsLoading}
         />
       ) : pageState === "active" ? (
         <QRActiveSession
