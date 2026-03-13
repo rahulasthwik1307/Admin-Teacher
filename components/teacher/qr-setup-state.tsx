@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
-import { QrCode, CalendarDays } from "lucide-react"
+import { useMemo, useState } from "react"
+import { QrCode, CalendarDays, Users, BookOpen, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -117,8 +117,47 @@ export function QRSetupState({
   periodOptions,
   recentSessions,
 }: QRSetupStateProps) {
+  const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today")
+  const [classFilterLocal, setClassFilterLocal] = useState("all")
 
-  const grouped = useMemo(() => groupSessions(recentSessions), [recentSessions])
+  const uniqueClasses = useMemo(() => {
+    const set = new Set<string>()
+    recentSessions.forEach(s => set.add(s.class))
+    return Array.from(set).sort()
+  }, [recentSessions])
+
+  const filteredSessions = useMemo(() => {
+    return recentSessions.filter((session) => {
+      let passDate = true
+      if (dateFilter === "today") {
+        passDate = getDayLabel(session.date) === "Today"
+      } else if (dateFilter === "week") {
+        const parts = session.date.split("/")
+        if (parts.length === 3) {
+          const d = parseInt(parts[0])
+          const m = parseInt(parts[1]) - 1
+          const y = parseInt(parts[2])
+          const sessionDate = new Date(y, m, d)
+          sessionDate.setHours(0, 0, 0, 0)
+          
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
+          
+          const diffDays = Math.round((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24))
+          passDate = diffDays <= 7 && diffDays >= 0
+        }
+      }
+
+      let passClass = true
+      if (classFilterLocal !== "all") {
+        passClass = session.class === classFilterLocal
+      }
+
+      return passDate && passClass
+    })
+  }, [recentSessions, dateFilter, classFilterLocal])
+
+  const grouped = useMemo(() => groupSessions(filteredSessions), [filteredSessions])
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,38 +173,59 @@ export function QRSetupState({
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
-          {/* Dropdowns */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Class & Section</label>
-              <Select value={selectedClass} onValueChange={onClassChange}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select class" /></SelectTrigger>
-                <SelectContent>
-                  {classOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+          {/* Premium Connected Filter Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border">
+            
+            {/* Class Filter */}
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
+              <Users className="size-4 text-muted-foreground shrink-0" />
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class & Section</span>
+                <Select value={selectedClass} onValueChange={onClassChange}>
+                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                    <SelectValue placeholder="Select class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Subject</label>
-              <Select value={selectedSubject} onValueChange={onSubjectChange}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
-                <SelectContent>
-                  {subjectOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+
+            {/* Subject Filter */}
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
+              <BookOpen className="size-4 text-muted-foreground shrink-0" />
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Subject</span>
+                <Select value={selectedSubject} onValueChange={onSubjectChange}>
+                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                    <SelectValue placeholder="Select subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjectOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Period</label>
-              <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select period" /></SelectTrigger>
-                <SelectContent>
-                  {periodOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+
+            {/* Period Filter */}
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
+              <Clock className="size-4 text-muted-foreground shrink-0" />
+              <div className="flex flex-col flex-1 min-w-0">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Period</span>
+                <Select value={selectedPeriod} onValueChange={onPeriodChange}>
+                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periodOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-2">
             <Button
               size="lg"
               className="gap-2 font-semibold sm:w-auto"
@@ -185,16 +245,54 @@ export function QRSetupState({
       {/* ── Recent Sessions — Grouped ── */}
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-              <CalendarDays className="size-4 text-muted-foreground" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
+                <CalendarDays className="size-4 text-muted-foreground" />
+              </div>
+              <CardTitle className="text-base font-semibold">Recent Sessions</CardTitle>
             </div>
-            <CardTitle className="text-base font-semibold">Recent Sessions</CardTitle>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center rounded-lg p-0.5 bg-muted">
+                {(["today", "week", "all"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setDateFilter(opt)}
+                    className={cn(
+                      "px-2.5 py-1 text-xs rounded-md capitalize transition-colors",
+                      dateFilter === opt
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-muted-foreground hover:text-foreground font-medium"
+                    )}
+                  >
+                    {opt === "week" ? "This Week" : opt}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center h-7 rounded-lg border border-border bg-card px-2">
+                <Users className="size-3 text-muted-foreground mr-1.5 shrink-0" />
+                <Select value={classFilterLocal} onValueChange={setClassFilterLocal}>
+                  <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {uniqueClasses.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-2">
-          {recentSessions.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No recent sessions found.</div>
+          {filteredSessions.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              {recentSessions.length === 0 ? "No recent sessions found." : "No sessions match your filters."}
+            </div>
           ) : (
             <div className="flex flex-col gap-5">
               {Array.from(grouped.entries()).map(([day, sectionMap]) => (

@@ -11,6 +11,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   Loader2,
+  ChevronDown,
+  ChevronRight,
+  BarChart3,
+  Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -28,17 +32,20 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
 
 /* ── types ─────────────────────────────────────────────── */
 interface Session {
   id: string
-  date: string          // formatted for display e.g. "Oct 24, 2024"
-  rawDate: string       // ISO date string for filtering e.g. "2024-10-24"
+  date: string
+  rawDate: string
   subject: string
   subjectId: string
-  class: string
+  class: string        // formatted as "CSE-A"
   classId: string
   period: string
+  periodShort: string  // e.g. "1st Period"
+  periodTime: string   // e.g. "09:15 - 10:10"
   present: number
   absent: number
   percentage: number
@@ -58,9 +65,28 @@ function pctColor(pct: number) {
   return "text-red-600"
 }
 
+function pctBg(pct: number) {
+  if (pct >= 75) return "bg-emerald-50 border-emerald-200 text-emerald-700"
+  if (pct >= 60) return "bg-amber-50 border-amber-200 text-amber-700"
+  return "bg-red-50 border-red-200 text-red-700"
+}
+
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00")
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+}
+
+function getDayLabel(rawDate: string): string {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  const d = new Date(rawDate + "T00:00:00")
+  d.setHours(0, 0, 0, 0)
+  const diff = Math.round((today.getTime() - d.getTime()) / 86400000)
+  if (diff === 0) return "Today"
+  if (diff === 1) return "Yesterday"
+  return d.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short", year: "numeric" })
 }
 
 function getOrdinal(n: number): string {
@@ -75,10 +101,7 @@ function getOrdinal(n: number): string {
 
 function exportSessionsCSV(sessions: Session[]) {
   const headers = ["Date", "Subject", "Class", "Period", "Present", "Absent", "Percentage", "Status"]
-  const rows = sessions.map(s => [
-    s.date, s.subject, s.class, s.period,
-    s.present, s.absent, `${s.percentage}%`, s.status,
-  ])
+  const rows = sessions.map(s => [s.date, s.subject, s.class, s.period, s.present, s.absent, `${s.percentage}%`, s.status])
   const csv = [headers, ...rows].map(r => r.join(",")).join("\n")
   const blob = new Blob([csv], { type: "text/csv" })
   const url = URL.createObjectURL(blob)
@@ -112,7 +135,146 @@ function exportDetailCSV(session: Session, students: DetailStudent[]) {
   URL.revokeObjectURL(url)
 }
 
-/* ── page ──────────────────────────────────────────────── */
+/* ── Grouping ──────────────────────────────────────────── */
+// Returns: Map<dayLabel, Map<sectionLabel, Session[]>>
+type GroupedSessions = Map<string, Map<string, Session[]>>
+
+function groupSessions(sessions: Session[]): GroupedSessions {
+  const map: GroupedSessions = new Map()
+  for (const s of sessions) {
+    const day = getDayLabel(s.rawDate)
+    if (!map.has(day)) map.set(day, new Map())
+    const dayMap = map.get(day)!
+    if (!dayMap.has(s.class)) dayMap.set(s.class, [])
+    dayMap.get(s.class)!.push(s)
+  }
+  return map
+}
+
+/* ── Per-subject summary strip ─────────────────────────── */
+function SubjectSummaryStrip({ sessions }: { sessions: Session[] }) {
+  const subjectMap: Record<string, { count: number; totalPct: number; lowCount: number }> = {}
+  for (const s of sessions) {
+    if (!subjectMap[s.subject]) subjectMap[s.subject] = { count: 0, totalPct: 0, lowCount: 0 }
+    subjectMap[s.subject].count++
+    subjectMap[s.subject].totalPct += s.percentage
+    if (s.percentage < 75) subjectMap[s.subject].lowCount++
+  }
+  const subjects = Object.entries(subjectMap).map(([name, v]) => ({
+    name,
+    count: v.count,
+    avg: Math.round(v.totalPct / v.count),
+    lowCount: v.lowCount,
+  }))
+
+  if (subjects.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Per-Subject Summary</p>
+      <div className="flex flex-wrap gap-2">
+        {subjects.map((sub) => (
+          <div
+            key={sub.name}
+            className={cn(
+              "flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm",
+              pctBg(sub.avg)
+            )}
+          >
+            <div className="flex flex-col">
+              <span className="font-semibold leading-tight">{sub.name}</span>
+              <span className="text-xs opacity-70">{sub.count} session{sub.count !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-base font-bold leading-tight">{sub.avg}%</span>
+              {sub.lowCount > 0 && (
+                <span className="text-xs opacity-70">{sub.lowCount} below 75%</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ── Collapsible section row ───────────────────────────── */
+function SectionGroup({
+  section,
+  sessions,
+  onSelect,
+}: {
+  section: string
+  sessions: Session[]
+  onSelect: (s: Session) => void
+}) {
+  const [open, setOpen] = useState(true)
+  const avgPct = Math.round(sessions.reduce((a, s) => a + s.percentage, 0) / sessions.length)
+
+  return (
+    <div className="flex flex-col">
+      {/* Section header */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 py-2 text-left"
+      >
+        {open ? (
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-3.5 text-muted-foreground" />
+        )}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+          {section}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+        </span>
+        <span className={cn("ml-auto text-xs font-semibold", pctColor(avgPct))}>
+          avg {avgPct}%
+        </span>
+      </button>
+
+      {/* Subject rows */}
+      {open && (
+        <div className="mb-2 rounded-xl border border-border bg-card overflow-hidden">
+          {sessions.map((s, i) => (
+            <div
+              key={s.id}
+              onClick={() => onSelect(s)}
+              className="group flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 last:border-0 hover:bg-muted/30 transition-colors"
+            >
+              {/* Subject + period */}
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="text-sm font-semibold text-foreground">{s.subject}</span>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-xs text-muted-foreground">{s.periodShort}</span>
+                  <span className="text-xs text-muted-foreground/50">·</span>
+                  <span className="text-xs text-muted-foreground">{s.periodTime}</span>
+                </div>
+              </div>
+
+              {/* Present / Absent */}
+              <div className="hidden sm:flex items-center gap-3 text-sm shrink-0">
+                <span className="text-emerald-600 font-semibold">{s.present} P</span>
+                <span className="text-red-500 font-semibold">{s.absent} A</span>
+              </div>
+
+              {/* Percentage badge */}
+              <span className={cn("text-sm font-bold shrink-0", pctColor(s.percentage))}>
+                {s.percentage}%
+              </span>
+
+              {/* Arrow hint */}
+              <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Page ──────────────────────────────────────────────── */
 export default function AttendanceHistoryPage() {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -122,36 +284,27 @@ export default function AttendanceHistoryPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
 
-  // filter states
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  // detail sheet
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
   const [detailStudents, setDetailStudents] = useState<DetailStudent[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
-  /* ── fetch sessions ──────────────────────────────────── */
+  /* ── fetch sessions ────────────────────────────────────── */
   const fetchSessions = useCallback(async () => {
     try {
       setLoading(true)
       const { data: { session: authSession } } = await supabase.auth.getSession()
       if (!authSession) return
-
       const teacherId = authSession.user.id
 
-      // Fetch all finalized sessions for this teacher
       const { data: rawSessions, error } = await supabase
         .from("attendance_sessions")
         .select(`
-          id,
-          session_date,
-          finalized_at,
-          subject_id,
-          class_id,
-          period_id,
+          id, session_date, finalized_at, subject_id, class_id, period_id,
           subjects ( id, name ),
           classes ( id, name, section ),
           periods ( period_number, start_time, end_time )
@@ -161,31 +314,16 @@ export default function AttendanceHistoryPage() {
         .order("session_date", { ascending: false })
         .order("finalized_at", { ascending: false })
 
-      if (error) {
-        toast.error("Failed to load attendance history.")
-        console.error(error)
-        return
-      }
+      if (error) { toast.error("Failed to load attendance history."); return }
+      if (!rawSessions || rawSessions.length === 0) { setSessions([]); return }
 
-      if (!rawSessions || rawSessions.length === 0) {
-        setSessions([])
-        return
-      }
-
-      // For each session, count present and absent from period_attendance
       const sessionIds = rawSessions.map((s: any) => s.id)
-
-      const { data: attendanceCounts, error: countError } = await supabase
+      const { data: attendanceCounts } = await supabase
         .from("period_attendance")
         .select("session_id, status")
         .in("session_id", sessionIds)
         .in("status", ["present", "absent"])
 
-      if (countError) {
-        console.error("Error fetching attendance counts:", countError)
-      }
-
-      // Build count map
       const countMap: Record<string, { present: number; absent: number }> = {}
       for (const row of (attendanceCounts ?? [])) {
         if (!countMap[row.session_id]) countMap[row.session_id] = { present: 0, absent: 0 }
@@ -193,18 +331,19 @@ export default function AttendanceHistoryPage() {
         else if (row.status === "absent") countMap[row.session_id].absent++
       }
 
-      // Build final session list
       const built: Session[] = rawSessions.map((s: any) => {
         const counts = countMap[s.id] ?? { present: 0, absent: 0 }
         const total = counts.present + counts.absent
         const pct = total > 0 ? Math.round((counts.present / total) * 100) : 0
-
         const subjectName = s.subjects?.name ?? "Unknown Subject"
-        const className = s.classes ? `${s.classes.name} ${s.classes.section}` : "Unknown Class"
+        // CSE-A format with hyphen
+        const className = s.classes ? `${s.classes.name}-${s.classes.section}` : "Unknown"
         const periodNum = s.periods?.period_number ?? 0
-        const periodLabel = periodNum > 0
-          ? `${getOrdinal(periodNum)} Period • ${s.periods.start_time} - ${s.periods.end_time}`
-          : "Unknown Period"
+        const periodShort = periodNum > 0 ? `${getOrdinal(periodNum)} Period` : "Unknown Period"
+        const startTime = s.periods?.start_time?.slice(0, 5) ?? ""
+        const endTime = s.periods?.end_time?.slice(0, 5) ?? ""
+        const periodTime = startTime && endTime ? `${startTime} - ${endTime}` : ""
+        const period = `${periodShort}${periodTime ? ` · ${periodTime}` : ""}`
 
         return {
           id: s.id,
@@ -214,7 +353,9 @@ export default function AttendanceHistoryPage() {
           subjectId: s.subject_id ?? "",
           class: className,
           classId: s.class_id ?? "",
-          period: periodLabel,
+          period,
+          periodShort,
+          periodTime,
           present: counts.present,
           absent: counts.absent,
           percentage: pct,
@@ -224,58 +365,39 @@ export default function AttendanceHistoryPage() {
 
       setSessions(built)
     } catch (e) {
-      console.error("Unexpected error:", e)
+      console.error(e)
       toast.error("Something went wrong loading history.")
     } finally {
       setLoading(false)
     }
   }, [supabase])
 
-  useEffect(() => {
-    fetchSessions()
-  }, [fetchSessions])
+  useEffect(() => { fetchSessions() }, [fetchSessions])
 
-  /* ── fetch detail students when sheet opens ──────────── */
+  /* ── fetch detail students ─────────────────────────────── */
   useEffect(() => {
-    if (!selectedSession) {
-      setDetailStudents([])
-      return
-    }
+    if (!selectedSession) { setDetailStudents([]); return }
     const fetchDetail = async () => {
       setDetailLoading(true)
       try {
         const { data, error } = await supabase
           .from("period_attendance")
-          .select(`
-            status,
-            student_id,
-            students (
-              roll_number,
-              users ( full_name )
-            )
-          `)
+          .select(`status, student_id, students ( roll_number, users ( full_name ) )`)
           .eq("session_id", selectedSession.id)
           .in("status", ["present", "absent"])
-          .order("status", { ascending: false }) // present first
+          .order("status", { ascending: false })
 
-        if (error) {
-          toast.error("Failed to load student details.")
-          console.error(error)
-          return
-        }
+        if (error) { toast.error("Failed to load student details."); return }
 
         const students: DetailStudent[] = (data ?? []).map((row: any) => ({
           name: row.students?.users?.full_name ?? "Unknown",
           roll: row.students?.roll_number ?? "—",
           status: row.status === "present" ? "Present" : "Absent",
         }))
-
-        // Sort: Present first, then Absent, then by name
         students.sort((a, b) => {
           if (a.status === b.status) return a.name.localeCompare(b.name)
           return a.status === "Present" ? -1 : 1
         })
-
         setDetailStudents(students)
       } catch (e) {
         console.error(e)
@@ -286,7 +408,7 @@ export default function AttendanceHistoryPage() {
     fetchDetail()
   }, [selectedSession, supabase])
 
-  /* ── filter options built from real data ─────────────── */
+  /* ── filter options ────────────────────────────────────── */
   const subjectOptions = useMemo(() => {
     const seen = new Map<string, string>()
     sessions.forEach(s => { if (!seen.has(s.subjectId)) seen.set(s.subjectId, s.subject) })
@@ -299,7 +421,7 @@ export default function AttendanceHistoryPage() {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
   }, [sessions])
 
-  /* ── filtered sessions ───────────────────────────────── */
+  /* ── filtered sessions ─────────────────────────────────── */
   const filtered = useMemo(() => {
     return sessions.filter(s => {
       if (subjectFilter !== "all" && s.subjectId !== subjectFilter) return false
@@ -310,11 +432,15 @@ export default function AttendanceHistoryPage() {
     })
   }, [sessions, subjectFilter, classFilter, startDate, endDate])
 
-  /* ── summary stats ───────────────────────────────────── */
+  /* ── grouped sessions ──────────────────────────────────── */
+  const grouped = useMemo(() => groupSessions(filtered), [filtered])
+
+  /* ── summary stats ─────────────────────────────────────── */
   const totalSessions = filtered.length
   const avgAttendance = filtered.length > 0
     ? Math.round(filtered.reduce((a, s) => a + s.percentage, 0) / filtered.length)
     : 0
+  const lowSessions = filtered.filter(s => s.percentage < 75).length
 
   const subjectStatMap: Record<string, number[]> = {}
   filtered.forEach(s => {
@@ -322,222 +448,205 @@ export default function AttendanceHistoryPage() {
     subjectStatMap[s.subject].push(s.percentage)
   })
   let bestSubject = { name: "—", avg: 0 }
-  let worstSubject = { name: "—", avg: 101 }
   Object.entries(subjectStatMap).forEach(([name, pcts]) => {
     const avg = Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
     if (avg > bestSubject.avg) bestSubject = { name, avg }
-    if (avg < worstSubject.avg) worstSubject = { name, avg }
   })
-  if (worstSubject.avg === 101) worstSubject = { name: "—", avg: 0 }
 
-  /* ── render ──────────────────────────────────────────── */
+  /* ── render ────────────────────────────────────────────── */
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm text-muted-foreground -mt-1">
         View past attendance records for your classes.
       </p>
 
-      {/* ── Filter toolbar ─────────────────────────────── */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-          {/* Subject */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Subject</label>
-            <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Subjects</SelectItem>
-                {subjectOptions.map(opt => (
-                  <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* ── Filter toolbar ─────────────────────────────────── */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        
+        {/* Premium Connected Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border">
+          
+          {/* Subject Filter */}
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-[220px]">
+            <BookOpen className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Subject</span>
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {subjectOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Class */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Class</label>
-            <Select value={classFilter} onValueChange={setClassFilter}>
-              <SelectTrigger className="w-full sm:w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Classes</SelectItem>
-                {classOptions.map(opt => (
-                  <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Class Filter */}
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-[180px]">
+            <Users className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class</span>
+              <Select value={classFilter} onValueChange={setClassFilter}>
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {classOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {/* Date range */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Date Range</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-                aria-label="Start date"
-              />
-              <span className="text-xs text-muted-foreground">to</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
-                aria-label="End date"
-              />
+          {/* Date Range Filter */}
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
+            <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Date Range</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-[125px]"
+                  aria-label="Start date"
+                />
+                <span className="text-[10px] font-semibold text-muted-foreground/60 w-4 text-center">TO</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-[125px]"
+                  aria-label="End date"
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Export all filtered sessions */}
+        {/* Export Button */}
         <Button
-          className="gap-2 self-start lg:self-auto"
+          className="gap-2 sm:self-end lg:self-auto h-[52px] rounded-2xl w-full sm:w-auto shadow-sm shrink-0"
           disabled={filtered.length === 0}
-          onClick={() => {
-            exportSessionsCSV(filtered)
-            toast.success("Attendance report exported successfully.")
-          }}
+          onClick={() => { exportSessionsCSV(filtered); toast.success("Exported successfully.") }}
         >
           <Download className="size-4" />
           Export
         </Button>
       </div>
 
-      {/* ── Summary stats ──────────────────────────────── */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
-          <CalendarDays className="size-4 text-primary" />
-          <span className="text-sm text-muted-foreground">Total Sessions</span>
-          <span className="text-sm font-semibold text-foreground">{totalSessions}</span>
+      {/* ── Summary stats ───────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2">
+          {/* Total Sessions */}
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+              <CalendarDays className="size-4 text-primary" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">Total Sessions</span>
+              <span className="text-sm font-bold text-foreground">{totalSessions}</span>
+            </div>
+          </div>
+
+          {/* Average Attendance */}
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+              <TrendingUp className="size-4 text-primary" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">Avg Attendance</span>
+              <span className={cn("text-sm font-bold", pctColor(avgAttendance))}>{avgAttendance}%</span>
+            </div>
+          </div>
+
+          {/* Best Subject */}
+          {bestSubject.name !== "—" && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 shadow-sm">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100">
+                <BookOpen className="size-4 text-emerald-600" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-emerald-700">Best Subject</span>
+                <span className="text-sm font-bold text-emerald-800">
+                  {bestSubject.name} · {bestSubject.avg}%
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Low sessions */}
+          {lowSessions > 0 && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 shadow-sm">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-red-100">
+                <AlertTriangle className="size-4 text-red-500" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs text-red-700">Below 75%</span>
+                <span className="text-sm font-bold text-red-800">{lowSessions} session{lowSessions !== 1 ? "s" : ""}</span>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
-          <TrendingUp className="size-4 text-primary" />
-          <span className="text-sm text-muted-foreground">Average Attendance</span>
-          <span className="text-sm font-semibold text-foreground">{avgAttendance}%</span>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
-          <BookOpen className="size-4 text-emerald-600" />
-          <span className="text-sm text-muted-foreground">Best Subject</span>
-          <span className="text-sm font-semibold text-foreground">
-            {bestSubject.name}{bestSubject.name !== "—" ? ` ${bestSubject.avg}%` : ""}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5">
-          <AlertTriangle className="size-4 text-red-500" />
-          <span className="text-sm text-muted-foreground">Needs Attention</span>
-          <span className="text-sm font-semibold text-foreground">
-            {worstSubject.name}{worstSubject.name !== "—" ? ` ${worstSubject.avg}%` : ""}
-          </span>
-        </div>
+
+        {/* Per-subject summary strip */}
+        {filtered.length > 0 && <SubjectSummaryStrip sessions={filtered} />}
       </div>
 
-      {/* ── Loading state ──────────────────────────────── */}
+      {/* ── Loading ─────────────────────────────────────────── */}
       {loading && (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      {/* ── Table — desktop ────────────────────────────── */}
-      {!loading && (
-        <div className="hidden rounded-lg border border-border bg-card md:block">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Subject</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Class</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Period</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Present</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Absent</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Percentage</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(s => (
-                  <tr
-                    key={s.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors cursor-pointer"
-                    onClick={() => setSelectedSession(s)}
-                  >
-                    <td className="px-4 py-3 text-foreground">{s.date}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{s.subject}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.class}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{s.period}</td>
-                    <td className="px-4 py-3 text-right text-emerald-600 font-medium">{s.present}</td>
-                    <td className="px-4 py-3 text-right text-red-600 font-medium">{s.absent}</td>
-                    <td className={`px-4 py-3 text-right font-semibold ${pctColor(s.percentage)}`}>
-                      {s.percentage}%
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
-                        <CheckCircle2 className="size-3 mr-1" />
-                        Finalized
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
-                      {sessions.length === 0
-                        ? "No finalized sessions yet."
-                        : "No records match your filters."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+      {/* ── Grouped sessions ────────────────────────────────── */}
+      {!loading && filtered.length === 0 && (
+        <div className="rounded-xl border border-border bg-card py-14 text-center text-sm text-muted-foreground">
+          {sessions.length === 0 ? "No finalized sessions yet." : "No records match your filters."}
         </div>
       )}
 
-      {/* ── Cards — mobile ─────────────────────────────── */}
-      {!loading && (
-        <div className="flex flex-col gap-3 md:hidden">
-          {filtered.map(s => (
-            <div
-              key={s.id}
-              className="rounded-lg border border-border bg-card p-4 cursor-pointer hover:bg-muted/40 transition-colors"
-              onClick={() => setSelectedSession(s)}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">{s.subject}</span>
-                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-xs">
-                  Finalized
-                </Badge>
+      {!loading && filtered.length > 0 && (
+        <div className="flex flex-col gap-6">
+          {Array.from(grouped.entries()).map(([day, sectionMap]) => {
+            const daySessions = Array.from(sectionMap.values()).flat()
+            const dayAvg = Math.round(daySessions.reduce((a, s) => a + s.percentage, 0) / daySessions.length)
+
+            return (
+              <div key={day} className="flex flex-col gap-1">
+                {/* Day header */}
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-sm font-bold text-foreground">{day}</span>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className={cn("text-xs font-semibold", pctColor(dayAvg))}>
+                    avg {dayAvg}%
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {daySessions.length} session{daySessions.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Sections within day */}
+                <div className="flex flex-col gap-1 pl-3 border-l-2 border-border">
+                  {Array.from(sectionMap.entries()).map(([section, sectionSessions]) => (
+                    <SectionGroup
+                      key={section}
+                      section={section}
+                      sessions={sectionSessions}
+                      onSelect={setSelectedSession}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span>{s.date}</span>
-                <span>{s.class}</span>
-                <span>{s.period}</span>
-              </div>
-              <div className="mt-3 flex items-center gap-4">
-                <span className="text-sm text-emerald-600 font-medium">{s.present} Present</span>
-                <span className="text-sm text-red-600 font-medium">{s.absent} Absent</span>
-                <span className={`ml-auto text-sm font-semibold ${pctColor(s.percentage)}`}>
-                  {s.percentage}%
-                </span>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <div className="rounded-lg border border-border bg-card px-4 py-12 text-center text-muted-foreground">
-              {sessions.length === 0 ? "No finalized sessions yet." : "No records match your filters."}
-            </div>
-          )}
+            )
+          })}
         </div>
       )}
 
-      {/* ── Detail sheet ───────────────────────────────── */}
+      {/* ── Detail sheet ────────────────────────────────────── */}
       <Sheet open={!!selectedSession} onOpenChange={open => !open && setSelectedSession(null)}>
         <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
           <SheetHeader>
@@ -546,34 +655,39 @@ export default function AttendanceHistoryPage() {
           </SheetHeader>
 
           {selectedSession && (
-            <div className="flex flex-col gap-5 px-4 py-2">
+            <div className="flex flex-col gap-5 px-4 py-3">
               {/* Session info card */}
-              <div className="rounded-lg bg-muted/60 p-4">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-semibold text-foreground">{selectedSession.subject}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {selectedSession.class} · {selectedSession.period}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{selectedSession.date}</span>
+              <div className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="h-1 w-full bg-gradient-to-r from-primary/60 to-primary" />
+                <div className="p-4 flex flex-col gap-1">
+                  <span className="text-base font-bold text-foreground">{selectedSession.subject}</span>
+                  <span className="text-sm font-medium text-foreground">{selectedSession.class}</span>
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <span>{selectedSession.periodShort}</span>
+                    {selectedSession.periodTime && (
+                      <>
+                        <span className="text-muted-foreground/40">·</span>
+                        <span>{selectedSession.periodTime}</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-0.5">{selectedSession.date}</span>
                 </div>
-                <div className="mt-3 flex items-center gap-4">
-                  <span className="text-sm text-emerald-600 font-medium">{selectedSession.present} Present</span>
-                  <span className="text-sm text-red-600 font-medium">{selectedSession.absent} Absent</span>
-                  <span className={`ml-auto text-lg font-bold ${pctColor(selectedSession.percentage)}`}>
+                <div className="flex items-center gap-4 border-t border-border px-4 py-3">
+                  <span className="text-sm text-emerald-600 font-semibold">{selectedSession.present} Present</span>
+                  <span className="text-sm text-red-600 font-semibold">{selectedSession.absent} Absent</span>
+                  <span className={cn("ml-auto text-xl font-bold", pctColor(selectedSession.percentage))}>
                     {selectedSession.percentage}%
                   </span>
                 </div>
               </div>
 
-              {/* Export this session */}
+              {/* Export */}
               <Button
                 variant="outline"
                 className="gap-2 w-full"
                 disabled={detailLoading || detailStudents.length === 0}
-                onClick={() => {
-                  exportDetailCSV(selectedSession, detailStudents)
-                  toast.success("Session exported successfully.")
-                }}
+                onClick={() => { exportDetailCSV(selectedSession, detailStudents); toast.success("Session exported.") }}
               >
                 <Download className="size-4" />
                 Export This Session
@@ -581,10 +695,10 @@ export default function AttendanceHistoryPage() {
 
               {/* Student breakdown */}
               <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-foreground">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   Student Breakdown
                   {!detailLoading && (
-                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                    <span className="ml-2 font-normal normal-case">
                       ({detailStudents.length} students)
                     </span>
                   )}
@@ -595,24 +709,35 @@ export default function AttendanceHistoryPage() {
                     <Loader2 className="size-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : detailStudents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No student records found.
-                  </p>
+                  <p className="text-sm text-muted-foreground text-center py-6">No records found.</p>
                 ) : (
-                  <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
-                    {detailStudents.map(st => (
-                      <div key={st.roll} className="flex items-center justify-between px-4 py-3">
+                  <div className="flex flex-col gap-1.5">
+                    {detailStudents.map((st, i) => (
+                      <div
+                        key={`${st.roll}-${i}`}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl border px-4 py-3 transition-colors",
+                          st.status === "Present"
+                            ? "bg-emerald-50/70 border-emerald-200 border-l-4 border-l-emerald-400 dark:bg-emerald-950/20"
+                            : "bg-red-50/50 border-red-200 border-l-4 border-l-red-400 dark:bg-red-950/20"
+                        )}
+                      >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-foreground">{st.name}</span>
+                          <span className="text-sm font-semibold text-foreground">{st.name}</span>
                           <span className="text-xs text-muted-foreground font-mono">{st.roll}</span>
                         </div>
                         <Badge
-                          className={
+                          className={cn(
+                            "gap-1 font-semibold",
                             st.status === "Present"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                              : "bg-red-50 text-red-700 border-red-200 hover:bg-red-50"
-                          }
+                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                              : "bg-red-100 text-red-700 border-red-200"
+                          )}
                         >
+                          {st.status === "Present"
+                            ? <CheckCircle2 className="size-3" />
+                            : <AlertTriangle className="size-3" />
+                          }
                           {st.status}
                         </Badge>
                       </div>

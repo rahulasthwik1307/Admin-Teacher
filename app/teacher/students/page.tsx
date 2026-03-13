@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, Fragment } from "react"
 import { toast } from "sonner"
 import {
   Search,
@@ -538,21 +538,44 @@ export default function StudentsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search by name or roll..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        
+        {/* Premium Connected Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border flex-1 max-w-xl">
+          
+          {/* Search Input */}
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-[250px]">
+            <Search className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Search</span>
+              <Input
+                placeholder="Search by name or roll..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                className="border-0 bg-transparent p-0 h-auto shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 font-medium w-full outline-none placeholder:text-muted-foreground/60 focus:bg-transparent"
+              />
+            </div>
           </div>
-          <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
-            <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="All Classes" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Classes</SelectItem>
-              {uniqueClasses.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+
+          {/* Class Filter */}
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-[220px]">
+            <Users className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class</span>
+              <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                  <SelectValue placeholder="All Classes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  {uniqueClasses.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
-        <Button onClick={() => setSheetOpen(true)} className="gap-2">
+
+        <Button onClick={() => setSheetOpen(true)} className="gap-2 h-[52px] rounded-2xl w-full lg:w-auto shadow-sm shrink-0 mt-4 lg:mt-0">
           <Plus className="size-4" />Add Student
         </Button>
       </div>
@@ -585,10 +608,10 @@ export default function StudentsPage() {
                 </td></tr>
               ) : isGrouped && groupedStudents ? (
                 Array.from(groupedStudents.entries()).map(([cls, clsStudents]) => (
-                  <>
+                  <Fragment key={cls}>
                     <GroupHeader key={`hdr-${cls}`} className={cls} students={clsStudents} />
                     {clsStudents.map((s) => <StudentRow key={s.id} student={s} />)}
-                  </>
+                  </Fragment>
                 ))
               ) : (
                 paged.map((s) => <StudentRow key={s.id} student={s} />)

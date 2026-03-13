@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
@@ -44,6 +43,7 @@ import { createClient } from "@/lib/supabase/client"
 interface Teacher {
   id: string
   name: string
+  title: string
   initials: string
   teacherId: string
   department: string
@@ -70,6 +70,7 @@ export default function TeacherManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Form state
+  const [formTitle, setFormTitle] = useState("Mr")
   const [formName, setFormName] = useState("")
   const [formTeacherId, setFormTeacherId] = useState("")
   const [formDept, setFormDept] = useState("")
@@ -81,16 +82,15 @@ export default function TeacherManagementPage() {
   const fetchTeachers = useCallback(async () => {
     setIsLoadingTeachers(true)
     setFetchError(null)
-
     try {
       const supabase = createClient()
-
       const { data, error } = await supabase
         .from("teachers")
         .select(`
           id,
           teacher_id_code,
           is_active,
+          title,
           department:departments ( name ),
           user:users ( full_name, email )
         `)
@@ -106,13 +106,13 @@ export default function TeacherManagementPage() {
       const mapped: Teacher[] = (data || []).map((t: any) => ({
         id: t.id,
         name: t.user?.full_name ?? "Unknown",
+        title: t.title ?? "Mr",
         initials: getInitials(t.user?.full_name ?? ""),
         teacherId: t.teacher_id_code,
         department: t.department?.name ?? "—",
         subjects: 0,
         status: t.is_active ? "Active" : "Disabled",
       }))
-
       setTeachers(mapped)
     } catch {
       setFetchError("An unexpected error occurred.")
@@ -121,7 +121,6 @@ export default function TeacherManagementPage() {
     }
   }, [])
 
-  // Fetch departments for the form select
   const fetchDepartments = useCallback(async () => {
     const supabase = createClient()
     const { data } = await supabase
@@ -141,15 +140,11 @@ export default function TeacherManagementPage() {
       toast.error("Please fill all required fields")
       return
     }
-
     setIsSubmitting(true)
-
     try {
       const supabase = createClient()
-
-      // Step 1: Create auth user via admin API route
       const teacherEmail = `${formTeacherId.toLowerCase()}@nnrg.edu.in`
-      
+
       const res = await fetch("/api/admin/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,26 +152,28 @@ export default function TeacherManagementPage() {
           email: teacherEmail,
           password: "Teacher@1234",
           full_name: formName,
-          role: "teacher"
+          role: "teacher",
         }),
       })
-
       const result = await res.json()
-
       if (!res.ok) {
-        toast.error(result.error || "Failed to create user", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(result.error || "Failed to create user", {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         setIsSubmitting(false)
         return
       }
 
       const newUserId = result.userId
       if (!newUserId) {
-        toast.error("Failed to create auth user — no user ID returned.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error("Failed to create auth user — no user ID returned.", {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         setIsSubmitting(false)
         return
       }
 
-      // Step 2: Insert into public.users
+      // Insert into public.users
       const { error: userInsertError } = await supabase.from("users").insert({
         id: newUserId,
         email: teacherEmail,
@@ -184,36 +181,41 @@ export default function TeacherManagementPage() {
         role: "teacher",
         must_change_password: true,
       })
-
       if (userInsertError) {
-        toast.error(`Users insert failed: ${userInsertError.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Users insert failed: ${userInsertError.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         setIsSubmitting(false)
         return
       }
 
-      // Step 3: Fetch department_id from departments table
+      // Find department
       const selectedDept = departments.find((d) => d.name === formDept || d.code === formDept)
       if (!selectedDept) {
-        toast.error(`Department "${formDept}" not found.`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Department "${formDept}" not found.`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         setIsSubmitting(false)
         return
       }
 
-      // Step 4: Insert into public.teachers
+      // Insert into public.teachers — including title
       const { error: teacherInsertError } = await supabase.from("teachers").insert({
         id: newUserId,
         teacher_id_code: formTeacherId,
         department_id: selectedDept.id,
         is_active: true,
+        title: formTitle,
       })
-
       if (teacherInsertError) {
-        toast.error(`Teachers insert failed: ${teacherInsertError.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Teachers insert failed: ${teacherInsertError.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         setIsSubmitting(false)
         return
       }
 
-      // Step 5: Insert system log
+      // System log
       const { data: { user: adminUser } } = await supabase.auth.getUser()
       if (adminUser) {
         await supabase.from("system_logs").insert({
@@ -225,13 +227,16 @@ export default function TeacherManagementPage() {
 
       toast.success("Teacher account created successfully")
       setSheetOpen(false)
+      setFormTitle("Mr")
       setFormName("")
       setFormTeacherId("")
       setFormDept("")
       setFormEmail("")
       fetchTeachers()
     } catch {
-      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -239,7 +244,6 @@ export default function TeacherManagementPage() {
 
   async function handleResetPassword() {
     if (!resetTarget) return
-
     setIsSubmitting(true)
     try {
       const res = await fetch("/api/admin/reset-password", {
@@ -247,16 +251,18 @@ export default function TeacherManagementPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: resetTarget.id }),
       })
-
       const result = await res.json()
-
       if (!res.ok) {
-        toast.error(result.error || "Failed to reset password", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(result.error || "Failed to reset password", {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
       } else {
         toast.success(`Password reset for ${resetTarget.name}. They will be forced to change it on next login.`)
       }
     } catch {
-      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
     } finally {
       setResetTarget(null)
       setIsSubmitting(false)
@@ -265,23 +271,22 @@ export default function TeacherManagementPage() {
 
   async function handleDisableAccount() {
     if (!disableTarget) return
-
     setIsSubmitting(true)
     try {
       const supabase = createClient()
       const newStatus = disableTarget.status === "Active" ? false : true
-
       const { error } = await supabase
         .from("teachers")
         .update({ is_active: newStatus })
         .eq("id", disableTarget.id)
 
       if (error) {
-        toast.error(`Failed to update account: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Failed to update account: ${error.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
       } else {
         const action = disableTarget.status === "Active" ? "disabled" : "enabled"
         toast.success(`${disableTarget.name}'s account has been ${action}.`)
-        // Update local state immediately
         setTeachers((prev) =>
           prev.map((t) =>
             t.id === disableTarget.id
@@ -291,14 +296,15 @@ export default function TeacherManagementPage() {
         )
       }
     } catch {
-      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
     } finally {
       setDisableTarget(null)
       setIsSubmitting(false)
     }
   }
 
-  // Skeleton row for loading state
   function SkeletonRows() {
     return (
       <>
@@ -406,14 +412,17 @@ export default function TeacherManagementPage() {
                               {t.initials}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-foreground">{t.name}</span>
+                          <span className="font-medium text-foreground">{t.title}. {t.name}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3 font-mono text-muted-foreground">{t.teacherId}</td>
                       <td className="px-5 py-3 text-muted-foreground">{t.department}</td>
                       <td className="px-5 py-3 text-center font-semibold text-foreground">{t.subjects}</td>
                       <td className="px-5 py-3">
-                        <Badge variant={t.status === "Active" ? "secondary" : "outline"} className={t.status === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-200" : "bg-muted text-muted-foreground"}>
+                        <Badge
+                          variant={t.status === "Active" ? "secondary" : "outline"}
+                          className={t.status === "Active" ? "bg-emerald-500/10 text-emerald-600 border-emerald-200" : "bg-muted text-muted-foreground"}
+                        >
                           {t.status}
                         </Badge>
                       </td>
@@ -474,7 +483,7 @@ export default function TeacherManagementPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <span className="font-medium text-foreground">{t.name}</span>
+                      <span className="font-medium text-foreground">{t.title}. {t.name}</span>
                       <span className="text-xs text-muted-foreground font-mono">{t.teacherId}</span>
                     </div>
                   </div>
@@ -507,7 +516,10 @@ export default function TeacherManagementPage() {
                   <span className="text-muted-foreground">{t.department}</span>
                   <span className="text-muted-foreground">{'|'}</span>
                   <span className="text-muted-foreground">{t.subjects} subjects</span>
-                  <Badge variant={t.status === "Active" ? "secondary" : "outline"} className={t.status === "Active" ? "ml-auto bg-emerald-500/10 text-emerald-600 border-emerald-200" : "ml-auto bg-muted text-muted-foreground"}>
+                  <Badge
+                    variant={t.status === "Active" ? "secondary" : "outline"}
+                    className={t.status === "Active" ? "ml-auto bg-emerald-500/10 text-emerald-600 border-emerald-200" : "ml-auto bg-muted text-muted-foreground"}
+                  >
                     {t.status}
                   </Badge>
                 </div>
@@ -527,15 +539,33 @@ export default function TeacherManagementPage() {
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-col gap-5 py-6">
+            {/* Title */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="teacher-title">Title</Label>
+              <Select value={formTitle} onValueChange={setFormTitle}>
+                <SelectTrigger id="teacher-title">
+                  <SelectValue placeholder="Select title" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mr">Mr</SelectItem>
+                  <SelectItem value="Ms">Ms</SelectItem>
+                  <SelectItem value="Mrs">Mrs</SelectItem>
+                  <SelectItem value="Dr">Dr</SelectItem>
+                  <SelectItem value="Prof">Prof</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Full Name */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="teacher-name">Full Name</Label>
               <Input
                 id="teacher-name"
-                placeholder="Dr. Full Name"
+                placeholder="Full Name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
             </div>
+            {/* Teacher ID */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="teacher-id">Teacher ID</Label>
               <Input
@@ -545,6 +575,7 @@ export default function TeacherManagementPage() {
                 onChange={(e) => setFormTeacherId(e.target.value)}
               />
             </div>
+            {/* Department */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="teacher-dept">Department</Label>
               <Select value={formDept} onValueChange={setFormDept}>
@@ -560,6 +591,7 @@ export default function TeacherManagementPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Email */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="teacher-email">Email</Label>
               <Input
@@ -618,12 +650,14 @@ export default function TeacherManagementPage() {
             <AlertDialogDescription>
               {disableTarget?.status === "Active" ? (
                 <>
-                  Are you sure you want to disable <span className="font-semibold text-foreground">{disableTarget?.name}</span>{"'s"} account?
+                  Are you sure you want to disable{" "}
+                  <span className="font-semibold text-foreground">{disableTarget?.name}</span>{"'s"} account?
                   They will not be able to log in or conduct attendance sessions until re-enabled.
                 </>
               ) : (
                 <>
-                  Re-enable <span className="font-semibold text-foreground">{disableTarget?.name}</span>{"'s"} account?
+                  Re-enable{" "}
+                  <span className="font-semibold text-foreground">{disableTarget?.name}</span>{"'s"} account?
                   They will regain access to the system.
                 </>
               )}

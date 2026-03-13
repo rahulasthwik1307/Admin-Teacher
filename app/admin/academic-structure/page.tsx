@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
@@ -25,13 +24,20 @@ import { Plus, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 /* ---------- Interfaces ---------- */
-
 interface Department {
   id: string
   name: string
   code: string
   classes: number
   subjects: number
+}
+
+interface ClassItem {
+  id: string
+  name: string
+  section: string
+  department: string
+  displayName: string // e.g. "CSE-A"
 }
 
 interface Subject {
@@ -50,16 +56,14 @@ interface Period {
 }
 
 /* ---------- Helpers ---------- */
-
 function computeDuration(start: string, end: string): string {
   const [sh, sm] = start.split(":").map(Number)
   const [eh, em] = end.split(":").map(Number)
-  const dur = (eh * 60 + em) - (sh * 60 + sm)
+  const dur = eh * 60 + em - (sh * 60 + sm)
   return `${dur} min`
 }
 
 /* ---------- Skeleton Components ---------- */
-
 function TableSkeleton({ cols }: { cols: number }) {
   return (
     <>
@@ -92,29 +96,38 @@ function MobileSkeleton() {
 }
 
 /* ---------- Component ---------- */
-
 export default function AcademicStructurePage() {
   const [departments, setDepartments] = useState<Department[]>([])
+  const [classes, setClasses] = useState<ClassItem[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [periods, setPeriods] = useState<Period[]>([])
 
   // Loading & error states
   const [loadingDepts, setLoadingDepts] = useState(true)
+  const [loadingClasses, setLoadingClasses] = useState(true)
   const [loadingSubjects, setLoadingSubjects] = useState(true)
   const [loadingPeriods, setLoadingPeriods] = useState(true)
   const [deptError, setDeptError] = useState<string | null>(null)
+  const [classError, setClassError] = useState<string | null>(null)
   const [subjectError, setSubjectError] = useState<string | null>(null)
   const [periodError, setPeriodError] = useState<string | null>(null)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Dialogs
   const [deptDialog, setDeptDialog] = useState(false)
+  const [classDialog, setClassDialog] = useState(false)
   const [subjectDialog, setSubjectDialog] = useState(false)
   const [periodDialog, setPeriodDialog] = useState(false)
 
   // Department form
   const [deptName, setDeptName] = useState("")
   const [deptCode, setDeptCode] = useState("")
+
+  // Class form
+  const [className, setClassName] = useState("")
+  const [classSection, setClassSection] = useState("")
+  const [classDept, setClassDept] = useState("")
 
   // Subject form
   const [subjName, setSubjName] = useState("")
@@ -126,7 +139,6 @@ export default function AcademicStructurePage() {
   const [perEnd, setPerEnd] = useState("")
 
   /* ---------- Fetch functions ---------- */
-
   const fetchDepartments = useCallback(async () => {
     setLoadingDepts(true)
     setDeptError(null)
@@ -136,13 +148,10 @@ export default function AcademicStructurePage() {
         .from("departments")
         .select("id, name, code")
         .order("name")
-
       if (error) {
-        console.error("Fetch departments error:", error)
         setDeptError("Failed to load departments.")
         return
       }
-
       setDepartments(
         (data || []).map((d: any) => ({
           id: d.id,
@@ -159,6 +168,35 @@ export default function AcademicStructurePage() {
     }
   }, [])
 
+  const fetchClasses = useCallback(async () => {
+    setLoadingClasses(true)
+    setClassError(null)
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("classes")
+        .select("id, name, section, department:departments ( name, code )")
+        .order("name")
+      if (error) {
+        setClassError("Failed to load classes.")
+        return
+      }
+      setClasses(
+        (data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          section: c.section,
+          department: c.department?.code ?? "—",
+          displayName: `${c.name}-${c.section}`,
+        }))
+      )
+    } catch {
+      setClassError("An unexpected error occurred.")
+    } finally {
+      setLoadingClasses(false)
+    }
+  }, [])
+
   const fetchSubjects = useCallback(async () => {
     setLoadingSubjects(true)
     setSubjectError(null)
@@ -166,18 +204,12 @@ export default function AcademicStructurePage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from("subjects")
-        .select(`
-          id, name, code,
-          department:departments ( name, code )
-        `)
+        .select(`id, name, code, department:departments ( name, code )`)
         .order("name")
-
       if (error) {
-        console.error("Fetch subjects error:", error)
         setSubjectError("Failed to load subjects.")
         return
       }
-
       setSubjects(
         (data || []).map((s: any) => ({
           id: s.id,
@@ -202,13 +234,10 @@ export default function AcademicStructurePage() {
         .from("periods")
         .select("id, period_number, start_time, end_time")
         .order("period_number")
-
       if (error) {
-        console.error("Fetch periods error:", error)
         setPeriodError("Failed to load periods.")
         return
       }
-
       setPeriods(
         (data || []).map((p: any) => ({
           id: p.id,
@@ -227,33 +256,30 @@ export default function AcademicStructurePage() {
 
   useEffect(() => {
     fetchDepartments()
+    fetchClasses()
     fetchSubjects()
     fetchPeriods()
-  }, [fetchDepartments, fetchSubjects, fetchPeriods])
+  }, [fetchDepartments, fetchClasses, fetchSubjects, fetchPeriods])
 
   /* ---------- Submit handlers ---------- */
-
   async function handleAddDept() {
     if (!deptName || !deptCode) {
       toast.error("Please fill all fields")
       return
     }
-
     setIsSubmitting(true)
     try {
       const supabase = createClient()
-
       const { error } = await supabase.from("departments").insert({
         name: deptName,
         code: deptCode,
       })
-
       if (error) {
-        toast.error(`Failed: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Failed: ${error.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         return
       }
-
-      // System log
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         await supabase.from("system_logs").insert({
@@ -262,14 +288,68 @@ export default function AcademicStructurePage() {
           description: `Department added: ${deptName}`,
         })
       }
-
       toast.success(`Department "${deptCode}" added successfully`)
       setDeptDialog(false)
       setDeptName("")
       setDeptCode("")
       fetchDepartments()
     } catch {
-      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function handleAddClass() {
+    if (!className || !classSection || !classDept) {
+      toast.error("Please fill all fields")
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+      const selectedDept = departments.find((d) => d.code === classDept)
+      if (!selectedDept) {
+        toast.error("Selected department not found.", {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
+        return
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log('Current user:', user?.id, user?.email)
+      console.log('User role check:', user?.id)
+      
+      const { error } = await supabase.from("classes").insert({
+        name: className.toUpperCase(),
+        section: classSection.toUpperCase(),
+        department_id: selectedDept.id,
+      })
+      if (error) {
+        toast.error(`Failed: ${error.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
+        return
+      }
+      // user already fetched above
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "create",
+          description: `Class added: ${className.toUpperCase()}-${classSection.toUpperCase()} (${classDept})`,
+        })
+      }
+      toast.success(`Class "${className.toUpperCase()}-${classSection.toUpperCase()}" added successfully`)
+      setClassDialog(false)
+      setClassName("")
+      setClassSection("")
+      setClassDept("")
+      fetchClasses()
+    } catch {
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -280,30 +360,27 @@ export default function AcademicStructurePage() {
       toast.error("Please fill all fields")
       return
     }
-
     setIsSubmitting(true)
     try {
       const supabase = createClient()
-
-      // Find department id
       const selectedDept = departments.find((d) => d.code === subjDept)
       if (!selectedDept) {
-        toast.error(`Department "${subjDept}" not found.`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Department "${subjDept}" not found.`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         return
       }
-
       const { error } = await supabase.from("subjects").insert({
         name: subjName,
         code: subjCode,
         department_id: selectedDept.id,
       })
-
       if (error) {
-        toast.error(`Failed: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Failed: ${error.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         return
       }
-
-      // System log
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         await supabase.from("system_logs").insert({
@@ -312,7 +389,6 @@ export default function AcademicStructurePage() {
           description: `Subject added: ${subjName}`,
         })
       }
-
       toast.success(`Subject "${subjName}" added successfully`)
       setSubjectDialog(false)
       setSubjName("")
@@ -320,7 +396,9 @@ export default function AcademicStructurePage() {
       setSubjDept("")
       fetchSubjects()
     } catch {
-      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -331,38 +409,36 @@ export default function AcademicStructurePage() {
       toast.error("Please fill all fields")
       return
     }
-
     setIsSubmitting(true)
     try {
       const supabase = createClient()
-
       const nextNum = periods.length + 1
-
       const { error } = await supabase.from("periods").insert({
         period_number: nextNum,
         start_time: perStart,
         end_time: perEnd,
       })
-
       if (error) {
-        toast.error(`Failed: ${error.message}`, { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+        toast.error(`Failed: ${error.message}`, {
+          style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+        })
         return
       }
-
       toast.success(`Period ${nextNum} added successfully`)
       setPeriodDialog(false)
       setPerStart("")
       setPerEnd("")
       fetchPeriods()
     } catch {
-      toast.error("An unexpected error occurred.", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
+      toast.error("An unexpected error occurred.", {
+        style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   /* ---------- Render helpers ---------- */
-
   function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
     return (
       <Card>
@@ -391,6 +467,7 @@ export default function AcademicStructurePage() {
       <Tabs defaultValue="departments" className="w-full">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="departments">Departments</TabsTrigger>
+          <TabsTrigger value="classes">Classes</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="periods">Periods</TabsTrigger>
         </TabsList>
@@ -406,14 +483,12 @@ export default function AcademicStructurePage() {
                 <span className="sm:hidden">Add</span>
               </Button>
             </div>
-
             {deptError ? (
               <ErrorCard message={deptError} onRetry={fetchDepartments} />
             ) : !loadingDepts && departments.length === 0 ? (
               <EmptyCard message="No departments found. Click &ldquo;Add Department&rdquo; to create one." />
             ) : (
               <>
-                {/* Desktop table */}
                 <Card className="hidden sm:block">
                   <CardContent className="p-0">
                     <table className="w-full text-sm">
@@ -442,7 +517,6 @@ export default function AcademicStructurePage() {
                     </table>
                   </CardContent>
                 </Card>
-                {/* Mobile cards */}
                 <div className="flex flex-col gap-3 sm:hidden">
                   {loadingDepts ? (
                     <MobileSkeleton />
@@ -470,6 +544,73 @@ export default function AcademicStructurePage() {
           </div>
         </TabsContent>
 
+        {/* ===== Classes Tab ===== */}
+        <TabsContent value="classes" className="mt-6">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Manage classes and sections.</p>
+              <Button onClick={() => setClassDialog(true)} size="sm" className="gap-2">
+                <Plus className="size-4" />
+                <span className="hidden sm:inline">Add Class</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </div>
+            {classError ? (
+              <ErrorCard message={classError} onRetry={fetchClasses} />
+            ) : !loadingClasses && classes.length === 0 ? (
+              <EmptyCard message="No classes found. Click &ldquo;Add Class&rdquo; to create one." />
+            ) : (
+              <>
+                <Card className="hidden sm:block">
+                  <CardContent className="p-0">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Class</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Section</th>
+                          <th className="px-5 py-3 font-medium text-muted-foreground">Department</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loadingClasses ? (
+                          <TableSkeleton cols={3} />
+                        ) : (
+                          classes.map((c) => (
+                            <tr key={c.id} className="border-b border-border last:border-0">
+                              <td className="px-5 py-3 font-medium text-foreground">{c.displayName}</td>
+                              <td className="px-5 py-3 text-muted-foreground">{c.section}</td>
+                              <td className="px-5 py-3 text-muted-foreground">{c.department}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {loadingClasses ? (
+                    <MobileSkeleton />
+                  ) : (
+                    classes.map((c) => (
+                      <Card key={c.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground">{c.displayName}</span>
+                              <span className="text-xs text-muted-foreground">Section {c.section}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground font-mono">{c.department}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </TabsContent>
+
         {/* ===== Subjects Tab ===== */}
         <TabsContent value="subjects" className="mt-6">
           <div className="flex flex-col gap-4">
@@ -481,14 +622,12 @@ export default function AcademicStructurePage() {
                 <span className="sm:hidden">Add</span>
               </Button>
             </div>
-
             {subjectError ? (
               <ErrorCard message={subjectError} onRetry={fetchSubjects} />
             ) : !loadingSubjects && subjects.length === 0 ? (
               <EmptyCard message="No subjects found. Click &ldquo;Add Subject&rdquo; to create one." />
             ) : (
               <>
-                {/* Desktop table */}
                 <Card className="hidden sm:block">
                   <CardContent className="p-0">
                     <table className="w-full text-sm">
@@ -515,7 +654,6 @@ export default function AcademicStructurePage() {
                     </table>
                   </CardContent>
                 </Card>
-                {/* Mobile cards */}
                 <div className="flex flex-col gap-3 sm:hidden">
                   {loadingSubjects ? (
                     <MobileSkeleton />
@@ -551,14 +689,12 @@ export default function AcademicStructurePage() {
                 <span className="sm:hidden">Add</span>
               </Button>
             </div>
-
             {periodError ? (
               <ErrorCard message={periodError} onRetry={fetchPeriods} />
             ) : !loadingPeriods && periods.length === 0 ? (
               <EmptyCard message="No periods configured. Click &ldquo;Add Period&rdquo; to create one." />
             ) : (
               <>
-                {/* Desktop table */}
                 <Card className="hidden sm:block">
                   <CardContent className="p-0">
                     <table className="w-full text-sm">
@@ -587,7 +723,6 @@ export default function AcademicStructurePage() {
                     </table>
                   </CardContent>
                 </Card>
-                {/* Mobile cards */}
                 <div className="flex flex-col gap-3 sm:hidden">
                   {loadingPeriods ? (
                     <MobileSkeleton />
@@ -649,6 +784,73 @@ export default function AcademicStructurePage() {
                 </>
               ) : (
                 "Add Department"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Class Dialog */}
+      <Dialog open={classDialog} onOpenChange={setClassDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Class</DialogTitle>
+            <DialogDescription>
+              Create a new class and section. e.g. Class: CSE, Section: A → displayed as CSE-A.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 pt-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="class-name">Class Name</Label>
+              <Input
+                id="class-name"
+                placeholder="e.g. CSE"
+                value={className}
+                onChange={(e) => setClassName(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="class-section">Section</Label>
+              <Input
+                id="class-section"
+                placeholder="e.g. A"
+                value={classSection}
+                onChange={(e) => setClassSection(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="class-dept">Department</Label>
+              <Select value={classDept} onValueChange={setClassDept}>
+                <SelectTrigger id="class-dept">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.code}>
+                      {d.name} ({d.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {className && classSection && (
+              <div className="rounded-lg bg-muted/60 px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  Will be created as:{" "}
+                  <span className="font-semibold text-foreground">
+                    {className.toUpperCase()}-{classSection.toUpperCase()}
+                  </span>
+                </p>
+              </div>
+            )}
+            <Button onClick={handleAddClass} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Class"
               )}
             </Button>
           </div>

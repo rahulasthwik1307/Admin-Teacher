@@ -101,7 +101,6 @@ export default function QRAttendancePage() {
         .eq('teacher_id', uid)
         .eq('status', 'finalized')
         .order('finalized_at', { ascending: false })
-        .limit(10)
         
       if (recent) {
         // Needs parallel present/total count fetches per session

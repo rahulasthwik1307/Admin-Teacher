@@ -94,16 +94,16 @@ export function MyClasses() {
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="hidden sm:block overflow-x-hidden w-full">
+              <table className="w-full text-sm table-fixed">
                 <thead>
                   <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <th className="pb-3 pr-4">Subject</th>
-                    <th className="pb-3 pr-4">Class</th>
-                    <th className="pb-3 pr-4">Section</th>
-                    <th className="pb-3 pr-4">Students</th>
-                    <th className="pb-3 pr-4">Last Attendance</th>
-                    <th className="pb-3 text-right">Action</th>
+                    <th className="pb-3 pr-4 w-[28%]">Subject</th>
+                    <th className="pb-3 pr-4 w-[16%]">Class</th>
+                    <th className="pb-3 pr-4 w-[14%]">Section</th>
+                    <th className="pb-3 pr-4 w-[14%]">Students</th>
+                    <th className="pb-3 pr-4 w-[14%]">Last Attendance</th>
+                    <th className="pb-3 text-right w-[14%]">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -112,21 +112,21 @@ export function MyClasses() {
                       key={row.key}
                       className="group border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/40"
                     >
-                      <td className="py-3.5 pr-4">
+                      <td className="py-3.5 pr-4 truncate max-w-[120px]" title={row.subject}>
                         <span className="font-semibold text-foreground">{row.subject}</span>
                       </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground">{row.className}</td>
-                      <td className="py-3.5 pr-4 text-muted-foreground">{row.section}</td>
+                      <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.className}</td>
+                      <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.section}</td>
                       <td className="py-3.5 pr-4">
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                           {row.students}
                         </span>
                       </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground text-xs">{row.lastAttendance}</td>
+                      <td className="py-3.5 pr-4 text-muted-foreground text-xs truncate">{row.lastAttendance}</td>
                       <td className="py-3.5 text-right">
                         <Button
                           asChild size="sm"
-                          className="transition-all duration-150 hover:scale-[1.03] group/btn gap-1.5"
+                          className="transition-all duration-150 hover:scale-[1.03] group/btn gap-1.5 px-2.5"
                         >
                           <Link href="/teacher/qr-attendance">
                             Take Attendance

@@ -4,12 +4,14 @@ import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { CheckCircle2, ScanFace, Loader2, RefreshCw, Check, X } from "lucide-react"
+import {
+  CheckCircle2, ScanFace, Loader2, RefreshCw,
+  Check, X, Users, Clock, ShieldCheck,
+} from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -23,16 +25,38 @@ interface PendingStudent {
   year?: string
 }
 
-/* ---------- Section group header ---------- */
+/* ── Format class + year ───────────────────────────────── */
+function formatClassYear(cls?: string, year?: string) {
+  const parts: string[] = []
+  if (cls) parts.push(cls)
+  if (year) parts.push(year)
+  return parts.join(" · ") || "N/A"
+}
 
-function SectionHeader({
-  sectionName,
-  count,
-  variant,
-}: {
-  sectionName: string
-  count: number
-  variant: "pending" | "approved"
+/* ── Student photo ─────────────────────────────────────── */
+function StudentPhoto({ src, name, size = "lg" }: {
+  src: string | null; name: string; size?: "lg" | "md"
+}) {
+  const dim = size === "lg" ? "w-16 h-16" : "w-14 h-14"
+  const iconSize = size === "lg" ? "size-7" : "size-6"
+  if (src) {
+    return (
+      <img
+        src={src} alt={name}
+        className={cn(dim, "rounded-full object-cover object-top border-2 border-border shrink-0 shadow-sm")}
+      />
+    )
+  }
+  return (
+    <div className={cn(dim, "rounded-full bg-muted flex items-center justify-center border-2 border-border shrink-0")}>
+      <ScanFace className={cn(iconSize, "text-muted-foreground/40")} />
+    </div>
+  )
+}
+
+/* ── Section header ────────────────────────────────────── */
+function SectionHeader({ sectionName, count, variant }: {
+  sectionName: string; count: number; variant: "pending" | "approved"
 }) {
   return (
     <div className={cn(
@@ -41,62 +65,51 @@ function SectionHeader({
         ? "bg-amber-50/80 dark:bg-amber-950/20"
         : "bg-emerald-50/80 dark:bg-emerald-950/20"
     )}>
-      <span className="text-sm font-bold text-foreground tracking-wide">{sectionName}</span>
-      <span className="text-xs text-muted-foreground">·</span>
+      <span className="text-sm font-bold text-foreground">{sectionName}</span>
+      <span className="text-muted-foreground/40 text-xs">·</span>
       <span className={cn(
-        "inline-flex items-center gap-1 text-xs font-medium rounded-full px-2 py-0.5",
+        "inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-0.5",
         variant === "pending"
-          ? "text-amber-700 bg-amber-100"
-          : "text-emerald-700 bg-emerald-100"
+          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40"
+          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40"
       )}>
-        <span className={cn("size-1.5 rounded-full inline-block", variant === "pending" ? "bg-amber-500" : "bg-emerald-500")} />
+        <span className={cn("size-1.5 rounded-full", variant === "pending" ? "bg-amber-500" : "bg-emerald-500")} />
         {count} {variant === "pending" ? "pending" : "approved"}
       </span>
     </div>
   )
 }
 
-/* ---------- Student photo ---------- */
-
-function StudentPhoto({
-  src,
-  name,
-  size = "lg",
-}: {
-  src: string | null
-  name: string
-  size?: "lg" | "md"
+/* ── Section filter pills ──────────────────────────────── */
+function SectionFilterPills({ sections, active, onChange, variant }: {
+  sections: string[]; active: string; onChange: (s: string) => void; variant: "pending" | "approved"
 }) {
-  const dim = size === "lg" ? "w-20 h-20" : "w-16 h-16"
-  const iconSize = size === "lg" ? "size-8" : "size-6"
+  if (sections.length <= 1) return null
+  const activeStyle = variant === "pending"
+    ? "bg-amber-100 text-amber-700 border-amber-300 font-semibold dark:bg-amber-900/40"
+    : "bg-emerald-100 text-emerald-700 border-emerald-300 font-semibold dark:bg-emerald-900/40"
 
-  if (src) {
-    return (
-      <img
-        src={src}
-        alt={name}
-        className={cn(dim, "rounded-full object-cover border-2 border-border shrink-0")}
-      />
-    )
-  }
   return (
-    <div className={cn(dim, "rounded-full bg-muted flex items-center justify-center border-2 border-border shrink-0")}>
-      <ScanFace className={cn(iconSize, "text-muted-foreground/50")} />
+    <div className="flex flex-wrap items-center gap-2">
+      {["all", ...sections].map((s) => (
+        <button
+          key={s}
+          onClick={() => onChange(s)}
+          className={cn(
+            "rounded-full border px-3 py-1 text-xs transition-all duration-150",
+            active === s
+              ? activeStyle
+              : "bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+          )}
+        >
+          {s === "all" ? "All" : s}
+        </button>
+      ))}
     </div>
   )
 }
 
-/* ---------- Format class + year cleanly ---------- */
-
-function formatClassYear(cls?: string, year?: string) {
-  const parts: string[] = []
-  if (cls) parts.push(cls)
-  if (year) parts.push(year)  // year already contains "4th Year" — no prefix needed
-  return parts.join(" · ") || "N/A"
-}
-
-/* ---------- Main component ---------- */
-
+/* ── Main page ─────────────────────────────────────────── */
 export default function FaceApprovalPage() {
   const [pending, setPending] = useState<PendingStudent[]>([])
   const [approved, setApproved] = useState<PendingStudent[]>([])
@@ -105,6 +118,8 @@ export default function FaceApprovalPage() {
   const [approveTarget, setApproveTarget] = useState<{ studentId: string; name: string } | null>(null)
   const [rejectTarget, setRejectTarget] = useState<{ studentId: string; name: string } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [pendingSectionFilter, setPendingSectionFilter] = useState("all")
+  const [approvedSectionFilter, setApprovedSectionFilter] = useState("all")
 
   const fetchData = async () => {
     setLoading(true)
@@ -117,8 +132,8 @@ export default function FaceApprovalPage() {
       if (!response.ok) throw new Error(data.error || "Failed to fetch data")
       setPending(data.pending || [])
       setApproved(data.approved || [])
-    } catch (error: any) {
-      toast.error("Failed to load pending approvals")
+    } catch {
+      toast.error("Failed to load face approvals")
     } finally {
       setLoading(false)
     }
@@ -165,8 +180,7 @@ export default function FaceApprovalPage() {
     }
   }
 
-  /* ---------- Group by class section ---------- */
-
+  /* ── Grouping ── */
   const pendingGrouped = useMemo(() => {
     const map = new Map<string, PendingStudent[]>()
     for (const s of pending) {
@@ -187,50 +201,145 @@ export default function FaceApprovalPage() {
     return map
   }, [approved])
 
+  const pendingSections = useMemo(() => Array.from(pendingGrouped.keys()), [pendingGrouped])
+  const approvedSections = useMemo(() => Array.from(approvedGrouped.keys()), [approvedGrouped])
+
+  const filteredPendingGroups = useMemo(() => {
+    const all = Array.from(pendingGrouped.entries())
+    return pendingSectionFilter === "all" ? all : all.filter(([k]) => k === pendingSectionFilter)
+  }, [pendingGrouped, pendingSectionFilter])
+
+  const filteredApprovedGroups = useMemo(() => {
+    const all = Array.from(approvedGrouped.entries())
+    return approvedSectionFilter === "all" ? all : all.filter(([k]) => k === approvedSectionFilter)
+  }, [approvedGrouped, approvedSectionFilter])
+
+  const totalRegistered = pending.length + approved.length
+
   return (
     <div className="flex flex-col gap-6">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Face Registration Approval</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Review and approve student face registrations</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Face Registration Approval
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Review and approve student face registrations
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
-          <RefreshCw className={cn("size-4 mr-2", loading && "animate-spin")} />
+        <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} className="shrink-0 gap-2">
+          <RefreshCw className={cn("size-4", loading && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-0 border-b border-border">
+      {/* ── Stat chips ─────────────────────────────────────── */}
+      {!loading && (
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+              <Users className="size-4 text-primary" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground">Total Registered</span>
+              <span className="text-sm font-bold text-foreground">{totalRegistered}</span>
+            </div>
+          </div>
+
+          <div className={cn(
+            "flex items-center gap-2.5 rounded-xl border px-4 py-2.5 shadow-sm",
+            pending.length > 0 ? "border-amber-200 bg-amber-50 dark:bg-amber-950/30" : "border-border bg-card"
+          )}>
+            <div className={cn(
+              "flex size-8 items-center justify-center rounded-lg",
+              pending.length > 0 ? "bg-amber-100 dark:bg-amber-900/40" : "bg-muted"
+            )}>
+              <Clock className={cn("size-4", pending.length > 0 ? "text-amber-600" : "text-muted-foreground")} />
+            </div>
+            <div className="flex flex-col">
+              <span className={cn("text-xs", pending.length > 0 ? "text-amber-700" : "text-muted-foreground")}>
+                Pending Approval
+              </span>
+              <span className={cn("text-sm font-bold", pending.length > 0 ? "text-amber-800" : "text-foreground")}>
+                {pending.length}
+              </span>
+            </div>
+          </div>
+
+          <div className={cn(
+            "flex items-center gap-2.5 rounded-xl border px-4 py-2.5 shadow-sm",
+            approved.length > 0 ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30" : "border-border bg-card"
+          )}>
+            <div className={cn(
+              "flex size-8 items-center justify-center rounded-lg",
+              approved.length > 0 ? "bg-emerald-100 dark:bg-emerald-900/40" : "bg-muted"
+            )}>
+              <ShieldCheck className={cn("size-4", approved.length > 0 ? "text-emerald-600" : "text-muted-foreground")} />
+            </div>
+            <div className="flex flex-col">
+              <span className={cn("text-xs", approved.length > 0 ? "text-emerald-700" : "text-muted-foreground")}>
+                Approved
+              </span>
+              <span className={cn("text-sm font-bold", approved.length > 0 ? "text-emerald-800" : "text-foreground")}>
+                {approved.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pill tabs ──────────────────────────────────────── */}
+      <div className="flex items-center gap-1 self-start rounded-xl bg-muted p-1 shadow-sm">
         <button
           onClick={() => setActiveTab("pending")}
           className={cn(
-            "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
-            activeTab === "pending" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+            activeTab === "pending" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Pending{pending.length > 0 && ` (${pending.length})`}
+          <Clock className="size-3.5" />
+          Pending
+          {pending.length > 0 && (
+            <span className={cn(
+              "flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold min-w-4 tabular-nums",
+              activeTab === "pending" ? "bg-amber-100 text-amber-700" : "bg-amber-500/20 text-amber-600"
+            )}>
+              {pending.length}
+            </span>
+          )}
         </button>
+
         <button
           onClick={() => setActiveTab("approved")}
           className={cn(
-            "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
-            activeTab === "approved" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200",
+            activeTab === "approved" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
           )}
         >
-          Approved{approved.length > 0 && ` (${approved.length})`}
+          <ShieldCheck className="size-3.5" />
+          Approved
+          {approved.length > 0 && (
+            <span className={cn(
+              "flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold min-w-4 tabular-nums",
+              activeTab === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/20 text-emerald-600"
+            )}>
+              {approved.length}
+            </span>
+          )}
         </button>
       </div>
 
-      {/* ── Pending tab ── */}
+      {/* ── Pending tab ────────────────────────────────────── */}
       {activeTab === "pending" && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-base font-semibold text-foreground">Pending Approvals</h2>
-            {pending.length > 0 && <Badge variant="secondary">{pending.length}</Badge>}
-          </div>
+        <div className="flex flex-col gap-4">
+          <SectionFilterPills
+            sections={pendingSections}
+            active={pendingSectionFilter}
+            onChange={setPendingSectionFilter}
+            variant="pending"
+          />
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -238,27 +347,30 @@ export default function FaceApprovalPage() {
               <p className="text-sm">Loading pending approvals...</p>
             </div>
           ) : pending.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <CheckCircle2 className="size-12 mb-4 text-emerald-500/50" />
-                <p className="text-base font-semibold">All caught up!</p>
-                <p className="text-sm">No pending face registrations to review.</p>
+            <Card className="shadow-sm">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <CheckCircle2 className="size-8 text-emerald-500" />
+                </div>
+                <p className="text-base font-bold text-foreground">All caught up!</p>
+                <p className="text-sm text-muted-foreground mt-1">No pending face registrations to review.</p>
               </CardContent>
             </Card>
           ) : (
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-              {Array.from(pendingGrouped.entries()).map(([section, sectionStudents]) => (
+              {filteredPendingGroups.map(([section, students]) => (
                 <div key={section}>
-                  <SectionHeader sectionName={section} count={sectionStudents.length} variant="pending" />
-                  {sectionStudents.map((student) => (
+                  <SectionHeader sectionName={section} count={students.length} variant="pending" />
+                  {students.map((student) => (
                     <div
                       key={student.id}
-                      className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0 hover:bg-amber-50/30 transition-colors"
+                      className="flex items-center gap-4 px-4 py-3.5 border-b border-border last:border-0 bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50/60 transition-colors"
                     >
+                      <div className="w-1 self-stretch rounded-full bg-amber-400 shrink-0" />
                       <StudentPhoto src={student.registration_photo} name={student.name} size="lg" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{student.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{student.roll}</p>
+                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{student.roll}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {formatClassYear(student.class, student.year)}
                         </p>
@@ -266,18 +378,18 @@ export default function FaceApprovalPage() {
                       <div className="flex gap-2 shrink-0">
                         <Button
                           size="sm"
-                          className="bg-emerald-600 text-white hover:bg-emerald-700 h-8 px-3"
+                          className="bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 h-8 px-3 shadow-sm"
                           onClick={() => setApproveTarget({ studentId: student.id, name: student.name })}
                         >
-                          <Check className="size-3.5 mr-1" />Approve
+                          <Check className="size-3.5" /> Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="border-red-200 text-red-600 hover:bg-red-50 h-8 px-3"
+                          className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 gap-1.5 h-8 px-3"
                           onClick={() => setRejectTarget({ studentId: student.id, name: student.name })}
                         >
-                          <X className="size-3.5 mr-1" />Reject
+                          <X className="size-3.5" /> Reject
                         </Button>
                       </div>
                     </div>
@@ -289,40 +401,49 @@ export default function FaceApprovalPage() {
         </div>
       )}
 
-      {/* ── Approved tab ── */}
+      {/* ── Approved tab ───────────────────────────────────── */}
       {activeTab === "approved" && (
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-base font-semibold text-foreground">Approved Students</h2>
-            {approved.length > 0 && <Badge variant="secondary">{approved.length}</Badge>}
-          </div>
+        <div className="flex flex-col gap-4">
+          <SectionFilterPills
+            sections={approvedSections}
+            active={approvedSectionFilter}
+            onChange={setApprovedSectionFilter}
+            variant="approved"
+          />
 
           {approved.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <CheckCircle2 className="size-12 mb-4 text-muted-foreground/30" />
-                <p className="text-base font-semibold">No approved registrations yet</p>
+            <Card className="shadow-sm">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
+                  <ShieldCheck className="size-8 text-muted-foreground/40" />
+                </div>
+                <p className="text-base font-bold text-foreground">No approved registrations yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Approved students will appear here.</p>
               </CardContent>
             </Card>
           ) : (
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-              {Array.from(approvedGrouped.entries()).map(([section, sectionStudents]) => (
+              {filteredApprovedGroups.map(([section, students]) => (
                 <div key={section}>
-                  <SectionHeader sectionName={section} count={sectionStudents.length} variant="approved" />
-                  {sectionStudents.map((student) => (
+                  <SectionHeader sectionName={section} count={students.length} variant="approved" />
+                  {students.map((student) => (
                     <div
                       key={student.id}
-                      className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0 hover:bg-emerald-50/30 transition-colors"
+                      className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-0 bg-emerald-50/30 dark:bg-emerald-950/10 hover:bg-emerald-50/60 transition-colors"
                     >
+                      <div className="w-1 self-stretch rounded-full bg-emerald-400 shrink-0" />
                       <StudentPhoto src={student.registration_photo} name={student.name} size="md" />
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{student.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{student.roll}</p>
+                        <p className="font-bold text-foreground truncate">{student.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{student.roll}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {formatClassYear(student.class, student.year)}
                         </p>
                       </div>
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0">✓ Approved</Badge>
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 shrink-0">
+                        <CheckCircle2 className="size-3.5" />
+                        Approved
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -332,7 +453,7 @@ export default function FaceApprovalPage() {
         </div>
       )}
 
-      {/* Approve dialog */}
+      {/* ── Approve dialog ─────────────────────────────────── */}
       <AlertDialog open={!!approveTarget} onOpenChange={() => setApproveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -351,7 +472,7 @@ export default function FaceApprovalPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reject dialog */}
+      {/* ── Reject dialog ──────────────────────────────────── */}
       <AlertDialog open={!!rejectTarget} onOpenChange={() => setRejectTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -362,7 +483,11 @@ export default function FaceApprovalPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReject} disabled={actionLoading} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleReject}
+              disabled={actionLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               {actionLoading ? <><Loader2 className="size-4 mr-2 animate-spin" />Rejecting...</> : "Reject"}
             </AlertDialogAction>
           </AlertDialogFooter>
