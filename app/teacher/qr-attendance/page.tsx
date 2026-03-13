@@ -17,7 +17,7 @@ export default function QRAttendancePage() {
   const [selectedSubject, setSelectedSubject] = useState("")
   const [selectedPeriod, setSelectedPeriod] = useState("")
   const [isTransitioning, setIsTransitioning] = useState(false)
-  
+
   // Auth session tracking
   const sessionRef = useRef<any>(null)
 
@@ -44,6 +44,12 @@ export default function QRAttendancePage() {
   const [liveStudents, setLiveStudents] = useState<Student[]>([])
   const [recentSessionsLoading, setRecentSessionsLoading] = useState(true)
 
+  // Timetable state
+  const [timetableMap, setTimetableMap] = useState<
+    Map<string, { periodId: string; periodLabel: string }>
+  >(new Map()) // key: "classId__subjectId"
+  const [periodAutoFilled, setPeriodAutoFilled] = useState(false)
+
   const canStart = !!selectedClass && !!selectedSubject && !!selectedPeriod
 
   const subjectLabel = subjectOptions.find((o) => o.value === selectedSubject)?.label ?? ""
@@ -54,78 +60,142 @@ export default function QRAttendancePage() {
   const fetchSetupData = useCallback(async (uid: string) => {
     try {
       const supabase = createClient()
-      
+
+      // Today's day_of_week: JS Sunday=0, Mon=1...Sat=6
+      // Our DB: Mon=1...Sat=6. JS and DB match for Mon-Sat.
+      const jsDay = new Date().getDay() // 0=Sun,1=Mon,...,6=Sat
+      const todayDow = jsDay === 0 ? null : jsDay // null on Sunday (no classes)
+
       const [
-        { data: classes },
+        { data: classAssignments },
         { data: assignments },
         { data: periods },
-        { data: recent }
+        { data: recent },
+        { data: timetableEntries },
       ] = await Promise.all([
-        supabase.from('classes').select('id, section, department:departments(code)'),
-        supabase.from('teacher_assignments').select('subject:subjects(id, name)').eq('teacher_id', uid),
-        supabase.from('periods').select('*').order('period_number', { ascending: true }),
-        supabase.from('attendance_sessions').select(`
-          id, session_date, finalized_at, status,
-          subject:subjects(name),
-          class:classes(section, department:departments(code)),
-          period:periods(period_number)
-        `).eq('teacher_id', uid).eq('status', 'finalized').order('finalized_at', { ascending: false })
+        supabase
+          .from("teacher_assignments")
+          .select("class:classes(id, name, section, department:departments(code))")
+          .eq("teacher_id", uid),
+        supabase
+          .from("teacher_assignments")
+          .select("subject:subjects(id, name)")
+          .eq("teacher_id", uid),
+        supabase
+          .from("periods")
+          .select("*")
+          .order("period_number", { ascending: true }),
+        supabase
+          .from("attendance_sessions")
+          .select(`
+            id, session_date, finalized_at, status,
+            subject:subjects(name),
+            class:classes(section, department:departments(code)),
+            period:periods(period_number)
+          `)
+          .eq("teacher_id", uid)
+          .eq("status", "finalized")
+          .order("finalized_at", { ascending: false }),
+        todayDow
+          ? supabase
+              .from("timetables")
+              .select("class_id, subject_id, period_id, period:periods(id, period_number, start_time, end_time)")
+              .eq("teacher_id", uid)
+              .eq("day_of_week", todayDow)
+          : Promise.resolve({ data: [] }),
       ])
-      
-      // 1. Fetch Classes
-      if (classes) {
-        setClassOptions(classes.map((c: any) => ({
-          value: c.id,
-          label: `${c.department.code}-${c.section}`
-        })))
-      }
 
-      // 2. Fetch Subjects Assigned to Teacher
-      if (assignments) {
-        setSubjectOptions(assignments.map((a: any) => ({
-          value: a.subject.id,
-          label: a.subject.name
-        })))
-      }
-
-      // 3. Fetch Periods
-      if (periods) {
-        setPeriodOptions(periods.map((p: any) => ({
-          value: p.id,
-          label: `${p.period_number} Period ${p.start_time.slice(0,5)} - ${p.end_time.slice(0,5)}`
-        })))
-      }
-
-      // 4. Fetch Recent Sessions
-      if (recent) {
-        // Needs parallel present/total count fetches per session
-        const processedRecent = await Promise.all(recent.map(async (r: any) => {
-          const { count: presentCount } = await supabase
-            .from('period_attendance')
-            .select('*', { count: 'exact', head: true })
-            .eq('session_id', r.id)
-            .eq('status', 'present')
-            
-          const { count: totalCount } = await supabase
-            .from('period_attendance')
-            .select('*', { count: 'exact', head: true })
-            .eq('session_id', r.id)
-
-          return {
-            subject: r.subject.name,
-            class: `${r.class.department.code}-${r.class.section}`,
-            period: (() => {
-              const n = r.period.period_number;
-              const suffix = n >= 11 && n <= 13 ? 'th' : ['th','st','nd','rd'][Math.min(n % 10, 3)] ?? 'th';
-              return `${n}${suffix}`;
-            })(), 
-            date: new Date(r.session_date).toLocaleDateString(),
-            time: r.finalized_at ? new Date(r.finalized_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-            present: presentCount || 0,
-            total: totalCount || 0,
-            status: 'Finalized'
+      // 1. Classes — only assigned
+      if (classAssignments) {
+        const uniqueClasses = new Map()
+        for (const a of classAssignments as any[]) {
+          if (a.class && !uniqueClasses.has(a.class.id)) {
+            uniqueClasses.set(a.class.id, a.class)
           }
-        }))
+        }
+        setClassOptions(
+          Array.from(uniqueClasses.values()).map((c: any) => ({
+            value: c.id,
+            label: `${c.name}-${c.section}`,
+          }))
+        )
+      }
+
+      // 2. Subjects assigned to teacher
+      if (assignments) {
+        setSubjectOptions(
+          assignments.map((a: any) => ({
+            value: a.subject.id,
+            label: a.subject.name,
+          }))
+        )
+      }
+
+      // 3. Periods
+      if (periods) {
+        setPeriodOptions(
+          periods.map((p: any) => ({
+            value: p.id,
+            label: `${p.period_number} Period ${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)}`,
+          }))
+        )
+      }
+
+      // 4. Build timetable map for today: key = "classId__subjectId"
+      if (timetableEntries && timetableEntries.length > 0) {
+        const map = new Map<string, { periodId: string; periodLabel: string }>()
+        for (const t of timetableEntries as any[]) {
+          const key = `${t.class_id}__${t.subject_id}`
+          const p = t.period
+          const label = p
+            ? `${p.period_number} Period ${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)}`
+            : ""
+          map.set(key, { periodId: t.period_id, periodLabel: label })
+        }
+        setTimetableMap(map)
+      } else {
+        setTimetableMap(new Map())
+      }
+
+      // 5. Recent sessions
+      if (recent) {
+        const processedRecent = await Promise.all(
+          recent.map(async (r: any) => {
+            const { count: presentCount } = await supabase
+              .from("period_attendance")
+              .select("*", { count: "exact", head: true })
+              .eq("session_id", r.id)
+              .eq("status", "present")
+
+            const { count: totalCount } = await supabase
+              .from("period_attendance")
+              .select("*", { count: "exact", head: true })
+              .eq("session_id", r.id)
+
+            return {
+              subject: r.subject.name,
+              class: `${r.class.department.code}-${r.class.section}`,
+              period: (() => {
+                const n = r.period.period_number
+                const suffix =
+                  n >= 11 && n <= 13
+                    ? "th"
+                    : ["th", "st", "nd", "rd"][Math.min(n % 10, 3)] ?? "th"
+                return `${n}${suffix}`
+              })(),
+              date: new Date(r.session_date).toLocaleDateString(),
+              time: r.finalized_at
+                ? new Date(r.finalized_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "",
+              present: presentCount || 0,
+              total: totalCount || 0,
+              status: "Finalized",
+            }
+          })
+        )
         setRecentSessions(processedRecent)
       }
       setRecentSessionsLoading(false)
@@ -140,10 +210,10 @@ export default function QRAttendancePage() {
     try {
       const supabase = createClient()
       const { data: active } = await supabase
-        .from('attendance_sessions')
-        .select('*')
-        .eq('teacher_id', uid)
-        .eq('status', 'active')
+        .from("attendance_sessions")
+        .select("*")
+        .eq("teacher_id", uid)
+        .eq("status", "active")
         .single()
 
       if (active) {
@@ -152,7 +222,7 @@ export default function QRAttendancePage() {
         setSelectedClass(active.class_id)
         setSelectedSubject(active.subject_id)
         setSelectedPeriod(active.period_id)
-        setPageState('active')
+        setPageState("active")
       }
     } catch (err) {
       console.error("Check active session error:", err)
@@ -162,16 +232,18 @@ export default function QRAttendancePage() {
   useEffect(() => {
     async function init() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (user) {
         setTeacherId(user.id)
-        
+
         const { data: userData } = await supabase
-          .from('users')
-          .select('full_name')
-          .eq('id', user.id)
+          .from("users")
+          .select("full_name")
+          .eq("id", user.id)
           .single()
-          
+
         if (userData?.full_name) {
           setTeacherName(userData.full_name)
         }
@@ -183,19 +255,38 @@ export default function QRAttendancePage() {
     init()
   }, [fetchSetupData, checkForActiveSession])
 
+  // Auto-fill period when class + subject both selected
+  useEffect(() => {
+    if (!selectedClass || !selectedSubject) {
+      setPeriodAutoFilled(false)
+      return
+    }
+    const key = `${selectedClass}__${selectedSubject}`
+    const found = timetableMap.get(key)
+    if (found) {
+      setSelectedPeriod(found.periodId)
+      setPeriodAutoFilled(true)
+    } else {
+      setSelectedPeriod("")
+      setPeriodAutoFilled(false)
+    }
+  }, [selectedClass, selectedSubject, timetableMap])
+
   // Fetch complete student list with attendance status via API route
   const fetchStudentList = useCallback(async () => {
     if (!activeSessionId || !selectedClass) return
 
     try {
-      const res = await fetch(`/api/teacher/student-list?class_id=${selectedClass}&session_id=${activeSessionId}`)
+      const res = await fetch(
+        `/api/teacher/student-list?class_id=${selectedClass}&session_id=${activeSessionId}`
+      )
       const data = await res.json()
-      console.log('full API response data:', JSON.stringify(data))
+      console.log("full API response data:", JSON.stringify(data))
       if (data.students) {
         setLiveStudents(data.students)
       }
     } catch (err) {
-      console.error('fetchStudentList error:', err)
+      console.error("fetchStudentList error:", err)
     }
   }, [activeSessionId, selectedClass])
 
@@ -205,19 +296,16 @@ export default function QRAttendancePage() {
   useEffect(() => {
     if (!activeSessionId || pageState !== "active") return
 
-    // Initial fetch
     fetchStudentList()
 
-    // Subscribe to all period_attendance changes and filter by session_id in JS
     const supabase = createClient()
     const channel = supabase
       .channel(`attendance_${activeSessionId}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'period_attendance' },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "period_attendance" },
         (payload) => {
-          const record = (payload.new as any)
-          console.log('[Realtime] period_attendance event:', payload.eventType, 'session_id:', record?.session_id, 'active:', activeSessionId)
+          const record = payload.new as any
           if (record?.session_id === activeSessionId) {
             fetchStudentList()
           }
@@ -225,7 +313,6 @@ export default function QRAttendancePage() {
       )
       .subscribe()
 
-    // Fallback: poll every 5 seconds in case realtime doesn't fire
     liveRefreshInterval.current = setInterval(() => {
       fetchStudentList()
     }, 5000)
@@ -242,43 +329,39 @@ export default function QRAttendancePage() {
   async function handleStart() {
     if (!teacherId || !selectedClass || !selectedSubject || !selectedPeriod) return
     setIsTransitioning(true)
-    
+
     try {
       const supabase = createClient()
       const token = crypto.randomUUID()
       const expiry = new Date(Date.now() + 15000).toISOString()
 
-      // Insert session
       const { data: session, error: sessionErr } = await supabase
-        .from('attendance_sessions')
+        .from("attendance_sessions")
         .insert({
           teacher_id: teacherId,
           subject_id: selectedSubject,
           class_id: selectedClass,
           period_id: selectedPeriod,
-          session_date: new Date().toISOString().split('T')[0],
-          status: 'active',
+          session_date: new Date().toISOString().split("T")[0],
+          status: "active",
           current_qr_token: token,
-          qr_token_expires_at: expiry
+          qr_token_expires_at: expiry,
         })
-        .select('id')
+        .select("id")
         .single()
 
       if (sessionErr) throw sessionErr
 
-      // Insert first token
-      await supabase
-        .from('qr_tokens')
-        .insert({
-          session_id: session.id,
-          token: token,
-          expires_at: expiry,
-          is_used: false
-        })
+      await supabase.from("qr_tokens").insert({
+        session_id: session.id,
+        token: token,
+        expires_at: expiry,
+        is_used: false,
+      })
 
       setActiveSessionId(session.id)
       setCurrentQrToken(token)
-      
+
       setTimeout(() => {
         setPageState("active")
         setIsTransitioning(false)
@@ -298,37 +381,30 @@ export default function QRAttendancePage() {
       const expiry = new Date(Date.now() + 15000).toISOString()
       setCurrentQrToken(newToken)
 
-      // Invalidate old tokens
       await supabase
-        .from('qr_tokens')
+        .from("qr_tokens")
         .update({ is_used: true })
-        .eq('session_id', activeSessionId)
-        .eq('is_used', false)
+        .eq("session_id", activeSessionId)
+        .eq("is_used", false)
 
-      // Update session
       await supabase
-        .from('attendance_sessions')
+        .from("attendance_sessions")
         .update({
           current_qr_token: newToken,
-          qr_token_expires_at: expiry
+          qr_token_expires_at: expiry,
         })
-        .eq('id', activeSessionId)
+        .eq("id", activeSessionId)
 
-      // Insert new token
-      await supabase
-        .from('qr_tokens')
-        .insert({
-          session_id: activeSessionId,
-          token: newToken,
-          expires_at: expiry,
-          is_used: false
-        })
+      await supabase.from("qr_tokens").insert({
+        session_id: activeSessionId,
+        token: newToken,
+        expires_at: expiry,
+        is_used: false,
+      })
     } catch (err) {
       console.error("Failed to rotate QR", err)
     }
   }
-
-
 
   async function handleFinalize() {
     if (!activeSessionId) return
@@ -337,47 +413,47 @@ export default function QRAttendancePage() {
     try {
       const supabase = createClient()
       const { error: sessionError } = await supabase
-        .from('attendance_sessions')
-        .update({ 
-          status: 'reviewing',
-          finalized_at: new Date().toISOString()
+        .from("attendance_sessions")
+        .update({
+          status: "reviewing",
+          finalized_at: new Date().toISOString(),
         })
-        .eq('id', activeSessionId)
+        .eq("id", activeSessionId)
 
       if (sessionError) throw sessionError
 
-      // Get all students in the class
       const { data: classStudents } = await supabase
-        .from('students')
-        .select('id')
-        .eq('class_id', selectedClass)
+        .from("students")
+        .select("id")
+        .eq("class_id", selectedClass)
 
-      // Get existing attendance records for this session
       const { data: existingAttendance } = await supabase
-        .from('period_attendance')
-        .select('student_id')
-        .eq('session_id', activeSessionId)
+        .from("period_attendance")
+        .select("student_id")
+        .eq("session_id", activeSessionId)
 
-      const existingIds = new Set((existingAttendance || []).map((r: any) => r.student_id))
+      const existingIds = new Set(
+        (existingAttendance || []).map((r: any) => r.student_id)
+      )
 
-      // Insert absent records for students who never scanned
-      const missingStudents = (classStudents || []).filter((s: any) => !existingIds.has(s.id))
+      const missingStudents = (classStudents || []).filter(
+        (s: any) => !existingIds.has(s.id)
+      )
       if (missingStudents.length > 0) {
-        await supabase
-          .from('period_attendance')
-          .insert(missingStudents.map((s: any) => ({
+        await supabase.from("period_attendance").insert(
+          missingStudents.map((s: any) => ({
             session_id: activeSessionId,
             student_id: s.id,
-            status: 'absent',
-          })))
+            status: "absent",
+          }))
+        )
       }
 
-      // Mark any pending (partial scan failures) as absent
       await supabase
-        .from('period_attendance')
-        .update({ status: 'absent' })
-        .eq('session_id', activeSessionId)
-        .eq('status', 'pending')
+        .from("period_attendance")
+        .update({ status: "absent" })
+        .eq("session_id", activeSessionId)
+        .eq("status", "pending")
 
       await supabase.from("system_logs").insert({
         performed_by: teacherId,
@@ -391,8 +467,7 @@ export default function QRAttendancePage() {
         toast.success("Attendance finalized successfully", {
           description: `${subjectLabel} — ${classLabel} — ${periodLabel}`,
         })
-        
-        // Refresh recent sessions table quietly
+
         if (teacherId) {
           fetchSetupData(teacherId)
         }
@@ -402,6 +477,19 @@ export default function QRAttendancePage() {
       toast.error("Failed to finalize session")
       setIsTransitioning(false)
     }
+  }
+
+  // Handler for class change — reset subject and period
+  function handleClassChange(val: string) {
+    setSelectedClass(val)
+    setSelectedSubject("")
+    setSelectedPeriod("")
+    setPeriodAutoFilled(false)
+  }
+
+  // Handler for subject change — period will auto-fill via useEffect
+  function handleSubjectChange(val: string) {
+    setSelectedSubject(val)
   }
 
   return (
@@ -415,14 +503,15 @@ export default function QRAttendancePage() {
           selectedClass={selectedClass}
           selectedSubject={selectedSubject}
           selectedPeriod={selectedPeriod}
-          onClassChange={setSelectedClass}
-          onSubjectChange={setSelectedSubject}
+          onClassChange={handleClassChange}
+          onSubjectChange={handleSubjectChange}
           onPeriodChange={setSelectedPeriod}
           onStart={handleStart}
           canStart={canStart}
           classOptions={classOptions}
           subjectOptions={subjectOptions}
           periodOptions={periodOptions}
+          periodAutoFilled={periodAutoFilled}
           recentSessions={recentSessions}
           recentSessionsLoading={recentSessionsLoading}
         />
@@ -447,18 +536,18 @@ export default function QRAttendancePage() {
           teacherId={teacherId!}
           sessionId={activeSessionId!}
           onDone={async () => {
-            // Mark session truly finalized so students see updated attendance
             if (activeSessionId) {
               const supabase = createClient()
               await supabase
-                .from('attendance_sessions')
-                .update({ status: 'finalized' })
-                .eq('id', activeSessionId)
+                .from("attendance_sessions")
+                .update({ status: "finalized" })
+                .eq("id", activeSessionId)
             }
             setPageState("setup")
             setSelectedClass("")
             setSelectedSubject("")
             setSelectedPeriod("")
+            setPeriodAutoFilled(false)
             setActiveSessionId(null)
             setLiveStudents([])
             if (teacherId) {

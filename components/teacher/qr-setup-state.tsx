@@ -44,6 +44,7 @@ interface QRSetupStateProps {
   periodOptions: DropdownOption[]
   recentSessions: RecentSessionData[]
   recentSessionsLoading?: boolean
+  periodAutoFilled?: boolean
 }
 
 /* ---------- Grouping helpers ---------- */
@@ -118,6 +119,7 @@ export function QRSetupState({
   periodOptions,
   recentSessions,
   recentSessionsLoading,
+  periodAutoFilled,
 }: QRSetupStateProps) {
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today")
   const [classFilterLocal, setClassFilterLocal] = useState("all")
@@ -211,10 +213,15 @@ export function QRSetupState({
             </div>
 
             {/* Period Filter */}
-            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 relative">
               <Clock className="size-4 text-muted-foreground shrink-0" />
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Period</span>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Period</span>
+                  {periodAutoFilled && (
+                    <span className="text-[9px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Auto</span>
+                  )}
+                </div>
                 <Select value={selectedPeriod} onValueChange={onPeriodChange}>
                   <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
                     <SelectValue placeholder="Select period" />

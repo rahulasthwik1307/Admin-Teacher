@@ -10,6 +10,7 @@ import {
   BarChart3,
   MapPin,
   LogOut,
+  CalendarDays,
 } from "lucide-react"
 import { FALogo } from "@/components/fa-logo"
 import { Separator } from "@/components/ui/separator"
@@ -21,6 +22,7 @@ const navItems = [
   { label: "Teachers", href: "/admin/teachers", icon: Users },
   { label: "Academic Structure", href: "/admin/academic-structure", icon: Building },
   { label: "Teacher Assignments", href: "/admin/assignments", icon: Link2 },
+  { label: "Timetable", href: "/admin/timetable", icon: CalendarDays },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Geofence Setup", href: "/admin/geofence", icon: MapPin },
 ]

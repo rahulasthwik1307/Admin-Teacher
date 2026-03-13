@@ -1,6 +1,7 @@
 import { DashboardStats } from "@/components/teacher/dashboard-stats"
 import { FaceApprovalAlert } from "@/components/teacher/face-approval-alert"
 import { MyClasses } from "@/components/teacher/my-classes"
+import { MyTimetable } from "@/components/teacher/my-timetable"
 import { TodayAttendanceSummary } from "@/components/teacher/today-attendance-summary"
 import { RecentActivity } from "@/components/teacher/recent-activity"
 import { QuickActions } from "@/components/teacher/quick-actions"
@@ -12,6 +13,7 @@ export default function TeacherDashboard() {
         <DashboardStats />
         <FaceApprovalAlert />
         <MyClasses />
+        <MyTimetable />
         <SummaryActivityPanel />
         <QuickActions />
       </div>
@@ -29,7 +31,7 @@ function SummaryActivityPanel() {
           <TodayAttendanceSummary />
         </div>
 
-        {/* Vertical divider — 2px wide, full height, clearly visible */}
+        {/* Vertical divider */}
         <div className="bg-slate-300 dark:bg-slate-600" />
 
         <div className="p-6">
