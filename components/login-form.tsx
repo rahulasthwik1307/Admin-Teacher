@@ -75,6 +75,18 @@ export function LoginForm() {
         return
       }
 
+      // Role mismatch — user selected wrong role pill
+      if (userRecord.role !== role) {
+        setAuthError(
+          role === "admin"
+            ? "These credentials are not for an admin account."
+            : "These credentials are not for a teacher account."
+        )
+        await supabase.auth.signOut()
+        setIsLoading(false)
+        return
+      }
+
       // Role-based redirect
       if (userRecord.role === "admin") {
         router.push("/admin/dashboard")

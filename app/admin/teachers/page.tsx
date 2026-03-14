@@ -69,6 +69,12 @@ export default function TeacherManagementPage() {
   const [disableTarget, setDisableTarget] = useState<Teacher | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const [editTarget, setEditTarget] = useState<Teacher | null>(null)
+  const [editSheetOpen, setEditSheetOpen] = useState(false)
+  const [editTitle, setEditTitle] = useState("Mr")
+  const [editName, setEditName] = useState("")
+  const [editDept, setEditDept] = useState("")
+
   // Form state
   const [formTitle, setFormTitle] = useState("Mr")
   const [formName, setFormName] = useState("")
@@ -110,10 +116,26 @@ export default function TeacherManagementPage() {
         initials: getInitials(t.user?.full_name ?? ""),
         teacherId: t.teacher_id_code,
         department: t.department?.name ?? "—",
-        subjects: 0,
+        subjects: 0, // will be patched below
         status: t.is_active ? "Active" : "Disabled",
       }))
-      setTeachers(mapped)
+      
+      // Fetch subject counts for all teachers
+      const { data: assignments } = await supabase
+        .from("teacher_assignments")
+        .select("teacher_id")
+
+      const countMap: Record<string, number> = {}
+      for (const a of assignments || []) {
+        countMap[a.teacher_id] = (countMap[a.teacher_id] || 0) + 1
+      }
+
+      const mappedWithCounts = mapped.map((t) => ({
+        ...t,
+        subjects: countMap[t.id] || 0,
+      }))
+
+      setTeachers(mappedWithCounts)
     } catch {
       setFetchError("An unexpected error occurred.")
     } finally {
@@ -305,6 +327,68 @@ export default function TeacherManagementPage() {
     }
   }
 
+  async function handleEditTeacher() {
+    if (!editTarget) return
+    if (!editName.trim() || !editDept) {
+      toast.error("Please fill all required fields")
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+
+      const selectedDept = departments.find((d) => d.name === editDept)
+      if (!selectedDept) {
+        toast.error("Department not found")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Update teachers table — title and department
+      const { error: teacherError } = await supabase
+        .from("teachers")
+        .update({ title: editTitle, department_id: selectedDept.id })
+        .eq("id", editTarget.id)
+
+      if (teacherError) {
+        toast.error(`Failed to update teacher: ${teacherError.message}`)
+        setIsSubmitting(false)
+        return
+      }
+
+      // Update users table — full name
+      const { error: userError } = await supabase
+        .from("users")
+        .update({ full_name: editName.trim() })
+        .eq("id", editTarget.id)
+
+      if (userError) {
+        toast.error(`Failed to update name: ${userError.message}`)
+        setIsSubmitting(false)
+        return
+      }
+
+      // System log
+      const { data: { user: adminUser } } = await supabase.auth.getUser()
+      if (adminUser) {
+        await supabase.from("system_logs").insert({
+          performed_by: adminUser.id,
+          action_type: "update",
+          description: `Teacher profile updated for ${editName.trim()}`,
+        })
+      }
+
+      toast.success("Teacher updated successfully")
+      setEditSheetOpen(false)
+      setEditTarget(null)
+      fetchTeachers()
+    } catch {
+      toast.error("An unexpected error occurred.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   function SkeletonRows() {
     return (
       <>
@@ -434,7 +518,13 @@ export default function TeacherManagementPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setEditTarget(t)
+                              setEditTitle(t.title)
+                              setEditName(t.name)
+                              setEditDept(t.department)
+                              setEditSheetOpen(true)
+                            }}>
                               <Pencil className="size-4" />
                               Edit Teacher
                             </DropdownMenuItem>
@@ -679,6 +769,72 @@ export default function TeacherManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Teacher Sheet */}
+      <Sheet open={editSheetOpen} onOpenChange={(open) => { setEditSheetOpen(open); if (!open) setEditTarget(null) }}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Edit Teacher</SheetTitle>
+            <SheetDescription>
+              Update teacher details. Teacher ID and email cannot be changed.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-5 py-6">
+            {/* Title */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-teacher-title">Title</Label>
+              <Select value={editTitle} onValueChange={setEditTitle}>
+                <SelectTrigger id="edit-teacher-title">
+                  <SelectValue placeholder="Select title" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mr">Mr</SelectItem>
+                  <SelectItem value="Ms">Ms</SelectItem>
+                  <SelectItem value="Mrs">Mrs</SelectItem>
+                  <SelectItem value="Dr">Dr</SelectItem>
+                  <SelectItem value="Prof">Prof</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Full Name */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-teacher-name">Full Name</Label>
+              <Input
+                id="edit-teacher-name"
+                placeholder="Full Name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            {/* Department */}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-teacher-dept">Department</Label>
+              <Select value={editDept} onValueChange={setEditDept}>
+                <SelectTrigger id="edit-teacher-dept">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.name}>
+                      {d.name} ({d.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleEditTeacher} className="mt-2" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
