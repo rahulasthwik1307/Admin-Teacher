@@ -152,13 +152,37 @@ export default function AcademicStructurePage() {
         setDeptError("Failed to load departments.")
         return
       }
+      // Fetch class counts per department
+      const { data: classData } = await supabase
+        .from("classes")
+        .select("department_id")
+
+      const classCountMap: Record<string, number> = {}
+      for (const c of classData || []) {
+        if (c.department_id) {
+          classCountMap[c.department_id] = (classCountMap[c.department_id] || 0) + 1
+        }
+      }
+
+      // Fetch subject counts per department
+      const { data: subjectData } = await supabase
+        .from("subjects")
+        .select("department_id")
+
+      const subjectCountMap: Record<string, number> = {}
+      for (const s of subjectData || []) {
+        if (s.department_id) {
+          subjectCountMap[s.department_id] = (subjectCountMap[s.department_id] || 0) + 1
+        }
+      }
+
       setDepartments(
         (data || []).map((d: any) => ({
           id: d.id,
           name: d.name,
           code: d.code,
-          classes: 0,
-          subjects: 0,
+          classes: classCountMap[d.id] || 0,
+          subjects: subjectCountMap[d.id] || 0,
         }))
       )
     } catch {

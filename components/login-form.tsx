@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,14 @@ export function LoginForm() {
 
   const placeholderEmail =
     role === "admin" ? "admin@nnrg.edu.in" : "teacher@nnrg.edu.in"
+
+  // Read error param from URL (e.g. ?error=disabled set by middleware)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("error") === "disabled") {
+      setAuthError("Your account has been disabled. Please contact the admin.")
+    }
+  }, [])
 
   function validate() {
     const newErrors: { email?: string; password?: string } = {}
@@ -85,6 +93,22 @@ export function LoginForm() {
         await supabase.auth.signOut()
         setIsLoading(false)
         return
+      }
+
+      // Disabled teacher account check at login
+      if (role === "teacher") {
+        const { data: teacherRecord } = await supabase
+          .from("teachers")
+          .select("is_active")
+          .eq("id", data.user.id)
+          .maybeSingle()
+
+        if (teacherRecord && teacherRecord.is_active === false) {
+          setAuthError("Your account has been disabled. Please contact the admin.")
+          await supabase.auth.signOut()
+          setIsLoading(false)
+          return
+        }
       }
 
       // Role-based redirect

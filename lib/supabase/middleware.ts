@@ -29,11 +29,53 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+  const { data: { user } } = await supabase.auth.getUser();
+  const path = request.nextUrl.pathname;
 
-  await supabase.auth.getUser();
+  // If accessing teacher portal, verify teacher is active
+  if (path.startsWith("/teacher")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const { data: teacherRecord } = await supabase
+      .from("teachers")
+      .select("is_active")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // Teacher record exists and is disabled — sign out and redirect to login with error
+    if (teacherRecord && teacherRecord.is_active === false) {
+      // Clear the session by redirecting to a signout endpoint
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set("error", "disabled");
+      const response = NextResponse.redirect(redirectUrl);
+      // Clear auth cookies so the session is invalidated
+      request.cookies.getAll().forEach((cookie) => {
+        if (cookie.name.includes("sb-") || cookie.name.includes("supabase")) {
+          response.cookies.delete(cookie.name);
+        }
+      });
+      return response;
+    }
+  }
+
+  // If accessing admin portal, verify user is admin
+  if (path.startsWith("/admin")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    const { data: userRecord } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!userRecord || userRecord.role !== "admin") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+  }
 
   return supabaseResponse;
 }
