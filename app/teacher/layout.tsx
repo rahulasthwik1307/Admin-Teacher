@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { TeacherSidebar } from "@/components/teacher-sidebar"
@@ -32,6 +32,20 @@ export default function TeacherLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
   const pageTitle = pageTitles[pathname] || "Dashboard"
+
+  // Block browser back/forward buttons inside teacher portal
+  useEffect(() => {
+    // Push a new state so there is always a forward entry
+    window.history.pushState(null, "", window.location.href)
+
+    const handlePopState = () => {
+      // Whenever back/forward is pressed, push the same state again
+      window.history.pushState(null, "", window.location.href)
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [pathname])
 
   return (
     <div className="flex h-svh overflow-hidden bg-background">
