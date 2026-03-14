@@ -171,7 +171,9 @@ export default function FaceApprovalPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || "Failed to reject")
       toast.success(`Rejected face registration for ${rejectTarget.name}`)
+      // Remove from whichever list contains this student
       setPending((prev) => prev.filter((s) => s.id !== rejectTarget.studentId))
+      setApproved((prev) => prev.filter((s) => s.id !== rejectTarget.studentId))
     } catch {
       toast.error("Failed to reject registration")
     } finally {
@@ -440,9 +442,19 @@ export default function FaceApprovalPage() {
                           {formatClassYear(student.class, student.year)}
                         </p>
                       </div>
-                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 shrink-0">
-                        <CheckCircle2 className="size-3.5" />
-                        Approved
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 className="size-3.5" />
+                          Approved
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 gap-1.5 h-8 px-3"
+                          onClick={() => setRejectTarget({ studentId: student.id, name: student.name })}
+                        >
+                          <X className="size-3.5" /> Reject
+                        </Button>
                       </div>
                     </div>
                   ))}
