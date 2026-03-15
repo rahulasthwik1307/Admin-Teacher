@@ -19,6 +19,7 @@ import {
   CheckCircle2, AlertTriangle, X, Pencil,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
 /* ── Types ── */
 interface TeacherActivityRow {
@@ -114,6 +115,16 @@ type Tab = typeof TABS[number]
 /* ── Main Page ── */
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("teacher-activity")
+
+  const USER_COLORS = useMemo(() => [
+    { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-500", avatar: "bg-blue-500/10 text-blue-600" },
+    { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500", avatar: "bg-emerald-500/10 text-emerald-600" },
+    { bg: "bg-violet-500/10", text: "text-violet-600", border: "border-violet-500", avatar: "bg-violet-500/10 text-violet-600" },
+    { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500", avatar: "bg-amber-500/10 text-amber-600" },
+    { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-500", avatar: "bg-rose-500/10 text-rose-600" },
+    { bg: "bg-sky-500/10", text: "text-sky-600", border: "border-sky-500", avatar: "bg-sky-500/10 text-sky-600" },
+    { bg: "bg-orange-500/10", text: "text-orange-600", border: "border-orange-500", avatar: "bg-orange-500/10 text-orange-600" },
+  ], [])
 
   const [teacherActivity, setTeacherActivity] = useState<TeacherActivityRow[]>([])
   const [loadingTeachers, setLoadingTeachers] = useState(true)
@@ -258,6 +269,18 @@ export default function ReportsPage() {
 
   const uniquePerformers = useMemo(() => Array.from(new Set(systemLogs.map(l => l.performedBy))).sort(), [systemLogs])
 
+  const userColorMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    uniquePerformers.forEach((name, i) => { map[name] = i % USER_COLORS.length })
+    return map
+  }, [uniquePerformers, USER_COLORS])
+
+  const getUserColor = useCallback((name: string) => {
+    if (name === "System") return { bg: "bg-muted", text: "text-muted-foreground", border: "border-border", avatar: "bg-muted text-muted-foreground" }
+    const idx = userColorMap[name] ?? 0
+    return USER_COLORS[idx]
+  }, [userColorMap, USER_COLORS])
+
   const filteredLogs = useMemo(() => {
     let logs = systemLogs
     if (logFilterPerformer !== "all") logs = logs.filter(l => l.performedBy === logFilterPerformer)
@@ -301,7 +324,7 @@ export default function ReportsPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-all ${activeTab === tab.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-base font-medium transition-all ${activeTab === tab.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
           >
             <tab.icon className="size-3.5" />
             {tab.label}
@@ -323,8 +346,8 @@ export default function ReportsPage() {
                     <TrendingUp className="size-4 text-primary" />
                   </div>
                   <div>
-                    <div className={`text-xl font-bold ${getRateColor(avgRate).text}`}>{avgRate}%</div>
-                    <div className="text-xs text-muted-foreground">Avg Completion</div>
+                    <div className={`text-2xl font-bold ${getRateColor(avgRate).text}`}>{avgRate}%</div>
+                    <div className="text-sm text-muted-foreground">Avg Completion</div>
                   </div>
                 </CardContent>
               </Card>
@@ -334,8 +357,8 @@ export default function ReportsPage() {
                     <Users className="size-4 text-emerald-600" />
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</div>
-                    <div className="text-xs text-muted-foreground">Active Teachers</div>
+                    <div className="text-2xl font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</div>
+                    <div className="text-sm text-muted-foreground">Active Teachers</div>
                   </div>
                 </CardContent>
               </Card>
@@ -346,7 +369,7 @@ export default function ReportsPage() {
                       <CheckCircle2 className="size-4 text-amber-600" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-foreground truncate">{topTeacher.name}</div>
+                      <div className="text-2xl font-bold text-foreground truncate">{topTeacher.name}</div>
                       <div className="text-xs text-muted-foreground">{topTeacher.sessions} sessions · Top Performer</div>
                     </div>
                   </CardContent>
@@ -381,24 +404,72 @@ export default function ReportsPage() {
           {loadingTeachers ? (
             <div className="flex justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
           ) : (
-            <>
-              {/* Desktop table */}
-              <Card className="hidden md:block">
+            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+              {/* Completion Overview Chart */}
+              <Card>
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-base font-semibold">Completion Overview</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <div className="relative h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[{ name: "Completed", value: avgRate }, { name: "Remaining", value: Math.max(0, 100 - avgRate) }]}
+                          innerRadius={70}
+                          outerRadius={100}
+                          dataKey="value"
+                          startAngle={90}
+                          endAngle={-270}
+                          stroke="none"
+                        >
+                          <Cell fill="#3b82f6" />
+                          <Cell fill="#e2e8f0" />
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-3xl font-bold text-primary">{avgRate}%</span>
+                      <span className="text-xs text-muted-foreground">Avg Completion</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col mt-2">
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-sm text-muted-foreground">Total Teachers</span>
+                      <span className="text-base font-bold text-foreground">{teacherActivity.length}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-sm text-muted-foreground">Active Teachers</span>
+                      <span className="text-base font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-muted-foreground">Avg Rate</span>
+                      <span className="text-base font-bold text-primary">{avgRate}%</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="flex flex-col gap-5 min-w-0">
+                {/* Desktop table */}
+                <Card className="hidden md:block">
                 <CardContent className="p-0">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-left">
-                        <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Teacher</th>
-                        <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Dept</th>
-                        <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">Sessions</th>
-                        <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">Assigned</th>
-                        <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Completion</th>
-                        <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Last Session</th>
+                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Teacher</th>
+                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Dept</th>
+                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Sessions</th>
+                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Assigned</th>
+                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Completion</th>
+                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Last Session</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredTeachers.length === 0 ? (
-                        <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">No data available.</td></tr>
+                        <tr><td colSpan={6} className="px-5 py-10 text-center text-base text-muted-foreground">No data available.</td></tr>
                       ) : filteredTeachers.map((t, i) => {
                         const color = getRateColor(t.rate)
                         return (
@@ -409,20 +480,20 @@ export default function ReportsPage() {
                                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{getInitials(t.name)}</AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <div className="font-medium text-foreground">{t.name}</div>
+                                  <div className="text-base font-medium text-foreground">{t.name}</div>
                                   {i === 0 && t.sessions > 0 && <div className="text-[10px] text-amber-600 font-semibold">Top Performer</div>}
                                 </div>
                               </div>
                             </td>
                             <td className="px-5 py-3"><span className="font-mono text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground">{t.dept}</span></td>
-                            <td className="px-5 py-3 text-center font-semibold text-foreground">{t.sessions}</td>
-                            <td className="px-5 py-3 text-center text-muted-foreground">{t.assigned}</td>
+                            <td className="px-5 py-3 text-center text-base font-semibold text-foreground">{t.sessions}</td>
+                            <td className="px-5 py-3 text-center text-base text-muted-foreground">{t.assigned}</td>
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-2.5">
-                                <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                                <div className="h-2.5 w-32 overflow-hidden rounded-full bg-muted">
                                   <div className={`h-full rounded-full ${color.bg} transition-all`} style={{ width: `${t.rate}%` }} />
                                 </div>
-                                <span className={`text-sm font-semibold ${color.text}`}>{t.rate}%</span>
+                                <span className={`text-base font-semibold ${color.text}`}>{t.rate}%</span>
                               </div>
                             </td>
                             <td className="px-5 py-3 text-xs text-muted-foreground">{t.lastSession}</td>
@@ -445,13 +516,13 @@ export default function ReportsPage() {
                           <div className="flex items-center gap-2.5">
                             <Avatar className="size-9"><AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{getInitials(t.name)}</AvatarFallback></Avatar>
                             <div>
-                              <div className="text-sm font-medium text-foreground">{t.name}</div>
+                              <div className="text-base font-medium text-foreground">{t.name}</div>
                               <div className="text-xs text-muted-foreground">{t.dept} · {t.sessions}/{t.assigned} sessions</div>
                             </div>
                           </div>
-                          <span className={`text-lg font-bold ${color.text}`}>{t.rate}%</span>
+                          <span className={`text-2xl font-bold ${color.text}`}>{t.rate}%</span>
                         </div>
-                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
                           <div className={`h-full rounded-full ${color.bg}`} style={{ width: `${t.rate}%` }} />
                         </div>
                         <div className="mt-2 text-xs text-muted-foreground">Last: {t.lastSession}</div>
@@ -460,7 +531,8 @@ export default function ReportsPage() {
                   )
                 })}
               </div>
-            </>
+            </div>
+          </div>
           )}
         </div>
       )}
@@ -507,18 +579,65 @@ export default function ReportsPage() {
                       <s.icon className="size-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-lg font-bold text-foreground leading-tight truncate">{s.value}</div>
-                      <div className="text-xs font-medium text-foreground/80 truncate">{s.label}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{s.sub}</div>
+                      <div className="text-2xl font-bold text-foreground leading-tight truncate">{s.value}</div>
+                      <div className="text-sm font-medium text-foreground/80 truncate">{s.label}</div>
+                      <div className="text-xs text-muted-foreground truncate">{s.sub}</div>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            {/* Subject table */}
-            <Card>
-              <CardHeader className="pb-3">
+            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+              <Card>
+                <CardHeader className="pb-2 pt-4">
+                  <CardTitle className="text-base font-semibold">Overall Attendance</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <div className="relative h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[{ name: "Completed", value: overviewStats?.overallPct ?? 0 }, { name: "Remaining", value: Math.max(0, 100 - (overviewStats?.overallPct ?? 0)) }]}
+                          innerRadius={70}
+                          outerRadius={100}
+                          dataKey="value"
+                          startAngle={90}
+                          endAngle={-270}
+                          stroke="none"
+                        >
+                          <Cell fill="#10b981" />
+                          <Cell fill="#e2e8f0" />
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-3xl font-bold text-emerald-600">{overviewStats?.overallPct ?? 0}%</span>
+                      <span className="text-xs text-muted-foreground">Overall</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col mt-2">
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-sm text-muted-foreground">Highest: {overviewStats?.highestSubject ?? "—"}</span>
+                      <span className="text-base font-bold text-foreground">{overviewStats?.highestPct ?? 0}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-border">
+                      <span className="text-sm text-muted-foreground">Lowest: {overviewStats?.lowestSubject ?? "—"}</span>
+                      <span className="text-base font-bold text-foreground">{overviewStats?.lowestPct ?? 0}%</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-muted-foreground">Students Below 75%</span>
+                      <span className="text-base font-bold text-foreground">{overviewStats?.studentsBelow75 ?? 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Subject table */}
+              <Card className="min-w-0 overflow-hidden">
+                <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
                     <BookOpen className="size-4 text-primary" />
@@ -530,37 +649,56 @@ export default function ReportsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-t border-border text-left">
-                      <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Subject</th>
-                      <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Dept</th>
-                      <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Attendance</th>
-                      <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center hidden md:table-cell">Sessions</th>
-                      <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">Below 75%</th>
+                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Subject</th>
+                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Dept</th>
+                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Attendance</th>
+                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Visual</th>
+                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center hidden md:table-cell">Sessions</th>
+                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Below 75%</th>
                     </tr>
                   </thead>
                   <tbody>
                     {subjectAttendance.length === 0 ? (
-                      <tr><td colSpan={5} className="px-5 py-10 text-center text-sm text-muted-foreground">No attendance data available.</td></tr>
+                      <tr><td colSpan={6} className="px-5 py-10 text-center text-base text-muted-foreground">No attendance data available.</td></tr>
                     ) : subjectAttendance.map(s => {
                       const color = getAttendanceColor(s.avg)
                       return (
                         <tr key={s.subject} className="border-t border-border hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3 font-medium text-foreground">{s.subject}</td>
+                          <td className="px-5 py-3 text-base font-medium text-foreground">{s.subject}</td>
                           <td className="px-5 py-3 hidden sm:table-cell"><span className="font-mono text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground">{s.dept}</span></td>
                           <td className="px-5 py-3">
                             <div className="flex items-center gap-2.5">
-                              <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
+                              <div className="h-2.5 w-32 overflow-hidden rounded-full bg-muted">
                                 <div className={`h-full rounded-full ${color.bar} transition-all`} style={{ width: `${s.avg}%` }} />
                               </div>
-                              <span className={`text-sm font-bold ${color.text}`}>{s.avg}%</span>
+                              <span className={`text-base font-bold ${color.text}`}>{s.avg}%</span>
                             </div>
                           </td>
-                          <td className="px-5 py-3 text-center text-foreground hidden md:table-cell">{s.sessions}</td>
                           <td className="px-5 py-3 text-center">
-                            <Badge variant="secondary" className={
+                            <div className="inline-flex items-center justify-center">
+                              <PieChart width={40} height={40}>
+                                <Pie
+                                  data={[{ value: s.avg }, { value: Math.max(0, 100 - s.avg) }]}
+                                  innerRadius={12}
+                                  outerRadius={18}
+                                  dataKey="value"
+                                  startAngle={90}
+                                  endAngle={-270}
+                                  stroke="none"
+                                >
+                                  <Cell fill={s.avg >= 80 ? "#10b981" : s.avg >= 60 ? "#f59e0b" : "#f43f5e"} />
+                                  <Cell fill="#e2e8f0" />
+                                </Pie>
+                              </PieChart>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-center text-base text-foreground hidden md:table-cell">{s.sessions}</td>
+                          <td className="px-5 py-3 text-center">
+                            <Badge variant="secondary" className={`text-sm ${
                               s.below75 >= 8 ? "bg-rose-500/10 text-rose-600 border-rose-200"
                               : s.below75 >= 4 ? "bg-amber-500/10 text-amber-600 border-amber-200"
                               : "bg-emerald-500/10 text-emerald-600 border-emerald-200"
-                            }>
+                            }`}>
                               {s.below75}
                             </Badge>
                           </td>
@@ -570,7 +708,8 @@ export default function ReportsPage() {
                   </tbody>
                 </table>
               </CardContent>
-            </Card>
+              </Card>
+            </div>
           </div>
         )
       )}
@@ -583,13 +722,13 @@ export default function ReportsPage() {
           {/* Stat chips */}
           {!loadingLogs && (
             <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
+              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
                 <Activity className="size-3.5" />{systemLogs.length} Total Logs
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700">
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700">
                 <Calendar className="size-3.5" />{todayLogCount} Today
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700">
+              <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-medium text-amber-700">
                 <Users className="size-3.5" />{uniquePerformers.length} Users Active
               </div>
             </div>
@@ -663,8 +802,9 @@ export default function ReportsPage() {
                           {logs.map((log, li) => {
                             const cfg = getActionConfig(log.actionType, log.details)
                             const Icon = cfg.icon
+                            const uColor = getUserColor(log.performedBy)
                             return (
-                              <tr key={log.id} className={`hover:bg-muted/20 transition-colors ${li !== 0 ? "border-t border-border" : ""}`}>
+                              <tr key={log.id} className={`border-l-2 ${uColor.border} hover:bg-muted/20 transition-colors ${li !== 0 ? "border-t border-border" : ""}`}>
                                 <td className="px-5 py-3 w-10">
                                   <div className={`flex size-8 items-center justify-center rounded-full border ${cfg.bg} ${cfg.border}`}>
                                     <Icon className={`size-3.5 ${cfg.color}`} />
@@ -676,12 +816,12 @@ export default function ReportsPage() {
                                 <td className="px-3 py-3 flex-1">
                                   <span className="text-sm text-foreground">{log.details}</span>
                                 </td>
-                                <td className="px-3 py-3 w-28">
+                                <td className="px-3 py-3 w-32">
                                   <div className="flex items-center gap-1.5">
-                                    <Avatar className="size-5">
-                                      <AvatarFallback className="bg-muted text-muted-foreground text-[9px]">{getInitials(log.performedBy)}</AvatarFallback>
+                                    <Avatar className="size-5 shrink-0">
+                                      <AvatarFallback className={`${uColor.avatar} text-[9px] font-medium`}>{getInitials(log.performedBy)}</AvatarFallback>
                                     </Avatar>
-                                    <span className="text-xs text-muted-foreground truncate">{log.performedBy}</span>
+                                    <span className={`text-xs truncate ${uColor.text}`}>{log.performedBy}</span>
                                   </div>
                                 </td>
                                 <td className="px-5 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">{log.timestamp}</td>
@@ -698,6 +838,7 @@ export default function ReportsPage() {
                     {logs.map(log => {
                       const cfg = getActionConfig(log.actionType, log.details)
                       const Icon = cfg.icon
+                      const uColor = getUserColor(log.performedBy)
                       return (
                         <Card key={log.id}>
                           <CardContent className="p-3">
@@ -709,8 +850,11 @@ export default function ReportsPage() {
                                 <span className={`text-[10px] font-bold tracking-widest ${cfg.labelColor}`}>{cfg.label}</span>
                                 <span className="text-xs text-foreground">{log.details}</span>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[11px] text-muted-foreground">{log.performedBy}</span>
-                                  <span className="text-muted-foreground">·</span>
+                                  <Avatar className="size-4 shrink-0">
+                                    <AvatarFallback className={`${uColor.avatar} text-[8px] font-medium`}>{getInitials(log.performedBy)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className={`text-[11px] font-medium ${uColor.text}`}>{log.performedBy}</span>
+                                  <span className="text-muted-foreground leading-none">·</span>
                                   <span className="text-[11px] text-muted-foreground">{log.timestamp}</span>
                                 </div>
                               </div>

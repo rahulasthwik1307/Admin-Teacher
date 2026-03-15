@@ -294,11 +294,11 @@ export default function TeacherAssignmentsPage() {
             <Card key={s.label} className={`border-l-4 ${s.color} transition-shadow hover:shadow-md`}>
               <CardContent className="flex items-center gap-3 p-4">
                 <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${s.iconColor}`}>
-                  <s.icon className="size-4" />
+                  <s.icon className="size-5" />
                 </div>
                 <div>
-                  <div className="text-xl font-bold text-foreground leading-tight">{s.value}</div>
-                  <div className="text-xs text-muted-foreground">{s.label}</div>
+                  <div className="text-3xl font-bold text-foreground leading-tight">{s.value}</div>
+                  <div className="text-sm text-muted-foreground">{s.label}</div>
                 </div>
               </CardContent>
             </Card>
@@ -310,8 +310,8 @@ export default function TeacherAssignmentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <Select value={filterClass} onValueChange={setFilterClass}>
-            <SelectTrigger className="w-36 h-9 text-xs">
-              <GraduationCap className="size-3.5 mr-1.5 text-muted-foreground" />
+            <SelectTrigger className="w-36 h-9 text-sm">
+              <GraduationCap className="size-4 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder="All Classes" />
             </SelectTrigger>
             <SelectContent>
@@ -320,8 +320,8 @@ export default function TeacherAssignmentsPage() {
             </SelectContent>
           </Select>
           <Select value={filterDept} onValueChange={setFilterDept}>
-            <SelectTrigger className="w-40 h-9 text-xs">
-              <Building2 className="size-3.5 mr-1.5 text-muted-foreground" />
+            <SelectTrigger className="w-40 h-9 text-sm">
+              <Building2 className="size-4 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
             <SelectContent>
@@ -330,8 +330,8 @@ export default function TeacherAssignmentsPage() {
             </SelectContent>
           </Select>
           <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-            <SelectTrigger className="w-40 h-9 text-xs">
-              <Users className="size-3.5 mr-1.5 text-muted-foreground" />
+            <SelectTrigger className="w-40 h-9 text-sm">
+              <Users className="size-4 mr-1.5 text-muted-foreground" />
               <SelectValue placeholder="All Teachers" />
             </SelectTrigger>
             <SelectContent>
@@ -378,9 +378,9 @@ export default function TeacherAssignmentsPage() {
                       <div className="flex size-7 items-center justify-center rounded-md bg-primary/10">
                         <GraduationCap className="size-3.5 text-primary" />
                       </div>
-                      <span className="text-sm font-semibold text-foreground">{classSection}</span>
-                      <Badge variant="secondary" className="text-xs">{classAssignments.length} assignment{classAssignments.length !== 1 ? "s" : ""}</Badge>
-                      <span className="text-xs text-muted-foreground">{classAssignments[0]?.department}</span>
+                      <span className="text-base font-semibold text-foreground">{classSection}</span>
+                      <Badge variant="secondary" className="text-sm">{classAssignments.length} assignment{classAssignments.length !== 1 ? "s" : ""}</Badge>
+                      <span className="text-sm text-muted-foreground">{classAssignments[0]?.department}</span>
                     </div>
                     {isCollapsed ? <ChevronRight className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
                   </button>
@@ -391,11 +391,11 @@ export default function TeacherAssignmentsPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left">
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Teacher</th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Subject</th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Department</th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Assigned</th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-right">Action</th>
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Teacher</th>
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Subject</th>
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Department</th>
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Assigned</th>
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-right">Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -406,14 +406,14 @@ export default function TeacherAssignmentsPage() {
                                     <Avatar className="size-7">
                                       <AvatarFallback className={`text-[10px] font-semibold ${getAvatarColor(a.teacher)}`}>{getInitials(a.teacher)}</AvatarFallback>
                                     </Avatar>
-                                    <span className="font-medium text-foreground">{a.teacher}</span>
+                                    <span className="text-base font-medium text-foreground">{a.teacher}</span>
                                   </div>
                                 </td>
-                                <td className="px-5 py-3 text-foreground">{a.subject}</td>
-                                <td className="px-5 py-3"><span className="font-mono text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground">{a.department}</span></td>
-                                <td className="px-5 py-3 text-xs text-muted-foreground">{a.date}</td>
+                                <td className="px-5 py-3 text-base text-foreground">{a.subject}</td>
+                                <td className="px-5 py-3"><span className="font-mono text-sm rounded bg-muted px-2 py-0.5 text-muted-foreground">{a.department}</span></td>
+                                <td className="px-5 py-3 text-sm text-muted-foreground">{a.date}</td>
                                 <td className="px-5 py-3 text-right">
-                                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setRemoveTarget(a)}>
+                                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-sm text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setRemoveTarget(a)}>
                                     <Trash2 className="size-3.5" /> Remove
                                   </Button>
                                 </td>
@@ -493,30 +493,30 @@ export default function TeacherAssignmentsPage() {
                   <div key={t.name} className={`flex items-center gap-4 rounded-xl border p-4 transition-shadow hover:shadow-sm ${t.count > 0 ? "bg-background" : "bg-muted/20"}`}>
                     {/* Ring */}
                     <div className="relative shrink-0">
-                      <AssignmentRing count={t.count} total={totalSubjectsInSystem} color={color.stroke} size={64} />
+                      <AssignmentRing count={t.count} total={totalSubjectsInSystem} color={color.stroke} size={72} />
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-sm font-black" style={{ color: color.stroke }}>{t.count}</span>
-                        <span className="text-[9px] text-muted-foreground leading-none">/{totalSubjectsInSystem}</span>
+                        <span className="text-base font-black" style={{ color: color.stroke }}>{t.count}</span>
+                        <span className="text-xs text-muted-foreground leading-none">/{totalSubjectsInSystem}</span>
                       </div>
                     </div>
                     {/* Info */}
                     <div className="flex flex-1 flex-col gap-1.5 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Avatar className="size-6 shrink-0">
-                          <AvatarFallback className={`text-[9px] font-semibold ${getAvatarColor(t.name)}`}>{getInitials(t.name)}</AvatarFallback>
+                        <Avatar className="size-7 shrink-0">
+                          <AvatarFallback className={`text-xs font-semibold ${getAvatarColor(t.name)}`}>{getInitials(t.name)}</AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-semibold text-foreground truncate">{t.name}</span>
+                        <span className="text-base font-semibold text-foreground truncate">{t.name}</span>
                       </div>
-                      <div className="text-xs text-muted-foreground">{t.count} subject{t.count !== 1 ? "s" : ""} assigned ({pct}%)</div>
+                      <div className="text-sm text-muted-foreground">{t.count} subject{t.count !== 1 ? "s" : ""} assigned ({pct}%)</div>
                       {t.subjects.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-0.5">
                           {t.subjects.map(subj => (
-                            <Badge key={subj} variant="outline" className={`text-[10px] px-1.5 py-0 ${color.badge}`}>{subj}</Badge>
+                            <Badge key={subj} variant="outline" className={`text-xs px-2 py-0.5 ${color.badge}`}>{subj}</Badge>
                           ))}
                         </div>
                       )}
                       {t.count === 0 && (
-                        <span className="text-[11px] text-muted-foreground italic">No subjects assigned</span>
+                        <span className="text-sm text-muted-foreground italic">No subjects assigned</span>
                       )}
                     </div>
                   </div>

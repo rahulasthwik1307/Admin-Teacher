@@ -347,13 +347,13 @@ export default function AdminDashboardPage() {
                 <stat.icon className="size-5" />
               </div>
               <div className="flex min-w-0 flex-col">
-                <span className="text-2xl font-bold leading-tight text-foreground">
+                <span className="text-3xl font-bold leading-tight text-foreground">
                   {stat.value}
                 </span>
-                <span className="truncate text-xs font-medium text-foreground/80">
+                <span className="truncate text-sm font-medium text-foreground/80">
                   {stat.label}
                 </span>
-                <span className="truncate text-[11px] text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                   {stat.trend}
                 </span>
               </div>
@@ -376,9 +376,9 @@ export default function AdminDashboardPage() {
         ].map((chip) => (
           <div
             key={chip.label}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${chip.color}`}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium ${chip.color}`}
           >
-            <chip.icon className="size-3.5" />
+            <chip.icon className="size-4" />
             {chip.label}
           </div>
         ))}
@@ -405,16 +405,16 @@ export default function AdminDashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-t border-border text-left">
-                    <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                       Teacher
                     </th>
-                    <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                       Subject
                     </th>
-                    <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                       Sessions
                     </th>
-                    <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                       Last Active
                     </th>
                   </tr>
@@ -446,7 +446,7 @@ export default function AdminDashboardPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="font-medium text-foreground">{t.name}</span>
+                              <span className="text-sm font-medium text-foreground">{t.name}</span>
                               {i === 0 && t.sessions > 0 && (
                                 <span className="text-[10px] font-semibold text-primary">
                                   Top Performer
@@ -455,10 +455,10 @@ export default function AdminDashboardPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-muted-foreground">{t.subject}</td>
+                        <td className="px-5 py-3 text-sm text-muted-foreground">{t.subject}</td>
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-2.5">
-                            <span className="w-5 text-center font-semibold text-foreground">
+                            <span className="w-5 text-center text-sm font-semibold text-foreground">
                               {t.sessions}
                             </span>
                             <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
@@ -472,7 +472,7 @@ export default function AdminDashboardPage() {
                         <td className="px-5 py-3">
                           <div className="flex items-center gap-1.5 text-muted-foreground">
                             <Clock className="size-3 shrink-0" />
-                            <span className="text-xs">{t.lastActive}</span>
+                            <span className="text-sm">{t.lastActive}</span>
                           </div>
                         </td>
                       </tr>
@@ -517,56 +517,45 @@ export default function AdminDashboardPage() {
         </Card>
 
         {/* System Status */}
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="h-full flex flex-col">
+          <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/10">
                 <CheckCircle2 className="size-4 text-emerald-600" />
               </div>
-              <CardTitle className="text-base font-semibold">System Status</CardTitle>
+              <CardTitle className="text-lg font-semibold">System Status</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {systemStatus.map((item) => {
-              const dotColor =
-                item.status === "ok"
-                  ? "bg-emerald-500"
-                  : item.status === "warn"
-                  ? "bg-amber-500"
-                  : "bg-blue-500"
-              const pingColor =
-                item.status === "ok"
-                  ? "bg-emerald-400"
-                  : item.status === "warn"
-                  ? "bg-amber-400"
-                  : "bg-blue-400"
-              const badgeBg =
-                item.status === "ok"
-                  ? "bg-emerald-500/10 text-emerald-700 border-emerald-200"
-                  : item.status === "warn"
-                  ? "bg-amber-500/10 text-amber-700 border-amber-200"
-                  : "bg-blue-500/10 text-blue-700 border-blue-200"
+          <CardContent className="p-4 pt-0 flex-1">
+            <div className="grid grid-cols-2 gap-3 h-full">
+              {systemStatus.map((item) => {
+                const dotColor = item.status === "ok" ? "bg-emerald-500" : item.status === "warn" ? "bg-amber-500" : "bg-blue-500"
+                const pingColor = item.status === "ok" ? "bg-emerald-400" : item.status === "warn" ? "bg-amber-400" : "bg-blue-400"
+                const cardBg = item.status === "ok" ? "bg-emerald-500/5 border-emerald-200/60" : item.status === "warn" ? "bg-amber-500/5 border-amber-200/60" : "bg-blue-500/5 border-blue-200/60"
+                const valueColor = item.status === "ok" ? "text-emerald-700" : item.status === "warn" ? "text-amber-700" : "text-blue-700"
+                const iconBg = item.status === "ok" ? "bg-emerald-500/10" : item.status === "warn" ? "bg-amber-500/10" : "bg-blue-500/10"
+                const Icon = item.status === "ok" ? CheckCircle2 : item.status === "warn" ? Radio : GraduationCap
 
-              return (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="relative flex size-2.5">
-                      <span
-                        className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 ${pingColor}`}
-                      />
-                      <span className={`relative inline-flex size-2.5 rounded-full ${dotColor}`} />
-                    </span>
-                    <span className="text-sm font-medium text-foreground">{item.label}</span>
+                return (
+                  <div key={item.label} className={`relative flex flex-col gap-2 rounded-xl border p-4 transition-shadow hover:shadow-sm ${cardBg}`}>
+                    {/* Top row: icon + pulse dot */}
+                    <div className="flex items-center justify-between">
+                      <div className={`flex size-9 items-center justify-center rounded-lg ${iconBg}`}>
+                        <Icon className={`size-5 ${valueColor}`} />
+                      </div>
+                      <span className="relative flex size-2.5">
+                        <span className={`absolute inline-flex size-full animate-ping rounded-full opacity-60 ${pingColor}`} />
+                        <span className={`relative inline-flex size-2.5 rounded-full ${dotColor}`} />
+                      </span>
+                    </div>
+                    {/* Value */}
+                    <div className={`text-3xl font-black leading-none ${valueColor}`}>{item.value}</div>
+                    {/* Label */}
+                    <div className="text-sm font-medium text-muted-foreground leading-tight">{item.label}</div>
                   </div>
-                  <Badge variant="outline" className={`text-xs font-semibold ${badgeBg}`}>
-                    {item.value}
-                  </Badge>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -604,12 +593,12 @@ export default function AdminDashboardPage() {
                     {/* Content */}
                     <div className="flex flex-1 flex-col gap-0.5 pt-1 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex flex-col gap-0.5">
-                        <span className={`text-[10px] font-bold tracking-widest ${config.labelColor}`}>
+                        <span className={`text-xs font-bold tracking-widest ${config.labelColor}`}>
                           {config.label}
                         </span>
-                        <span className="text-sm text-foreground">{item.text}</span>
+                        <span className="text-base text-foreground">{item.text}</span>
                       </div>
-                      <span className="mt-0.5 shrink-0 text-xs text-muted-foreground sm:pl-4">
+                      <span className="mt-0.5 shrink-0 text-sm text-muted-foreground sm:pl-4">
                         {item.time}
                       </span>
                     </div>

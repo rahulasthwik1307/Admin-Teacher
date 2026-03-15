@@ -268,6 +268,14 @@ export default function TimetablePage() {
   const coveredToday = entries.filter(e => e.day === todayValue).length
   const classesWithTimetable = new Set(entries.map(e => e.classSection)).size
 
+  const conflictMap = useMemo(() => {
+    const map: Record<string, { classSection: string; subject: string }> = {}
+    entries.forEach(e => {
+      map[`${e.teacher}__${e.day}__${e.periodNumber}`] = { classSection: e.classSection, subject: e.subject }
+    })
+    return map
+  }, [entries])
+
   /* ---------- Handlers ---------- */
   async function handleAdd() {
     if (!formClassId || !formAssignmentKey || !formPeriodId || !formDay) {
@@ -298,7 +306,7 @@ export default function TimetablePage() {
   }
 
   async function handleBulkAdd() {
-    const slots = Object.entries(bulkSlots).filter(([, v]) => v && v !== "")
+    const slots = Object.entries(bulkSlots).filter(([, v]) => v && v !== "" && v !== "__skip__")
     if (!bulkClassId || slots.length === 0) { toast.error("Please select a class and fill at least one slot"); return }
 
     setIsSubmitting(true)
@@ -483,7 +491,7 @@ export default function TimetablePage() {
                       key={d.value}
                       className={`px-3 py-2.5 text-center border-r border-border last:border-r-0 ${d.value === todayValue ? "bg-primary/10" : ""}`}
                     >
-                      <div className={`text-xs font-bold uppercase tracking-wide ${d.value === todayValue ? "text-primary" : "text-muted-foreground"}`}>
+                      <div className={`text-sm font-bold uppercase tracking-wide ${d.value === todayValue ? "text-primary" : "text-muted-foreground"}`}>
                         {d.short}
                       </div>
                       {d.value === todayValue && (
@@ -502,8 +510,8 @@ export default function TimetablePage() {
                   >
                     {/* Period label */}
                     <div className="flex flex-col justify-center px-3 py-3 border-r border-border bg-muted/20">
-                      <span className="text-xs font-bold text-foreground">P{p.number}</span>
-                      <span className="text-[10px] text-muted-foreground">{p.start}–{p.end}</span>
+                      <span className="text-sm font-bold text-foreground">P{p.number}</span>
+                      <span className="text-xs text-muted-foreground">{p.start}–{p.end}</span>
                     </div>
 
                     {/* Day cells */}
@@ -521,13 +529,13 @@ export default function TimetablePage() {
                             <div
                               className={`h-full rounded-lg border p-2 flex flex-col gap-0.5 group cursor-pointer ${color!.bg} ${color!.border} ${isToday ? "shadow-sm" : ""}`}
                             >
-                              <div className={`text-[11px] font-semibold leading-tight ${color!.text} line-clamp-2`}>
+                              <div className={`text-xs font-semibold leading-tight ${color!.text} line-clamp-2`}>
                                 {entry.subject}
                               </div>
-                              <div className="text-[10px] text-muted-foreground truncate">{entry.teacher}</div>
+                              <div className="text-[11px] text-muted-foreground truncate">{entry.teacher}</div>
                               {selectedClassForGrid === "all" && (
                                 <div className="mt-auto">
-                                  <span className={`text-[9px] font-bold rounded px-1 py-0.5 ${color!.bg} ${color!.text}`}>{entry.classSection}</span>
+                                  <span className={`text-[10px] font-bold rounded px-1 py-0.5 ${color!.bg} ${color!.text}`}>{entry.classSection}</span>
                                 </div>
                               )}
                               <button
@@ -733,6 +741,24 @@ export default function TimetablePage() {
                 <SelectContent>{periodOptions.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            {(() => {
+              if (formAssignmentKey && formDay && formPeriodId && formClassId) {
+                const selectedAssignment = assignmentOptions.find(a => `${a.teacherId}__${a.subjectId}__${a.classId}` === formAssignmentKey);
+                const selectedPeriod = periodOptions.find(p => p.id === formPeriodId);
+                const selectedClassLabel = classOptions.find(c => c.id === formClassId)?.label;
+                if (selectedAssignment && selectedPeriod && selectedClassLabel) {
+                  const conflictEntry = conflictMap[`${selectedAssignment.teacherName}__${formDay}__${selectedPeriod.number}`];
+                  if (conflictEntry && conflictEntry.classSection !== selectedClassLabel) {
+                    return (
+                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
+                        ⚠ Conflict: {selectedAssignment.teacherName} is already assigned to {conflictEntry.classSection} — {conflictEntry.subject} on this day and period.
+                      </div>
+                    )
+                  }
+                }
+              }
+              return null;
+            })()}
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
               Each class can only have one subject per period per day. Duplicates are rejected automatically.
             </div>
@@ -747,7 +773,7 @@ export default function TimetablePage() {
           BULK FILL WEEK SHEET
       ══════════════════════════════════════ */}
       <Sheet open={bulkSheetOpen} onOpenChange={v => { setBulkSheetOpen(v); if (!v) { setBulkClassId(""); setBulkSlots({}) } }}>
-        <SheetContent className="overflow-y-auto sm:max-w-2xl w-full">
+        <SheetContent className="overflow-y-auto max-w-[100vw] w-full sm:max-w-[100vw] p-4 sm:p-6">
           <SheetHeader>
             <SheetTitle>Fill Week Timetable</SheetTitle>
             <SheetDescription>Select a class, then assign subjects to each day × period slot at once.</SheetDescription>
@@ -766,13 +792,13 @@ export default function TimetablePage() {
             {bulkClassId && periodOptions.length > 0 && (
               <div className="flex flex-col gap-3">
                 <p className="text-xs text-muted-foreground">Fill the slots you want to add. Leave empty to skip.</p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
+                <div className="w-full">
+                  <table className="w-full text-xs border-collapse table-fixed">
                     <thead>
                       <tr>
-                        <th className="text-left px-2 py-2 text-muted-foreground font-medium w-20">Period</th>
+                        <th className="text-left px-1 sm:px-2 py-2 text-muted-foreground font-medium w-12 sm:w-20 text-[9px] sm:text-xs">Period</th>
                         {DAYS.map(d => (
-                          <th key={d.value} className={`text-center px-1 py-2 font-semibold ${d.value === todayValue ? "text-primary" : "text-muted-foreground"}`}>
+                          <th key={d.value} className={`text-center px-0.5 sm:px-1 py-2 font-semibold text-[9px] sm:text-xs ${d.value === todayValue ? "text-primary" : "text-muted-foreground"}`}>
                             {d.short} {d.value === todayValue ? "•" : ""}
                           </th>
                         ))}
@@ -781,9 +807,9 @@ export default function TimetablePage() {
                     <tbody>
                       {periodOptions.map(p => (
                         <tr key={p.id} className="border-t border-border">
-                          <td className="px-2 py-2">
-                            <div className="font-semibold text-foreground">P{p.number}</div>
-                            <div className="text-muted-foreground text-[10px]">{p.start}</div>
+                          <td className="px-1 sm:px-2 py-2">
+                            <div className="font-bold text-foreground text-sm">P{p.number}</div>
+                            <div className="text-muted-foreground text-xs break-words">{p.start}</div>
                           </td>
                           {DAYS.map(d => {
                             const key = `${d.value}__${p.id}`
@@ -791,23 +817,33 @@ export default function TimetablePage() {
                             const existingEntry = entries.find(e => e.classSection === classOptions.find(c => c.id === bulkClassId)?.label && e.day === d.value && e.periodNumber === p.number)
 
                             return (
-                              <td key={d.value} className={`px-1 py-1.5 ${d.value === todayValue ? "bg-primary/3" : ""}`}>
+                              <td key={d.value} className={`px-0.5 sm:px-1 py-1 sm:py-1.5 ${d.value === todayValue ? "bg-primary/3" : ""}`}>
                                 {existingEntry ? (
-                                  <div className="rounded-md bg-muted px-1.5 py-1 text-[10px] text-muted-foreground text-center" title="Already assigned">
+                                  <div className="rounded-md bg-muted px-1 sm:px-1.5 py-1 text-[9px] sm:text-[10px] text-muted-foreground text-center truncate" title="Already assigned">
                                     {existingEntry.subject.split(" ").map((w: string) => w[0]).join("").slice(0, 3)}
                                   </div>
                                 ) : (
                                   <Select value={val} onValueChange={v => setBulkSlots(prev => ({ ...prev, [key]: v }))}>
-                                    <SelectTrigger className="h-8 text-[10px] px-1.5">
+                                    <SelectTrigger className="h-9 text-xs px-1 sm:px-1.5 min-w-0 w-full overflow-hidden">
                                       <SelectValue placeholder="—" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="">— Skip —</SelectItem>
-                                      {bulkFilteredAssignments.map(a => (
-                                        <SelectItem key={`${a.teacherId}__${a.subjectId}__${a.classId}`} value={`${a.teacherId}__${a.subjectId}__${a.classId}`}>
-                                          {a.subjectName}
-                                        </SelectItem>
-                                      ))}
+                                      <SelectItem value="__skip__">— Skip —</SelectItem>
+                                      {bulkFilteredAssignments.map(a => {
+                                        const currentBulkClassLabel = classOptions.find(c => c.id === bulkClassId)?.label;
+                                        const conflictEntry = conflictMap[`${a.teacherName}__${d.value}__${p.number}`];
+                                        const isConflict = conflictEntry && conflictEntry.classSection !== currentBulkClassLabel;
+                                        return (
+                                          <SelectItem 
+                                            key={`${a.teacherId}__${a.subjectId}__${a.classId}`} 
+                                            value={`${a.teacherId}__${a.subjectId}__${a.classId}`}
+                                            disabled={!!isConflict}
+                                            className={isConflict ? "opacity-50 text-destructive" : ""}
+                                          >
+                                            {a.subjectName} — {a.teacherName} {isConflict && `⚠ busy in ${conflictEntry.classSection}`}
+                                          </SelectItem>
+                                        );
+                                      })}
                                     </SelectContent>
                                   </Select>
                                 )}
@@ -820,11 +856,11 @@ export default function TimetablePage() {
                   </table>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{Object.values(bulkSlots).filter(v => v).length} slots selected</span>
+                  <span>{Object.values(bulkSlots).filter(v => v && v !== "__skip__").length} slots selected</span>
                   <button onClick={() => setBulkSlots({})} className="text-destructive hover:underline">Clear all</button>
                 </div>
-                <Button onClick={handleBulkAdd} disabled={isSubmitting || Object.values(bulkSlots).filter(v => v).length === 0}>
-                  {isSubmitting ? <><Loader2 className="size-4 animate-spin" />Adding slots...</> : <><Layers className="size-4" />Add {Object.values(bulkSlots).filter(v => v).length} Slot{Object.values(bulkSlots).filter(v => v).length !== 1 ? "s" : ""}</>}
+                <Button onClick={handleBulkAdd} disabled={isSubmitting || Object.values(bulkSlots).filter(v => v && v !== "__skip__").length === 0}>
+                  {isSubmitting ? <><Loader2 className="size-4 animate-spin" />Adding slots...</> : <><Layers className="size-4" />Add {Object.values(bulkSlots).filter(v => v && v !== "__skip__").length} Slot{Object.values(bulkSlots).filter(v => v && v !== "__skip__").length !== 1 ? "s" : ""}</>}
                 </Button>
               </div>
             )}

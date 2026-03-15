@@ -280,12 +280,12 @@ export default function AcademicStructurePage() {
         {statCards.map(s => (
           <Card key={s.label} className={`border-l-4 ${s.color} transition-shadow hover:shadow-md`}>
             <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${s.iconColor}`}>
-                <s.icon className="size-4" />
+              <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${s.iconColor}`}>
+                <s.icon className="size-5" />
               </div>
               <div>
-                <div className="text-xl font-bold text-foreground leading-tight">{s.value}</div>
-                <div className="text-xs text-muted-foreground">{s.label}</div>
+                <div className="text-3xl font-bold text-foreground leading-tight">{s.value}</div>
+                <div className="text-sm text-muted-foreground">{s.label}</div>
               </div>
             </CardContent>
           </Card>
@@ -301,15 +301,15 @@ export default function AcademicStructurePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-base font-medium transition-all ${
                   activeTab === tab.id
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <tab.icon className="size-3.5" />
+                <tab.icon className="size-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                <span className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
                   activeTab === tab.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                 }`}>
                   {tab.loading ? "—" : tab.count}
@@ -349,21 +349,21 @@ export default function AcademicStructurePage() {
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <div className="font-semibold text-foreground leading-snug">{d.name}</div>
-                            <Badge variant="outline" className={`mt-1 text-xs font-mono ${color.badge}`}>{d.code}</Badge>
+                            <div className="text-lg font-semibold text-foreground leading-snug">{d.name}</div>
+                            <Badge variant="outline" className={`mt-1 text-sm font-mono ${color.badge}`}>{d.code}</Badge>
                           </div>
                           <div className={`flex size-9 items-center justify-center rounded-xl ${color.bg}`}>
                             <Building2 className={`size-4 ${color.text}`} />
                           </div>
                         </div>
                         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <GraduationCap className="size-3.5" />
-                            <span><span className="font-semibold text-foreground">{d.classes}</span> Classes</span>
+                            <span><span className="text-sm font-semibold text-foreground">{d.classes}</span> Classes</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <BookOpen className="size-3.5" />
-                            <span><span className="font-semibold text-foreground">{d.subjects}</span> Subjects</span>
+                            <span><span className="text-sm font-semibold text-foreground">{d.subjects}</span> Subjects</span>
                           </div>
                         </div>
                       </CardContent>
@@ -399,8 +399,8 @@ export default function AcademicStructurePage() {
                           <div className={`flex size-7 items-center justify-center rounded-md ${color.bg}`}>
                             <Building2 className={`size-3.5 ${color.text}`} />
                           </div>
-                          <span className="text-sm font-semibold text-foreground">{dept}</span>
-                          <Badge variant="secondary" className="text-xs">{deptClasses.length} class{deptClasses.length !== 1 ? "es" : ""}</Badge>
+                          <span className="text-base font-semibold text-foreground">{dept}</span>
+                          <Badge variant="secondary" className="text-sm">{deptClasses.length} class{deptClasses.length !== 1 ? "es" : ""}</Badge>
                         </div>
                         {isCollapsed ? <ChevronRight className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
                       </button>
@@ -412,8 +412,8 @@ export default function AcademicStructurePage() {
                                 {c.section}
                               </div>
                               <div>
-                                <div className="font-semibold text-sm text-foreground">{c.displayName}</div>
-                                <div className="text-xs text-muted-foreground">Section {c.section}</div>
+                                <div className="font-semibold text-base text-foreground">{c.displayName}</div>
+                                <div className="text-sm text-muted-foreground">Section {c.section}</div>
                               </div>
                             </div>
                           ))}
@@ -451,8 +451,8 @@ export default function AcademicStructurePage() {
                           <div className={`flex size-7 items-center justify-center rounded-md ${color.bg}`}>
                             <BookOpen className={`size-3.5 ${color.text}`} />
                           </div>
-                          <span className="text-sm font-semibold text-foreground">{dept}</span>
-                          <Badge variant="secondary" className="text-xs">{deptSubjects.length} subject{deptSubjects.length !== 1 ? "s" : ""}</Badge>
+                          <span className="text-base font-semibold text-foreground">{dept}</span>
+                          <Badge variant="secondary" className="text-sm">{deptSubjects.length} subject{deptSubjects.length !== 1 ? "s" : ""}</Badge>
                         </div>
                         {isCollapsed ? <ChevronRight className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
                       </button>
@@ -464,9 +464,9 @@ export default function AcademicStructurePage() {
                                 <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${color.bg}`}>
                                   <BookOpen className={`size-3.5 ${color.text}`} />
                                 </div>
-                                <span className="font-medium text-sm text-foreground">{s.name}</span>
+                                <span className="font-medium text-base text-foreground">{s.name}</span>
                               </div>
-                              <Badge variant="outline" className={`font-mono text-xs ${color.badge}`}>{s.code}</Badge>
+                              <Badge variant="outline" className={`font-mono text-sm ${color.badge}`}>{s.code}</Badge>
                             </div>
                           ))}
                         </div>
@@ -521,10 +521,10 @@ export default function AcademicStructurePage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border text-left">
-                          <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Period</th>
-                          <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Start</th>
-                          <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">End</th>
-                          <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Duration</th>
+                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Period</th>
+                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Start</th>
+                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">End</th>
+                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Duration</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -535,12 +535,12 @@ export default function AcademicStructurePage() {
                                 <div className={`size-6 rounded-full flex items-center justify-center text-[10px] font-bold border ${PERIOD_COLORS[i % PERIOD_COLORS.length]}`}>
                                   {p.number}
                                 </div>
-                                <span className="font-medium text-foreground">Period {p.number}</span>
+                                <span className="text-base font-medium text-foreground">Period {p.number}</span>
                               </div>
                             </td>
-                            <td className="px-5 py-3 font-mono text-foreground">{p.start}</td>
-                            <td className="px-5 py-3 font-mono text-foreground">{p.end}</td>
-                            <td className="px-5 py-3 text-muted-foreground">{p.duration}</td>
+                            <td className="px-5 py-3 font-mono text-base text-foreground">{p.start}</td>
+                            <td className="px-5 py-3 font-mono text-base text-foreground">{p.end}</td>
+                            <td className="px-5 py-3 text-base text-muted-foreground">{p.duration}</td>
                           </tr>
                         ))}
                       </tbody>

@@ -466,17 +466,17 @@ export default function TeacherManagementPage() {
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-            <Users className="size-3.5" />
+          <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+            <Users className="size-4" />
             {teachers.length} Total
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700">
-            <UserCheck className="size-3.5" />
+          <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700">
+            <UserCheck className="size-4" />
             {activeCount} Active
           </div>
           {disabledCount > 0 && (
-            <div className="flex items-center gap-1.5 rounded-full bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-700">
-              <ShieldOff className="size-3.5" />
+            <div className="flex items-center gap-1.5 rounded-full bg-rose-500/10 px-3 py-1.5 text-sm font-medium text-rose-700">
+              <ShieldOff className="size-4" />
               {disabledCount} Disabled
             </div>
           )}
@@ -597,12 +597,12 @@ export default function TeacherManagementPage() {
                       <div className="flex size-7 items-center justify-center rounded-md bg-primary/10">
                         <Building2 className="size-3.5 text-primary" />
                       </div>
-                      <span className="text-sm font-semibold text-foreground">{dept}</span>
-                      <Badge variant="secondary" className="text-xs">
+                      <span className="text-base font-semibold text-foreground">{dept}</span>
+                      <Badge variant="secondary" className="text-sm">
                         {deptTeachers.length} teacher{deptTeachers.length !== 1 ? "s" : ""}
                       </Badge>
                       {activeInDept > 0 && (
-                        <span className="text-xs text-emerald-600">
+                        <span className="text-sm text-emerald-600">
                           {activeInDept} active
                         </span>
                       )}
@@ -621,19 +621,19 @@ export default function TeacherManagementPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-left">
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                                 Teacher
                               </th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                                 Teacher ID
                               </th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-center">
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">
                                 Subjects
                               </th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
                                 Status
                               </th>
-                              <th className="px-5 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground text-right">
+                              <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-right">
                                 Action
                               </th>
                             </tr>
@@ -654,10 +654,10 @@ export default function TeacherManagementPage() {
                                       </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                      <span className="font-medium text-foreground">
+                                      <span className="text-base font-medium text-foreground">
                                         {t.title}. {t.name}
                                       </span>
-                                      <span className="text-xs text-muted-foreground">
+                                      <span className="text-sm text-muted-foreground">
                                         {t.subjects > 0
                                           ? `${t.subjects} subject${t.subjects !== 1 ? "s" : ""} assigned`
                                           : "No subjects assigned"}
@@ -666,20 +666,20 @@ export default function TeacherManagementPage() {
                                   </div>
                                 </td>
                                 <td className="px-5 py-3">
-                                  <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                                  <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-sm text-muted-foreground">
                                     {t.teacherId}
                                   </span>
                                 </td>
                                 <td className="px-5 py-3 text-center">
-                                  <span className="font-semibold text-foreground">{t.subjects}</span>
+                                  <span className="text-base font-semibold text-foreground">{t.subjects}</span>
                                 </td>
                                 <td className="px-5 py-3">
                                   <Badge
                                     variant={t.status === "Active" ? "secondary" : "outline"}
                                     className={
                                       t.status === "Active"
-                                        ? "bg-emerald-500/10 text-emerald-700 border-emerald-200"
-                                        : "bg-muted text-muted-foreground"
+                                        ? "bg-emerald-500/10 text-emerald-700 border-emerald-200 text-sm"
+                                        : "bg-muted text-muted-foreground text-sm"
                                     }
                                   >
                                     <span
@@ -752,14 +752,14 @@ export default function TeacherManagementPage() {
                                 </AvatarFallback>
                               </Avatar>
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-medium text-foreground">
+                                <span className="text-base font-medium text-foreground">
                                   {t.title}. {t.name}
                                 </span>
-                                <span className="font-mono text-xs text-muted-foreground">
+                                <span className="font-mono text-sm text-muted-foreground">
                                   {t.teacherId}
                                 </span>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-sm text-muted-foreground">
                                     {t.subjects} subjects
                                   </span>
                                   <Badge
