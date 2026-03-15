@@ -236,10 +236,11 @@ export default function TimetablePage() {
 
   // Build grid: period → day → entry
   const gridMap = useMemo(() => {
-    const map: Record<number, Record<number, TimetableEntry>> = {}
+    const map: Record<number, Record<number, TimetableEntry[]>> = {}
     for (const e of gridEntries) {
       if (!map[e.periodNumber]) map[e.periodNumber] = {}
-      map[e.periodNumber][e.day] = e
+      if (!map[e.periodNumber][e.day]) map[e.periodNumber][e.day] = []
+      map[e.periodNumber][e.day].push(e)
     }
     return map
   }, [gridEntries])
@@ -516,39 +517,46 @@ export default function TimetablePage() {
 
                     {/* Day cells */}
                     {DAYS.map(d => {
-                      const entry = gridMap[p.number]?.[d.value]
+                      const cellEntries = gridMap[p.number]?.[d.value] ?? []
                       const isToday = d.value === todayValue
-                      const color = entry ? getSubjectColor(entry.subject) : null
 
                       return (
                         <div
                           key={d.value}
-                          className={`relative min-h-[72px] border-r border-border last:border-r-0 p-1.5 transition-colors ${isToday ? "bg-primary/3" : ""}`}
+                          className={`relative border-r border-border last:border-r-0 p-1.5 transition-colors flex flex-col gap-1 ${isToday ? "bg-primary/3" : ""}`}
+                          style={{ minHeight: cellEntries.length > 1 ? `${cellEntries.length * 72}px` : "72px" }}
                         >
-                          {entry ? (
-                            <div
-                              className={`h-full rounded-lg border p-2 flex flex-col gap-0.5 group cursor-pointer ${color!.bg} ${color!.border} ${isToday ? "shadow-sm" : ""}`}
-                            >
-                              <div className={`text-xs font-semibold leading-tight ${color!.text} line-clamp-2`}>
-                                {entry.subject}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground truncate">{entry.teacher}</div>
-                              {selectedClassForGrid === "all" && (
-                                <div className="mt-auto">
-                                  <span className={`text-[10px] font-bold rounded px-1 py-0.5 ${color!.bg} ${color!.text}`}>{entry.classSection}</span>
-                                </div>
-                              )}
-                              <button
-                                onClick={() => setRemoveTarget(entry)}
-                                className="absolute top-1.5 right-1.5 size-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 bg-destructive/10 hover:bg-destructive/20 transition-all"
-                              >
-                                <Trash2 className="size-3 text-destructive" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className={`h-full min-h-[56px] rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center ${isToday ? "border-primary/20" : ""}`}>
+                          {cellEntries.length === 0 ? (
+                            <div className={`flex-1 min-h-[56px] rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center ${isToday ? "border-primary/20" : ""}`}>
                               <span className="text-[10px] text-muted-foreground/40">—</span>
                             </div>
+                          ) : (
+                            cellEntries.map((entry, ei) => {
+                              const color = getSubjectColor(entry.subject)
+                              return (
+                                <div
+                                  key={entry.id}
+                                  className={`rounded-lg border p-2 flex flex-col gap-0.5 group cursor-pointer relative ${color.bg} ${color.border} ${isToday ? "shadow-sm" : ""}`}
+                                  style={{ minHeight: "64px" }}
+                                >
+                                  <div className={`text-xs font-semibold leading-tight ${color.text} line-clamp-2`}>
+                                    {entry.subject}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground truncate">{entry.teacher}</div>
+                                  {selectedClassForGrid === "all" && (
+                                    <div className="mt-auto">
+                                      <span className={`text-[9px] font-bold rounded px-1 py-0.5 ${color.bg} ${color.text}`}>{entry.classSection}</span>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => setRemoveTarget(entry)}
+                                    className="absolute top-1 right-1 size-5 rounded flex items-center justify-center opacity-0 group-hover:opacity-100 bg-destructive/10 hover:bg-destructive/20 transition-all"
+                                  >
+                                    <Trash2 className="size-3 text-destructive" />
+                                  </button>
+                                </div>
+                              )
+                            })
                           )}
                         </div>
                       )
@@ -755,6 +763,22 @@ export default function TimetablePage() {
                       </div>
                     )
                   }
+
+                  // Check if this subject is already scheduled for this class on this day
+                  const isSameSubjectSameDay = entries.some(e =>
+                    e.classSection === selectedClassLabel &&
+                    e.day === parseInt(formDay) &&
+                    e.subject === selectedAssignment.subjectName &&
+                    e.periodNumber !== selectedPeriod.number
+                  )
+
+                  if (isSameSubjectSameDay) {
+                    return (
+                      <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+                        ⚠ {selectedAssignment.subjectName} is already scheduled for {selectedClassLabel} on {getDayLabel(parseInt(formDay))}. Each subject should appear only once per day.
+                      </div>
+                    )
+                  }
                 }
               }
               return null;
@@ -833,14 +857,37 @@ export default function TimetablePage() {
                                         const currentBulkClassLabel = classOptions.find(c => c.id === bulkClassId)?.label;
                                         const conflictEntry = conflictMap[`${a.teacherName}__${d.value}__${p.number}`];
                                         const isConflict = conflictEntry && conflictEntry.classSection !== currentBulkClassLabel;
+
+                                        const isAlreadySavedForDay = entries.some(e =>
+                                          e.classSection === currentBulkClassLabel &&
+                                          e.day === d.value &&
+                                          e.subject === a.subjectName
+                                        );
+
+                                        // Check if this subject is already selected for this day in another period
+                                        const isAlreadySelectedForDay = Object.entries(bulkSlots).some(([slotKey, slotVal]) => {
+                                          if (slotVal === "__skip__" || slotVal === "") return false
+                                          const [slotDay] = slotKey.split("__")
+                                          if (parseInt(slotDay) !== d.value) return false
+                                          if (slotKey === key) return false // skip current cell
+                                          const slotAssignment = assignmentOptions.find(
+                                            sa => `${sa.teacherId}__${sa.subjectId}__${sa.classId}` === slotVal
+                                          )
+                                          return slotAssignment?.subjectId === a.subjectId
+                                        });
+
+                                        const isDisabled = !!isConflict || isAlreadySelectedForDay || isAlreadySavedForDay;
+
                                         return (
                                           <SelectItem 
                                             key={`${a.teacherId}__${a.subjectId}__${a.classId}`} 
                                             value={`${a.teacherId}__${a.subjectId}__${a.classId}`}
-                                            disabled={!!isConflict}
-                                            className={isConflict ? "opacity-50 text-destructive" : ""}
+                                            disabled={isDisabled}
+                                            className={isDisabled ? "opacity-50 text-destructive" : ""}
                                           >
-                                            {a.subjectName} — {a.teacherName} {isConflict && `⚠ busy in ${conflictEntry.classSection}`}
+                                            {a.subjectName} — {a.teacherName}
+                                            {isConflict && ` ⚠ busy in ${conflictEntry!.classSection}`}
+                                            {!isConflict && (isAlreadySelectedForDay || isAlreadySavedForDay) && ` ⚠ already on ${DAYS.find(day => day.value === d.value)?.label}`}
                                           </SelectItem>
                                         );
                                       })}
