@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "@/components/admin-sidebar"
@@ -46,6 +46,16 @@ export default function AdminLayout({
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
   }, [pathname])
+
+  useEffect(() => {
+    // Check stored role matches admin portal
+    const storedRole = localStorage.getItem("fa_user_role")
+    if (storedRole && storedRole !== "admin") {
+      // Role mismatch — clear and redirect to login
+      localStorage.removeItem("fa_user_role")
+      window.location.href = "/login"
+    }
+  }, [])
 
   return (
     <div className="flex h-svh overflow-hidden bg-background">

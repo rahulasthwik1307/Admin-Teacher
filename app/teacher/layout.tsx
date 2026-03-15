@@ -47,6 +47,16 @@ export default function TeacherLayout({
     return () => window.removeEventListener("popstate", handlePopState)
   }, [pathname])
 
+  useEffect(() => {
+    // Check stored role matches teacher portal
+    const storedRole = localStorage.getItem("fa_user_role")
+    if (storedRole && storedRole !== "teacher") {
+      // Role mismatch — clear and redirect to login
+      localStorage.removeItem("fa_user_role")
+      window.location.href = "/login"
+    }
+  }, [])
+
   return (
     <div className="flex h-svh overflow-hidden bg-background">
       {/* Desktop sidebar */}

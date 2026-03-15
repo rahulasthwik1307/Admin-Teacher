@@ -91,6 +91,7 @@ export function LoginForm() {
             : "These credentials are not for a teacher account."
         )
         await supabase.auth.signOut()
+        localStorage.removeItem("fa_user_role")
         setIsLoading(false)
         return
       }
@@ -113,10 +114,13 @@ export function LoginForm() {
 
       // Role-based redirect
       if (userRecord.role === "admin") {
+        localStorage.setItem("fa_user_role", "admin")
         router.push("/admin/dashboard")
       } else if (userRecord.role === "teacher" && userRecord.must_change_password) {
+        localStorage.setItem("fa_user_role", "teacher")
         router.push("/change-password")
       } else {
+        localStorage.setItem("fa_user_role", "teacher")
         router.push("/teacher/dashboard")
       }
     } catch {
