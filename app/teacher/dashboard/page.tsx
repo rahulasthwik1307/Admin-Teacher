@@ -1,5 +1,6 @@
 import { DashboardStats } from "@/components/teacher/dashboard-stats"
 import { FaceApprovalAlert } from "@/components/teacher/face-approval-alert"
+import { MissedAttendanceAlert } from "@/components/teacher/missed-attendance-alert"
 import { MyClasses } from "@/components/teacher/my-classes"
 import { MyTimetable } from "@/components/teacher/my-timetable"
 import { TodayAttendanceSummary } from "@/components/teacher/today-attendance-summary"
@@ -12,6 +13,7 @@ export default function TeacherDashboard() {
       <div className="flex flex-col gap-6 p-1">
         <DashboardStats />
         <FaceApprovalAlert />
+        <MissedAttendanceAlert />
         <MyClasses />
         <MyTimetable />
         <SummaryActivityPanel />

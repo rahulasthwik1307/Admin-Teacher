@@ -11,6 +11,7 @@ const pageTitles: Record<string, string> = {
   "/teacher/students": "Students",
   "/teacher/face-approval": "Face Approval",
   "/teacher/qr-attendance": "QR Attendance",
+  "/teacher/missed-attendance": "Missed Attendance",
   "/teacher/attendance-history": "Attendance History",
   "/teacher/analytics": "Analytics",
 }

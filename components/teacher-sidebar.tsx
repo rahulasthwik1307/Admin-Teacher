@@ -11,6 +11,7 @@ import {
   CalendarDays,
   BarChart3,
   LogOut,
+  ClipboardX,
 } from "lucide-react"
 import { FALogo } from "@/components/fa-logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -36,6 +37,7 @@ const navGroups = [
     label: "Attendance",
     items: [
       { label: "QR Attendance", href: "/teacher/qr-attendance", icon: QrCode },
+      { label: "Missed Attendance", href: "/teacher/missed-attendance", icon: ClipboardX },
       { label: "Attendance History", href: "/teacher/attendance-history", icon: CalendarDays },
       { label: "Analytics", href: "/teacher/analytics", icon: BarChart3 },
     ],
@@ -150,7 +152,10 @@ export function TeacherSidebar({ onClose }: TeacherSidebarProps) {
               <ul className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
                   // inject badge for face approval
-                  const badge = item.label === "Face Approval" && pendingCount > 0 ? pendingCount : null
+                  const badge =
+                    item.label === "Face Approval" && pendingCount > 0
+                      ? pendingCount
+                      : null
                   const isActive = pathname === item.href
 
                   return (
