@@ -88,6 +88,13 @@ export async function POST(request: Request) {
       )
     }
 
+    console.log("FORGOT_PASSWORD_SESSION_DEBUG", {
+      accessTokenLength: otpSession.session.access_token?.length,
+      refreshTokenLength: otpSession.session.refresh_token?.length,
+      refreshToken: otpSession.session.refresh_token,
+      userId: otpSession.session.user.id,
+    })
+
     return NextResponse.json({
       access_token: otpSession.session.access_token,
       refresh_token: otpSession.session.refresh_token,
