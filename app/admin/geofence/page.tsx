@@ -25,7 +25,7 @@ const GeofenceMap = dynamic(
     <div className="flex h-full min-h-[480px] items-center justify-center rounded-xl bg-muted/30">
       <div className="flex flex-col items-center gap-3">
         <Loader2 className="size-8 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">Loading map…</span>
+        <span className="text-sm text-muted-foreground">{"Loading map…"}</span>
       </div>
     </div>
   )}
@@ -51,6 +51,7 @@ export default function GeofencePage() {
       const { data, error } = await supabase
         .from("geofence_settings")
         .select("*")
+        .order("updated_at", { ascending: false })
         .limit(1)
         .single()
 
@@ -262,23 +263,23 @@ export default function GeofencePage() {
                   {isSearching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
                 </Button>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">Or click directly on the map to set location</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">{"Or click directly on the map to set location"}</p>
             </CardContent>
           </Card>
 
           {/* Configuration */}
           <Card>
             <CardHeader className="pb-2 pt-4">
-              <CardTitle className="text-sm font-semibold">Geofence Configuration</CardTitle>
+              <CardTitle className="text-sm font-semibold">{"Geofence Configuration"}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 pb-4">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">College Name</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{"College Name"}</Label>
                 <Input value={collegeName} onChange={(e) => setCollegeName(e.target.value)} className="text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Latitude</Label>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{"Latitude"}</Label>
                   <Input
                     type="number" step="0.0001" value={lat}
                     onChange={(e) => setLat(e.target.value)}
@@ -286,7 +287,7 @@ export default function GeofencePage() {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Longitude</Label>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{"Longitude"}</Label>
                   <Input
                     type="number" step="0.0001" value={lng}
                     onChange={(e) => setLng(e.target.value)}
@@ -298,7 +299,7 @@ export default function GeofencePage() {
               {/* Radius slider */}
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Radius</Label>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{"Radius"}</Label>
                   <div className="flex items-center gap-1">
                     <Input
                       type="number" value={radius}
@@ -328,15 +329,15 @@ export default function GeofencePage() {
             <CardContent className="py-3 px-4">
               <div className="flex items-center gap-2 mb-2">
                 <MapPin className="size-3.5 text-primary" />
-                <span className="text-xs font-semibold text-primary">Current Coordinates</span>
+                <span className="text-xs font-semibold text-primary">{"Current Coordinates"}</span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div className="rounded-lg bg-background/80 px-3 py-2">
-                  <div className="text-[10px] text-muted-foreground mb-0.5">Latitude</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">{"Latitude"}</div>
                   <div className="font-mono font-semibold text-foreground">{parseFloat(lat).toFixed(6) || "—"}</div>
                 </div>
                 <div className="rounded-lg bg-background/80 px-3 py-2">
-                  <div className="text-[10px] text-muted-foreground mb-0.5">Longitude</div>
+                  <div className="text-[10px] text-muted-foreground mb-0.5">{"Longitude"}</div>
                   <div className="font-mono font-semibold text-foreground">{parseFloat(lng).toFixed(6) || "—"}</div>
                 </div>
               </div>
@@ -360,7 +361,7 @@ export default function GeofencePage() {
           <div className="flex gap-3 rounded-xl border border-border bg-accent/40 px-4 py-3">
             <Info className="size-4 shrink-0 mt-0.5 text-primary" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-foreground">How it works</span>
+              <span className="text-xs font-semibold text-foreground">{"How it works"}</span>
               <span className="text-xs text-muted-foreground leading-relaxed">
                 Students must be within <strong>{radiusNum}m</strong> of the college to scan attendance QR codes. Coverage area: {coverageArea}.
               </span>

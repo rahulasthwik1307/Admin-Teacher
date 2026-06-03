@@ -34,8 +34,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -186,7 +194,7 @@ function FaceStatusBadge({ status }: { status: Student["faceStatus"] }) {
     case "Approved": return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-medium">✓ Approved</Badge>
     case "Pending":  return <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 font-medium">⏳ Pending</Badge>
     case "Rejected": return <Badge className="bg-red-50 text-red-700 border-red-200 hover:bg-red-50 font-medium">✕ Rejected</Badge>
-    case "None":     return <Badge className="bg-muted text-muted-foreground border-border hover:bg-muted">Not Registered</Badge>
+    case "None":     return <Badge className="bg-muted text-muted-foreground border-border hover:bg-muted">{"Not Registered"}</Badge>
   }
 }
 
@@ -313,6 +321,13 @@ export default function StudentsPage() {
   const [page, setPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  const [editTarget, setEditTarget] = useState<any>(null)
+  const [editSheetOpen, setEditSheetOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editRoll, setEditRoll] = useState('')
+  const [resetTarget, setResetTarget] = useState<any>(null)
+  const [resetOpen, setResetOpen] = useState(false)
 
   const [classOptions, setClassOptions] = useState<ClassOption[]>([])
   const [deptOptions, setDeptOptions] = useState<DeptOption[]>([])
@@ -473,6 +488,58 @@ export default function StudentsPage() {
     finally { setDeleteTarget(null); setIsSubmitting(false) }
   }
 
+  async function handleEditStudent() {
+    if (!editTarget || !editName.trim()) return
+    setIsSubmitting(true)
+    try {
+      const supabase = createClient()
+      const { error: userError } = await supabase
+        .from('users')
+        .update({ full_name: editName.trim() })
+        .eq('id', editTarget.id)
+      if (userError) { toast.error('Failed to update name'); return }
+
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser) {
+        await supabase.from('system_logs').insert({
+          performed_by: currentUser.id,
+          action_type: 'update',
+          description: `Student name updated: ${editName.trim()} (${editTarget.roll})`,
+        })
+      }
+
+      toast.success('Student updated successfully')
+      setEditSheetOpen(false)
+
+      // Update local state immediately — don't wait for re-fetch
+      setStudents(prev => prev.map(s =>
+        s.id === editTarget.id ? { ...s, name: editName.trim() } : s
+      ))
+
+      // Also re-fetch in background to sync
+      setTimeout(() => fetchStudents(), 500)
+    } catch { toast.error('An unexpected error occurred') }
+    finally { setIsSubmitting(false) }
+  }
+
+  async function handleResetStudentPassword() {
+    if (!resetTarget) return
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/teacher/reset-student-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: resetTarget.id, roll_number: resetTarget.roll }),
+      })
+      const result = await response.json()
+      if (!response.ok) { toast.error(result.error || 'Failed to reset password'); return }
+      toast.success(`Password reset to default for ${resetTarget.roll}`)
+      setResetOpen(false)
+      setResetTarget(null)
+    } catch { toast.error('An unexpected error occurred') }
+    finally { setIsSubmitting(false) }
+  }
+
   /* Student row */
   function StudentRow({ student }: { student: Student }) {
     return (
@@ -493,8 +560,24 @@ export default function StudentsPage() {
               <Button variant="ghost" size="icon-sm"><MoreHorizontal className="size-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditTarget(student)
+                  setEditName(student.name)
+                  setEditRoll(student.roll)
+                  setEditSheetOpen(true)
+                }}
+              >
+                {"Edit Student"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => { setResetTarget(student); setResetOpen(true); }}
+              >
+                Reset Password
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}>
-                <Trash2 className="size-4" />Delete Student
+                <Trash2 className="size-4" />{"Delete Student"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -513,7 +596,7 @@ export default function StudentsPage() {
             <Users className="size-4 text-primary" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Total Students</p>
+            <p className="text-xs text-muted-foreground">{"Total Students"}</p>
             <p className="text-lg font-bold text-foreground leading-tight">{isLoading ? "—" : stats.total}</p>
           </div>
         </div>
@@ -522,7 +605,7 @@ export default function StudentsPage() {
             <UserCheck className="size-4 text-emerald-600" />
           </div>
           <div>
-            <p className="text-xs text-emerald-700 dark:text-emerald-400">Active</p>
+            <p className="text-xs text-emerald-700 dark:text-emerald-400">{"Active"}</p>
             <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 leading-tight">{isLoading ? "—" : stats.active}</p>
           </div>
         </div>
@@ -531,7 +614,7 @@ export default function StudentsPage() {
             <UserCog className="size-4 text-amber-600" />
           </div>
           <div>
-            <p className="text-xs text-amber-700 dark:text-amber-400">Pending Approval</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">{"Pending Approval"}</p>
             <p className="text-lg font-bold text-amber-700 dark:text-amber-400 leading-tight">{isLoading ? "—" : stats.pending}</p>
           </div>
         </div>
@@ -547,7 +630,7 @@ export default function StudentsPage() {
           <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-[250px]">
             <Search className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Search</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{"Search"}</span>
               <Input
                 placeholder="Search by name or roll..."
                 value={search}
@@ -561,13 +644,13 @@ export default function StudentsPage() {
           <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-[220px]">
             <Users className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">{"Class"}</span>
               <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
                 <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
                   <SelectValue placeholder="All Classes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Classes</SelectItem>
+                  <SelectItem value="all">{"All Classes"}</SelectItem>
                   {uniqueClasses.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -583,7 +666,7 @@ export default function StudentsPage() {
       {fetchError && (
         <div className="rounded-lg border border-border bg-card px-4 py-8 text-center">
           <p className="text-sm text-destructive">{fetchError}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={fetchStudents}>Retry</Button>
+          <Button variant="outline" size="sm" className="mt-3" onClick={fetchStudents}>{"Retry"}</Button>
         </div>
       )}
 
@@ -593,12 +676,12 @@ export default function StudentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/60">
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Student</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Roll Number</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Class</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Year</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Face Status</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">Action</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">{"Student"}</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">{"Roll Number"}</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">{"Class"}</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">{"Year"}</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">{"Face Status"}</th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">{"Action"}</th>
               </tr>
             </thead>
             <tbody>
@@ -645,7 +728,23 @@ export default function StudentsPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}><Trash2 className="size-4" />Delete Student</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditTarget(student)
+                              setEditName(student.name)
+                              setEditRoll(student.roll)
+                              setEditSheetOpen(true)
+                            }}
+                          >
+                            {"Edit Student"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => { setResetTarget(student); setResetOpen(true); }}
+                          >
+                            Reset Password
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}><Trash2 className="size-4" />{"Delete Student"}</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -672,7 +771,23 @@ export default function StudentsPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}><Trash2 className="size-4" />Delete Student</DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditTarget(student)
+                        setEditName(student.name)
+                        setEditRoll(student.roll)
+                        setEditSheetOpen(true)
+                      }}
+                    >
+                      {"Edit Student"}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setResetTarget(student); setResetOpen(true); }}
+                    >
+                      Reset Password
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}><Trash2 className="size-4" />{"Delete Student"}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -704,16 +819,16 @@ export default function StudentsPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Student</AlertDialogTitle>
+            <AlertDialogTitle>{"Delete Student"}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="flex flex-col gap-2">
-                <span>Are you sure you want to delete <strong className="text-foreground">{deleteTarget?.name}</strong>?</span>
-                <span className="text-destructive text-sm font-medium">This action is permanent and cannot be undone. All attendance records for this student will be deleted.</span>
+                <span>{"Are you sure you want to delete "}<strong className="text-foreground">{deleteTarget?.name}</strong>?</span>
+                <span className="text-destructive text-sm font-medium">{"This action is permanent and cannot be undone. All attendance records for this student will be deleted."}</span>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{"Cancel"}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-white hover:bg-destructive/90" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
@@ -733,16 +848,16 @@ export default function StudentsPage() {
                 <GraduationCap className="size-5 text-primary" />
               </div>
               <div>
-                <SheetTitle className="text-base">Add New Student</SheetTitle>
+                <SheetTitle className="text-base">{"Add New Student"}</SheetTitle>
                 <SheetDescription className="text-xs mt-0.5">
-                  Default password: <span className="font-mono font-semibold text-foreground">Student@1234</span>
+                  Default password: <span className="font-mono font-semibold text-foreground">{"Student@1234"}</span>
                 </SheetDescription>
               </div>
             </div>
           </SheetHeader>
           <div className="flex flex-col gap-0 flex-1 overflow-y-auto">
             <div className="px-4 py-4 border-b border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Personal Info</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{"Personal Info"}</p>
               <div className="flex flex-col gap-4">
                 <FormField icon={User} label="Full Name" htmlFor="student-name">
                   <Input id="student-name" placeholder="Enter student full name" value={formName} onChange={(e) => setFormName(e.target.value)} />
@@ -753,7 +868,7 @@ export default function StudentsPage() {
               </div>
             </div>
             <div className="px-4 py-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Academic Info</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{"Academic Info"}</p>
               <div className="flex flex-col gap-4">
                 <FormField icon={Building2} label="Department" htmlFor="student-dept">
                   <Select value={formDeptId} onValueChange={(v) => { setFormDeptId(v); setFormClassId("") }}>
@@ -768,7 +883,7 @@ export default function StudentsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {filteredClassOptions.length === 0
-                        ? <SelectItem value="none" disabled>No classes found</SelectItem>
+                        ? <SelectItem value="none" disabled>{"No classes found"}</SelectItem>
                         : filteredClassOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)
                       }
                     </SelectContent>
@@ -789,13 +904,55 @@ export default function StudentsPage() {
             </div>
           </div>
           <div className="flex items-center justify-end gap-3 border-t border-border px-4 py-4 mt-auto">
-            <Button variant="outline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setSheetOpen(false)}>{"Cancel"}</Button>
             <Button onClick={handleAddStudent} disabled={isSubmitting} className="min-w-[110px]">
               {isSubmitting ? <><Loader2 className="size-4 animate-spin" />Creating...</> : <><Plus className="size-4" />Add Student</>}
             </Button>
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Edit Student Sheet */}
+      <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{"Edit Student"}</SheetTitle>
+            <SheetDescription>{"Update student display name. Roll number cannot be changed."}</SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-col gap-4 pt-4">
+            <div className="flex flex-col gap-2">
+              <Label>{"Full Name"}</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Student full name" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label>{"Roll Number"}</Label>
+              <Input value={editRoll} disabled className="opacity-60" />
+              <p className="text-xs text-muted-foreground">{"Roll number cannot be changed."}</p>
+            </div>
+            <Button onClick={handleEditStudent} disabled={isSubmitting}>
+              {isSubmitting ? <><Loader2 className="size-4 animate-spin mr-2" />Saving...</> : 'Save Changes'}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Reset Password Confirm Dialog */}
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{"Reset Student Password"}</DialogTitle>
+            <DialogDescription>
+              This will reset <strong>{resetTarget?.roll}</strong>&apos;s password to the default <strong>{"Student@1234"}</strong>. The student will be prompted to set a new password on next sign in.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end pt-2">
+            <Button variant="outline" onClick={() => setResetOpen(false)}>{"Cancel"}</Button>
+            <Button onClick={handleResetStudentPassword} disabled={isSubmitting}>
+              {isSubmitting ? <><Loader2 className="size-4 animate-spin mr-2" />Resetting...</> : 'Reset Password'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
