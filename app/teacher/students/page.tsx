@@ -493,11 +493,17 @@ export default function StudentsPage() {
     setIsSubmitting(true)
     try {
       const supabase = createClient()
-      const { error: userError } = await supabase
+      const { data: updateData, error: userError, count } = await supabase
         .from('users')
         .update({ full_name: editName.trim() })
         .eq('id', editTarget.id)
-      if (userError) { toast.error('Failed to update name'); return }
+        .select()
+      console.log('Edit result:', { updateData, userError, count })
+      if (userError) { toast.error(`Failed to update name: ${userError.message}`); return }
+      if (!updateData || updateData.length === 0) { 
+        toast.error('Update blocked — RLS policy may be preventing this change'); 
+        return 
+      }
 
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       if (currentUser) {

@@ -157,19 +157,63 @@ export default function GeofencePage() {
     if (!searchQuery.trim()) return
     setIsSearching(true)
     try {
+      // Try India-restricted search first with Hyderabad viewbox bias
+      const indiaParams = new URLSearchParams({
+        q: searchQuery.trim(),
+        format: "json",
+        limit: "5",
+        countrycodes: "in",
+        // Viewbox around Hyderabad — prioritizes results in this area
+        viewbox: "78.2,17.6,78.8,17.2",
+        bounded: "0", // 0 = fall back outside viewbox if nothing found
+        addressdetails: "1",
+      })
+
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
-        { headers: { "Accept-Language": "en" } }
+        `https://nominatim.openstreetmap.org/search?${indiaParams.toString()}`,
+        { 
+          headers: { 
+            "Accept-Language": "en",
+            "User-Agent": "FactorAttendance/1.0"
+          } 
+        }
       )
       const data = await res.json()
+
       if (data && data.length > 0) {
-        const result = data[0]
-        setLat(parseFloat(result.lat).toFixed(6))
-        setLng(parseFloat(result.lon).toFixed(6))
-        if (!collegeName || collegeName === "NNRG College") setCollegeName(result.display_name.split(",")[0])
-        toast.success(`Found: ${result.display_name.split(",").slice(0, 2).join(",")}`)
+        // Pick the best result — prefer results closer to Hyderabad
+        const hyderabadLat = 17.4065
+        const hyderabadLng = 78.4772
+
+        const scored = data.map((r: any) => {
+          const dlat = parseFloat(r.lat) - hyderabadLat
+          const dlng = parseFloat(r.lon) - hyderabadLng
+          const distance = Math.sqrt(dlat * dlat + dlng * dlng)
+          return { ...r, distance }
+        })
+        scored.sort((a: any, b: any) => a.distance - b.distance)
+
+        const result = scored[0]
+        const newLat = parseFloat(result.lat).toFixed(6)
+        const newLng = parseFloat(result.lon).toFixed(6)
+        setLat(newLat)
+        setLng(newLng)
+
+        // Build a clean display name
+        const addr = result.address || {}
+        const displayParts = [
+          result.display_name.split(",")[0],
+          addr.suburb || addr.neighbourhood || addr.city_district || "",
+          addr.city || addr.town || addr.state_district || "Hyderabad",
+        ].filter(Boolean)
+        const displayName = displayParts.slice(0, 3).join(", ")
+
+        if (!collegeName || collegeName === "NNRG College") {
+          setCollegeName(result.display_name.split(",")[0])
+        }
+        toast.success(`Found: ${displayName}`)
       } else {
-        toast.error("Location not found. Try a more specific name.")
+        toast.error("Location not found in India. Try adding 'Hyderabad' to your search.")
       }
     } catch {
       toast.error("Search failed. Check your connection.")
@@ -253,7 +297,7 @@ export default function GeofencePage() {
             <CardContent className="pb-4">
               <div className="flex gap-2">
                 <Input
-                  placeholder="e.g. NNRG College Hyderabad"
+                  placeholder="e.g. NNRG College Hyderabad, Telangana"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -263,7 +307,7 @@ export default function GeofencePage() {
                   {isSearching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
                 </Button>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">{"Or click directly on the map to set location"}</p>
+              <p className="mt-2 text-[11px] text-muted-foreground">{"Search is restricted to India. Add city name for better results. Or click directly on the map."}</p>
             </CardContent>
           </Card>
 
