@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -42,6 +42,11 @@ export default function GeofencePage() {
   const [isFetchingLocation, setIsFetchingLocation] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState<{ display_name: string; lat: string; lon: string }[]>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 })
   const [savedValues, setSavedValues] = useState({ lat: "17.4944", lng: "78.3996", radius: "250", name: "NNRG College" })
 
   const fetchSettings = useCallback(async () => {
@@ -80,6 +85,17 @@ export default function GeofencePage() {
   }, [])
 
   useEffect(() => { fetchSettings() }, [fetchSettings])
+
+  useEffect(() => {
+    if (showDropdown && searchInputRef.current) {
+      const rect = searchInputRef.current.getBoundingClientRect()
+      setDropdownPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+  }, [showDropdown])
 
   async function handleSave() {
     if (!lat || !lng || !radius || !collegeName) {
@@ -153,73 +169,54 @@ export default function GeofencePage() {
     )
   }
 
-  async function handleSearch() {
-    if (!searchQuery.trim()) return
-    setIsSearching(true)
-    try {
-      // Try India-restricted search first with Hyderabad viewbox bias
-      const indiaParams = new URLSearchParams({
-        q: searchQuery.trim(),
-        format: "json",
-        limit: "5",
-        countrycodes: "in",
-        // Viewbox around Hyderabad — prioritizes results in this area
-        viewbox: "78.2,17.6,78.8,17.2",
-        bounded: "0", // 0 = fall back outside viewbox if nothing found
-        addressdetails: "1",
-      })
-
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?${indiaParams.toString()}`,
-        { 
-          headers: { 
-            "Accept-Language": "en",
-            "User-Agent": "FactorAttendance/1.0"
-          } 
-        }
-      )
-      const data = await res.json()
-
-      if (data && data.length > 0) {
-        // Pick the best result — prefer results closer to Hyderabad
-        const hyderabadLat = 17.4065
-        const hyderabadLng = 78.4772
-
-        const scored = data.map((r: any) => {
-          const dlat = parseFloat(r.lat) - hyderabadLat
-          const dlng = parseFloat(r.lon) - hyderabadLng
-          const distance = Math.sqrt(dlat * dlat + dlng * dlng)
-          return { ...r, distance }
-        })
-        scored.sort((a: any, b: any) => a.distance - b.distance)
-
-        const result = scored[0]
-        const newLat = parseFloat(result.lat).toFixed(6)
-        const newLng = parseFloat(result.lon).toFixed(6)
-        setLat(newLat)
-        setLng(newLng)
-
-        // Build a clean display name
-        const addr = result.address || {}
-        const displayParts = [
-          result.display_name.split(",")[0],
-          addr.suburb || addr.neighbourhood || addr.city_district || "",
-          addr.city || addr.town || addr.state_district || "Hyderabad",
-        ].filter(Boolean)
-        const displayName = displayParts.slice(0, 3).join(", ")
-
-        if (!collegeName || collegeName === "NNRG College") {
-          setCollegeName(result.display_name.split(",")[0])
-        }
-        toast.success(`Found: ${displayName}`)
-      } else {
-        toast.error("Location not found in India. Try adding 'Hyderabad' to your search.")
-      }
-    } catch {
-      toast.error("Search failed. Check your connection.")
-    } finally {
-      setIsSearching(false)
+  function handleSearchInput(value: string) {
+    setSearchQuery(value)
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    if (value.trim().length < 3) {
+      setSearchResults([])
+      setShowDropdown(false)
+      return
     }
+    searchTimerRef.current = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const params = new URLSearchParams({
+          q: value.trim(),
+          format: "json",
+          limit: "5",
+          countrycodes: "in",
+          addressdetails: "1",
+        })
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+          { headers: { "Accept-Language": "en", "User-Agent": "FactorAttendance/1.0" } }
+        )
+        const data = await res.json()
+        if (data && data.length > 0) {
+          setSearchResults(data.map((r: any) => ({ display_name: r.display_name, lat: r.lat, lon: r.lon })))
+          setShowDropdown(true)
+        } else {
+          setSearchResults([])
+          setShowDropdown(true)
+        }
+      } catch {
+        setSearchResults([])
+        setShowDropdown(false)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 400)
+  }
+
+  function handleSelectResult(result: { display_name: string; lat: string; lon: string }) {
+    setLat(parseFloat(result.lat).toFixed(6))
+    setLng(parseFloat(result.lon).toFixed(6))
+    if (!collegeName) {
+      setCollegeName(result.display_name.split(",")[0])
+    }
+    setShowDropdown(false)
+    setSearchQuery("")
+    setSearchResults([])
   }
 
   const handleMapClick = useCallback((newLat: number, newLng: number) => {
@@ -295,17 +292,44 @@ export default function GeofencePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pb-4">
-              <div className="flex gap-2">
+              <div className="relative">
                 <Input
+                  ref={searchInputRef}
                   placeholder="e.g. NNRG College Hyderabad, Telangana"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                   className="text-sm"
                 />
-                <Button size="sm" onClick={handleSearch} disabled={isSearching} className="shrink-0">
-                  {isSearching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-                </Button>
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                {showDropdown && (
+                  <div
+                    style={{ top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+                    className="fixed z-50 rounded-lg border border-border bg-white dark:bg-popover shadow-lg overflow-hidden"
+                  >
+                    {searchResults.length > 0 ? (
+                      searchResults.map((result, idx) => (
+                        <div
+                          key={idx}
+                          className="px-3 py-2.5 text-sm cursor-pointer whitespace-normal break-words leading-snug hover:bg-accent transition-colors border-b border-border last:border-0"
+                          onMouseDown={() => handleSelectResult(result)}
+                        >
+                          {result.display_name}
+                        </div>
+                      ))
+                    ) : (
+                      !isSearching && (
+                        <div className="px-3 py-3 text-sm text-muted-foreground text-center">
+                          {"No results found. Try adding city or state name."}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">{"Search is restricted to India. Add city name for better results. Or click directly on the map."}</p>
             </CardContent>
