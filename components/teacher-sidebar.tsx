@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
   Users,
-  ScanFace,
   QrCode,
   CalendarDays,
   BarChart3,
@@ -30,7 +29,6 @@ const navGroups = [
     label: "Manage",
     items: [
       { label: "Students", href: "/teacher/students", icon: Users },
-      { label: "Face Approval", href: "/teacher/face-approval", icon: ScanFace },
     ],
   },
   {
@@ -50,53 +48,29 @@ interface TeacherSidebarProps {
 
 export function TeacherSidebar({ onClose }: TeacherSidebarProps) {
   const pathname = usePathname()
-  const [pendingCount, setPendingCount] = useState<number>(0)
   const [teacherName, setTeacherName] = useState("Teacher")
   const [teacherInitials, setTeacherInitials] = useState("T")
 
-  const fetchPendingCount = useCallback(async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from("users")
-        .select("full_name")
-        .eq("id", user.id)
-        .single()
-
-      if (profile?.full_name) {
-        setTeacherName(profile.full_name)
-        setTeacherInitials(
-          profile.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
-        )
-      }
-
-      const { data: students } = await supabase
-        .from("students")
-        .select("id")
-        .eq("created_by", user.id)
-
-      if (students && students.length > 0) {
-        const studentIds = students.map((s) => s.id)
-        const { count } = await supabase
-          .from("face_registrations")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "pending")
-          .in("student_id", studentIds)
-        setPendingCount(count || 0)
-      } else {
-        setPendingCount(0)
+  useEffect(() => {
+    async function loadTeacherName() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("full_name")
+          .eq("id", user.id)
+          .single()
+        if (profile?.full_name) {
+          setTeacherName(profile.full_name)
+          setTeacherInitials(
+            profile.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+          )
+        }
       }
     }
+    loadTeacherName()
   }, [])
-
-  useEffect(() => {
-    fetchPendingCount()
-    const handleUpdate = () => fetchPendingCount()
-    window.addEventListener("face-approval-updated", handleUpdate)
-    return () => window.removeEventListener("face-approval-updated", handleUpdate)
-  }, [fetchPendingCount])
 
   return (
     <aside className="flex h-full flex-col bg-card border-r border-border overflow-hidden">
@@ -114,7 +88,7 @@ export function TeacherSidebar({ onClose }: TeacherSidebarProps) {
 
       {/* ── Teacher profile card ──────────────────────────── */}
       <div className="px-4 pb-4">
-        <div className="relative flex items-center gap-3 rounded-xl border border-border bg-gradient-to-br from-muted/60 to-muted/20 px-3 py-3 shadow-sm">
+        <div className="relative flex items-center gap-3 rounded-xl border border-border bg-linear-to-br from-muted/60 to-muted/20 px-3 py-3 shadow-sm">
           {/* Avatar with online dot */}
           <div className="relative shrink-0">
             <Avatar className="size-9 ring-2 ring-primary/20 ring-offset-1">
@@ -151,11 +125,6 @@ export function TeacherSidebar({ onClose }: TeacherSidebarProps) {
 
               <ul className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
-                  // inject badge for face approval
-                  const badge =
-                    item.label === "Face Approval" && pendingCount > 0
-                      ? pendingCount
-                      : null
                   const isActive = pathname === item.href
 
                   return (
@@ -173,7 +142,7 @@ export function TeacherSidebar({ onClose }: TeacherSidebarProps) {
                         {/* Left accent bar */}
                         <span
                           className={cn(
-                            "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-200",
+                            "absolute left-0 top-1/2 -translate-y-1/2 w-0.75 rounded-r-full transition-all duration-200",
                             isActive
                               ? "h-6 bg-primary opacity-100"
                               : "h-0 bg-primary opacity-0 group-hover:h-4 group-hover:opacity-40"
@@ -201,20 +170,6 @@ export function TeacherSidebar({ onClose }: TeacherSidebarProps) {
                         >
                           {item.label}
                         </span>
-
-                        {/* Badge */}
-                        {badge && (
-                          <span
-                            className={cn(
-                              "flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold min-w-5 tabular-nums",
-                              isActive
-                                ? "bg-primary/20 text-primary"
-                                : "bg-destructive text-white shadow-sm"
-                            )}
-                          >
-                            {badge}
-                          </span>
-                        )}
                       </Link>
                     </li>
                   )

@@ -11,6 +11,8 @@ import {
   MapPin,
   LogOut,
   CalendarDays,
+  GraduationCap,
+  ScanFace,
 } from "lucide-react"
 import { FALogo } from "@/components/fa-logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -27,6 +29,8 @@ const navGroups = [
     label: "MANAGE",
     items: [
       { label: "Teachers", href: "/admin/teachers", icon: Users },
+      { label: "Students", href: "/admin/students", icon: GraduationCap },
+      { label: "Face Approval", href: "/admin/face-approval", icon: ScanFace },
       { label: "Academic Structure", href: "/admin/academic-structure", icon: Building },
       { label: "Teacher Assignments", href: "/admin/assignments", icon: Link2 },
       { label: "Timetable", href: "/admin/timetable", icon: CalendarDays },
@@ -63,7 +67,7 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
 
       {/* Admin profile */}
       <div className="px-4 pb-4">
-        <div className="relative flex items-center gap-3 rounded-xl border border-border bg-gradient-to-br from-muted/60 to-muted/20 px-3 py-3 shadow-sm">
+        <div className="relative flex items-center gap-3 rounded-xl border border-border bg-linear-to-br from-muted/60 to-muted/20 px-3 py-3 shadow-sm">
           <div className="relative shrink-0">
             <Avatar className="size-9 ring-2 ring-primary/20 ring-offset-1">
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
@@ -107,7 +111,7 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
                         )}
                       >
                         <span className={cn(
-                          "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full transition-all duration-200",
+                          "absolute left-0 top-1/2 -translate-y-1/2 w-0.75 rounded-r-full transition-all duration-200",
                           isActive
                             ? "h-6 bg-primary opacity-100"
                             : "h-0 bg-primary opacity-0 group-hover:h-4 group-hover:opacity-40"

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 const pageTitles: Record<string, string> = {
   "/teacher/dashboard": "Dashboard",
   "/teacher/students": "Students",
-  "/teacher/face-approval": "Face Approval",
   "/teacher/qr-attendance": "QR Attendance",
   "/teacher/missed-attendance": "Missed Attendance",
   "/teacher/attendance-history": "Attendance History",

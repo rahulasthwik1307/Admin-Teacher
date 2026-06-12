@@ -1,8 +1,51 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { NextResponse } from "next/server"
 
+// Simple in-memory rate limiter — max 3 attempts per IP per 15 minutes
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_MAX = 3
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return { allowed: true, retryAfterSeconds: 0 }
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000)
+    return { allowed: false, retryAfterSeconds }
+  }
+
+  entry.count++
+  return { allowed: true, retryAfterSeconds: 0 }
+}
+
 export async function POST(request: Request) {
   try {
+    // Rate limiting — get client IP from Vercel headers
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "unknown"
+
+    const rateCheck = checkRateLimit(ip)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: `Too many attempts. Please wait ${Math.ceil(rateCheck.retryAfterSeconds / 60)} minute(s) before trying again.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateCheck.retryAfterSeconds),
+          },
+        }
+      )
+    }
     const body = await request.json()
     const { roll_number } = body
 
