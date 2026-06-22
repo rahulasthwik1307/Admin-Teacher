@@ -181,9 +181,9 @@ export default function HomePage() {
       <section className="relative flex flex-col items-center justify-center overflow-hidden px-4 py-24 sm:py-32 md:py-44 text-center">
 
         {/* Floating orbs */}
-        <div className="pointer-events-none absolute -top-48 -left-48 size-[600px] rounded-full bg-[#2563EB]/8 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -right-32 size-[500px] rounded-full bg-[#7c3aed]/6 blur-3xl" />
-        <div className="pointer-events-none absolute top-1/3 left-1/2 size-[300px] -translate-x-1/2 rounded-full bg-[#0ea5e9]/5 blur-3xl" />
+        <div className="pointer-events-none absolute -top-48 -left-48 size-150 rounded-full bg-[#2563EB]/8 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -right-32 size-125 rounded-full bg-[#7c3aed]/6 blur-3xl" />
+        <div className="pointer-events-none absolute top-1/3 left-1/2 size-75 -translate-x-1/2 rounded-full bg-[#0ea5e9]/5 blur-3xl" />
 
         {/* Dot grid */}
         <div
@@ -280,7 +280,7 @@ export default function HomePage() {
       <section className="px-4 py-20 sm:py-24">
         <RevealSection>
           <div className="mx-auto max-w-4xl">
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2563EB] via-[#1d4ed8] to-[#1e40af] px-8 py-16 text-center shadow-2xl shadow-[#2563EB]/25">
+            <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#2563EB] via-[#1d4ed8] to-[#1e40af] px-8 py-16 text-center shadow-2xl shadow-[#2563EB]/25">
               {/* Inner orbs */}
               <div className="pointer-events-none absolute -top-16 -right-16 size-64 rounded-full bg-white/8 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-16 -left-16 size-48 rounded-full bg-white/8 blur-3xl" />

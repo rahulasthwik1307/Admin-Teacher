@@ -22,7 +22,7 @@ interface GeofenceMapProps {
 const GeofenceMap = dynamic(
   () => import("./geofence-map") as Promise<{ default: ComponentType<GeofenceMapProps> }>,
   { ssr: false, loading: () => (
-    <div className="flex h-full min-h-[480px] items-center justify-center rounded-xl bg-muted/30">
+    <div className="flex h-full min-h-120 items-center justify-center rounded-xl bg-muted/30">
       <div className="flex flex-col items-center gap-3">
         <Loader2 className="size-8 animate-spin text-primary" />
         <span className="text-sm text-muted-foreground">{"Loading map…"}</span>
@@ -315,7 +315,7 @@ export default function GeofencePage() {
                       searchResults.map((result, idx) => (
                         <div
                           key={idx}
-                          className="px-3 py-2.5 text-sm cursor-pointer whitespace-normal break-words leading-snug hover:bg-accent transition-colors border-b border-border last:border-0"
+                          className="px-3 py-2.5 text-sm cursor-pointer whitespace-normal wrap-break-word leading-snug hover:bg-accent transition-colors border-b border-border last:border-0"
                           onMouseDown={() => handleSelectResult(result)}
                         >
                           {result.display_name}
@@ -438,7 +438,7 @@ export default function GeofencePage() {
         </div>
 
         {/* RIGHT — Map */}
-        <Card className="overflow-hidden min-h-[500px] lg:min-h-0">
+        <Card className="overflow-hidden min-h-125 lg:min-h-0">
           <CardContent className="p-0 h-full" style={{ minHeight: 500 }}>
             <GeofenceMap
               center={mapCenter}

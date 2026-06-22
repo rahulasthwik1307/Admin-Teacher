@@ -105,6 +105,7 @@ export default function AdminFaceApprovalPage() {
       const { error } = await supabase.from("students").update({ is_approved: true }).eq("id", approveTarget.studentId)
       if (error) throw error
       toast.success(`Approved face registration for ${approveTarget.name}`)
+      window.dispatchEvent(new Event("face-approval-updated"))
       const approvedStudent = pending.find((s) => s.id === approveTarget.studentId)
       if (approvedStudent) setApproved((prev) => [approvedStudent, ...prev])
       setPending((prev) => prev.filter((s) => s.id !== approveTarget.studentId))
@@ -127,6 +128,7 @@ export default function AdminFaceApprovalPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || "Failed to reject")
       toast.success(`Rejected face registration for ${rejectTarget.name}`)
+      window.dispatchEvent(new Event("face-approval-updated"))
       setPending((prev) => prev.filter((s) => s.id !== rejectTarget.studentId))
       setApproved((prev) => prev.filter((s) => s.id !== rejectTarget.studentId))
     } catch {

@@ -204,7 +204,7 @@ export function RecentActivity() {
                     </div>
                     {/* Vertical connecting line */}
                     {!isLast && (
-                      <div className={cn("mt-1 w-0.5 flex-1 min-h-[28px]", cfg.line)} />
+                      <div className={cn("mt-1 w-0.5 flex-1 min-h-7", cfg.line)} />
                     )}
                   </div>
 

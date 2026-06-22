@@ -18,10 +18,10 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-svh flex-col lg:flex-row">
       {/* Left brand panel — hidden on mobile, shown on lg+ */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative overflow-hidden bg-gradient-to-br from-[#2563EB] to-[#1e40af] px-12">
+      <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center relative overflow-hidden bg-linear-to-br from-[#2563EB] to-[#1e40af] px-12">
         {/* Subtle decorative circles */}
         <div className="absolute -top-24 -left-24 size-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-32 -right-32 size-[500px] rounded-full bg-white/5" />
+        <div className="absolute -bottom-32 -right-32 size-125 rounded-full bg-white/5" />
 
         <div className="relative z-10 flex flex-col items-center gap-6 text-center">
           <FALogo size="lg" variant="white" />

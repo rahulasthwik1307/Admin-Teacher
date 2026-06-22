@@ -112,7 +112,7 @@ export function MyClasses() {
                       key={row.key}
                       className="group border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/40"
                     >
-                      <td className="py-3.5 pr-4 truncate max-w-[120px]" title={row.subject}>
+                      <td className="py-3.5 pr-4 truncate max-w-30" title={row.subject}>
                         <span className="font-semibold text-foreground">{row.subject}</span>
                       </td>
                       <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.className}</td>

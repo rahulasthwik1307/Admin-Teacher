@@ -411,7 +411,7 @@ export default function ReportsPage() {
                   <CardTitle className="text-base font-semibold">Completion Overview</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                  <div className="relative h-[220px]">
+                  <div className="relative h-55">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -594,7 +594,7 @@ export default function ReportsPage() {
                   <CardTitle className="text-base font-semibold">Overall Attendance</CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                  <div className="relative h-[220px]">
+                  <div className="relative h-55">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie

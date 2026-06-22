@@ -213,7 +213,7 @@ export function QRActiveSession({
 
       {/* ── RIGHT COLUMN — Live Student List ── */}
       <Card className="lg:col-span-3 shadow-sm">
-        <CardContent className="flex h-[calc(100svh-12rem)] flex-col pt-5 lg:h-auto lg:min-h-[600px]">
+        <CardContent className="flex h-[calc(100svh-12rem)] flex-col pt-5 lg:h-auto lg:min-h-150">
           <LiveStudentList students={students} />
         </CardContent>
       </Card>

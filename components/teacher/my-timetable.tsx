@@ -277,7 +277,7 @@ export function MyTimetable() {
         {/* EXPANDED — WEEKLY GRID VIEW */}
         {isExpanded && gridView && (
           <div className="overflow-x-auto">
-            <div className="min-w-[600px]">
+            <div className="min-w-150">
               <div className="rounded-xl border border-border overflow-hidden">
                 {/* Header row */}
                 <div className="grid bg-muted/50" style={{ gridTemplateColumns: `80px repeat(6, 1fr)` }}>
@@ -303,14 +303,14 @@ export function MyTimetable() {
                         const color = slot ? getSubjectColor(slot.subjectName) : null
                         const isToday = d.value === todayDow
                         return (
-                          <div key={d.value} className={cn("relative min-h-[64px] border-r border-border last:border-r-0 p-1.5", isToday ? "bg-primary/3" : "")}>
+                          <div key={d.value} className={cn("relative min-h-16 border-r border-border last:border-r-0 p-1.5", isToday ? "bg-primary/3" : "")}>
                             {slot ? (
                               <div className={cn("h-full rounded-lg border p-2 flex flex-col gap-0.5", color!.bg, color!.border)}>
                                 <div className={cn("text-[11px] font-semibold leading-tight line-clamp-2", color!.text)}>{slot.subjectName}</div>
                                 <div className="text-[10px] text-muted-foreground">{slot.className}-{slot.section}</div>
                               </div>
                             ) : (
-                              <div className={cn("h-full min-h-[48px] rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center", isToday ? "border-primary/20" : "")}>
+                              <div className={cn("h-full min-h-12 rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center", isToday ? "border-primary/20" : "")}>
                                 <span className="text-[10px] text-muted-foreground/40">—</span>
                               </div>
                             )}

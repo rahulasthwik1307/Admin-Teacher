@@ -136,7 +136,7 @@ export function QRSummaryState({
 
       {/* ── Session Summary Header ── */}
       <Card className="shadow-sm overflow-hidden">
-        <div className="h-1 w-full bg-gradient-to-r from-emerald-400 via-primary to-blue-500" />
+        <div className="h-1 w-full bg-linear-to-r from-emerald-400 via-primary to-blue-500" />
         <CardContent className="pt-5 pb-5">
           <div className="flex flex-col gap-0.5 mb-4">
             <h2 className="text-xl font-bold text-foreground">{subjectLabel}</h2>

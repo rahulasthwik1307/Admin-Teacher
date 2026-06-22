@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -20,6 +21,8 @@ import {
   CheckCircle2,
   Clock,
   BarChart3,
+  ScanFace,
+  ArrowRight,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -127,6 +130,7 @@ interface DashboardStats {
   students: number
   departments: number
   activeSessions: number
+  pendingFaceApprovals: number
 }
 
 interface SystemStatusItem {
@@ -141,6 +145,7 @@ export default function AdminDashboardPage() {
     students: 0,
     departments: 0,
     activeSessions: 0,
+    pendingFaceApprovals: 0,
   })
   const [teacherActivity, setTeacherActivity] = useState<TeacherActivityRow[]>([])
   const [systemStatus, setSystemStatus] = useState<SystemStatusItem[]>([])
@@ -170,6 +175,7 @@ export default function AdminDashboardPage() {
         { data: weekSessions },
         { data: activeTeachers },
         { data: logs },
+        { count: pendingFaceCount },
       ] = await Promise.all([
         supabase.from("teachers").select("id", { count: "exact", head: true }).eq("is_active", true),
         supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
@@ -188,6 +194,12 @@ export default function AdminDashboardPage() {
           .select("id, created_at, description, performed_by, action_type")
           .order("created_at", { ascending: false })
           .limit(8),
+        supabase
+          .from("students")
+          .select("id", { count: "exact", head: true })
+          .eq("is_approved", false)
+          .eq("is_rejected", false)
+          .not("embedding_a", "is", null),
       ])
 
       setStats({
@@ -195,6 +207,7 @@ export default function AdminDashboardPage() {
         students: studentCount ?? 0,
         departments: deptCount ?? 0,
         activeSessions: activeSessionCount ?? 0,
+        pendingFaceApprovals: pendingFaceCount ?? 0,
       })
 
       // ── Teacher Activity ──
@@ -383,6 +396,31 @@ export default function AdminDashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* ── Pending Face Approvals Banner ── */}
+      {stats.pendingFaceApprovals > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-5 py-4">
+          <div className="flex items-center gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/40">
+              <ScanFace className="size-5 text-amber-600" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                {stats.pendingFaceApprovals} Student{stats.pendingFaceApprovals !== 1 ? "s" : ""} Waiting for Face Approval
+              </span>
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                Review and approve face registrations to allow students to mark attendance
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/admin/face-approval"
+            className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700 shrink-0 ml-4"
+          >
+            Review <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      )}
 
       {/* ── Teacher Activity + System Status ── */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -582,7 +620,7 @@ export default function AdminDashboardPage() {
                   <div key={i} className="relative flex gap-4 pb-5 last:pb-0">
                     {/* Vertical line */}
                     {i < recentActivity.length - 1 && (
-                      <div className="absolute left-[15px] top-8 h-full w-px bg-border" />
+                      <div className="absolute left-3.75 top-8 h-full w-px bg-border" />
                     )}
                     {/* Icon */}
                     <div

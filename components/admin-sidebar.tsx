@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState, useCallback } from "react"
 import {
   LayoutDashboard,
   Users,
@@ -17,33 +18,7 @@ import {
 import { FALogo } from "@/components/fa-logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-
-const navGroups = [
-  {
-    label: "OVERVIEW",
-    items: [
-      { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-    ]
-  },
-  {
-    label: "MANAGE",
-    items: [
-      { label: "Teachers", href: "/admin/teachers", icon: Users },
-      { label: "Students", href: "/admin/students", icon: GraduationCap },
-      { label: "Face Approval", href: "/admin/face-approval", icon: ScanFace },
-      { label: "Academic Structure", href: "/admin/academic-structure", icon: Building },
-      { label: "Teacher Assignments", href: "/admin/assignments", icon: Link2 },
-      { label: "Timetable", href: "/admin/timetable", icon: CalendarDays },
-    ]
-  },
-  {
-    label: "REPORTS & SETTINGS",
-    items: [
-      { label: "Reports", href: "/admin/reports", icon: BarChart3 },
-      { label: "Geofence Setup", href: "/admin/geofence", icon: MapPin },
-    ]
-  },
-]
+import { createClient } from "@/lib/supabase/client"
 
 interface AdminSidebarProps {
   onClose?: () => void
@@ -51,6 +26,90 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ onClose }: AdminSidebarProps) {
   const pathname = usePathname()
+  const [pendingCount, setPendingCount] = useState<number>(0)
+  const [adminName, setAdminName] = useState("Administrator")
+  const [adminInitials, setAdminInitials] = useState("AD")
+
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      const supabase = createClient()
+
+      // Load admin name
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("full_name")
+          .eq("id", user.id)
+          .single()
+        if (profile?.full_name) {
+          setAdminName(profile.full_name)
+          setAdminInitials(
+            profile.full_name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2)
+          )
+        }
+      }
+
+      // Count pending face approvals
+      const { count } = await supabase
+        .from("students")
+        .select("id", { count: "exact", head: true })
+        .eq("is_approved", false)
+        .eq("is_rejected", false)
+        .not("embedding_a", "is", null)
+
+      setPendingCount(count || 0)
+    } catch {
+      // fail silently
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPendingCount()
+    // Refresh count when face approval page updates
+    const handleUpdate = () => fetchPendingCount()
+    window.addEventListener("face-approval-updated", handleUpdate)
+    return () => window.removeEventListener("face-approval-updated", handleUpdate)
+  }, [fetchPendingCount])
+
+  // Also refresh when navigating back to dashboard
+  useEffect(() => {
+    if (pathname === "/admin/dashboard" || pathname === "/admin/face-approval") {
+      fetchPendingCount()
+    }
+  }, [pathname, fetchPendingCount])
+
+  const navGroups = [
+    {
+      label: "OVERVIEW",
+      items: [
+        { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard, badge: null },
+      ],
+    },
+    {
+      label: "MANAGE",
+      items: [
+        { label: "Teachers", href: "/admin/teachers", icon: Users, badge: null },
+        { label: "Students", href: "/admin/students", icon: GraduationCap, badge: null },
+        { label: "Face Approval", href: "/admin/face-approval", icon: ScanFace, badge: pendingCount > 0 ? pendingCount : null },
+        { label: "Academic Structure", href: "/admin/academic-structure", icon: Building, badge: null },
+        { label: "Teacher Assignments", href: "/admin/assignments", icon: Link2, badge: null },
+        { label: "Timetable", href: "/admin/timetable", icon: CalendarDays, badge: null },
+      ],
+    },
+    {
+      label: "REPORTS & SETTINGS",
+      items: [
+        { label: "Reports", href: "/admin/reports", icon: BarChart3, badge: null },
+        { label: "Geofence Setup", href: "/admin/geofence", icon: MapPin, badge: null },
+      ],
+    },
+  ]
 
   return (
     <aside className="flex h-full flex-col bg-card border-r border-border">
@@ -71,14 +130,14 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
           <div className="relative shrink-0">
             <Avatar className="size-9 ring-2 ring-primary/20 ring-offset-1">
               <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                RK
+                {adminInitials}
               </AvatarFallback>
             </Avatar>
             <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-foreground leading-tight">
-              Dr. R. Kumar
+              {adminName}
             </span>
             <span className="text-xs text-muted-foreground">Administrator</span>
           </div>
@@ -130,6 +189,16 @@ export function AdminSidebar({ onClose }: AdminSidebarProps) {
                         )}>
                           {item.label}
                         </span>
+                        {item.badge && (
+                          <span className={cn(
+                            "flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold min-w-5 tabular-nums",
+                            isActive
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-amber-500 text-white shadow-sm"
+                          )}>
+                            {item.badge}
+                          </span>
+                        )}
                       </Link>
                     </li>
                   )

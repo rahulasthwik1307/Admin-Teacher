@@ -477,7 +477,7 @@ export default function TimetablePage() {
       ══════════════════════════════════════ */}
       {!isLoading && viewMode === "grid" && (
         <div className="overflow-x-auto">
-          <div className="min-w-[700px]">
+          <div className="min-w-175">
             {entries.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No timetable entries yet. Click "Add Slot" or "Fill Week" to create one.</CardContent></Card>
             ) : (
@@ -527,7 +527,7 @@ export default function TimetablePage() {
                           style={{ minHeight: cellEntries.length > 1 ? `${cellEntries.length * 72}px` : "72px" }}
                         >
                           {cellEntries.length === 0 ? (
-                            <div className={`flex-1 min-h-[56px] rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center ${isToday ? "border-primary/20" : ""}`}>
+                            <div className={`flex-1 min-h-14 rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center ${isToday ? "border-primary/20" : ""}`}>
                               <span className="text-[10px] text-muted-foreground/40">—</span>
                             </div>
                           ) : (
@@ -833,7 +833,7 @@ export default function TimetablePage() {
                         <tr key={p.id} className="border-t border-border">
                           <td className="px-1 sm:px-2 py-2">
                             <div className="font-bold text-foreground text-sm">P{p.number}</div>
-                            <div className="text-muted-foreground text-xs break-words">{p.start}</div>
+                            <div className="text-muted-foreground text-xs wrap-break-word">{p.start}</div>
                           </td>
                           {DAYS.map(d => {
                             const key = `${d.value}__${p.id}`
