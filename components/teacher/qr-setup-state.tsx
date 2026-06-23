@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { RecentSessionsSkeleton } from "@/components/ui/skeletons"
 
 export interface DropdownOption {
   value: string
@@ -299,11 +300,7 @@ export function QRSetupState({
         </CardHeader>
         <CardContent className="pt-2">
           {recentSessionsLoading ? (
-            <div className="flex flex-col gap-3 py-4 border-t border-transparent">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className={`h-12 w-full rounded-lg bg-muted animate-pulse opacity-${Math.max(20, 100 - i * 20)}`} />
-              ))}
-            </div>
+            <RecentSessionsSkeleton />
           ) : filteredSessions.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               {recentSessions.length === 0 ? "No recent sessions found." : "No sessions match your filters."}

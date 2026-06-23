@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { Skeleton } from "@/components/ui/skeleton"
+import { CardSkeleton, ChartSkeleton } from "@/components/ui/skeletons"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   TrendingUp,
   TrendingDown,
@@ -593,8 +596,29 @@ export default function AnalyticsPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <div className="flex flex-col gap-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map(i => (
+              <Card key={i} className="overflow-hidden">
+                <CardContent className="p-5 flex flex-col gap-4">
+                  <div className="flex justify-between items-start">
+                    <Skeleton className="h-5 w-1/2" />
+                    <Skeleton className="h-5 w-12 rounded-full" />
+                  </div>
+                  <Skeleton className="h-3 w-3/4" />
+                  <div className="h-px bg-border my-2" />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between"><Skeleton className="h-3.5 w-16" /><Skeleton className="h-3.5 w-8" /></div>
+                    <div className="flex justify-between"><Skeleton className="h-3.5 w-20" /><Skeleton className="h-3.5 w-8" /></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+            <ChartSkeleton />
+            <CardSkeleton />
+          </div>
         </div>
       ) : (
         <>

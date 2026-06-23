@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { TableSkeleton, ListSkeleton } from "@/components/ui/skeletons"
 
 interface Student {
   id: string
@@ -123,22 +124,6 @@ function MobileGroupHeader({ className, students }: { className: string; student
       {approved > 0 && <span className="text-xs font-medium text-emerald-700 bg-emerald-100 rounded-full px-2 py-0.5">{approved} approved</span>}
       {pending > 0 && <span className="text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">{pending} pending</span>}
     </div>
-  )
-}
-
-function TableSkeleton() {
-  return (
-    <>
-      {[1, 2, 3, 4].map((i) => (
-        <tr key={i} className="border-b border-border last:border-0 animate-pulse">
-          <td className="px-4 py-3"><div className="flex items-center gap-3"><div className="size-11 rounded-full bg-muted shrink-0" /><div className="h-4 w-24 rounded bg-muted" /></div></td>
-          <td className="px-4 py-3"><div className="h-4 w-16 rounded bg-muted" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-12 rounded bg-muted" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-14 rounded bg-muted" /></td>
-          <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-muted" /></td>
-        </tr>
-      ))}
-    </>
   )
 }
 
@@ -309,24 +294,29 @@ export default function TeacherStudentsPage() {
       )}
 
       {/* Table desktop */}
-      <div className="hidden rounded-xl border border-border bg-card md:block overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/60">
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Student</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Roll Number</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Class</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Year</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Face Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? <TableSkeleton /> : filtered.length === 0 && !fetchError ? (
-                <tr><td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
-                  {students.length === 0 ? "No students in your assigned classes yet." : "No students found matching your search."}
-                </td></tr>
-              ) : isGrouped && groupedStudents ? (
+      {isLoading ? (
+        <div className="hidden md:block">
+          <TableSkeleton cols={5} rows={6} hasAvatar={true} />
+        </div>
+      ) : (
+        <div className="hidden rounded-xl border border-border bg-card md:block overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/60">
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Student</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Roll Number</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Class</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Year</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Face Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && !fetchError ? (
+                  <tr><td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                    {students.length === 0 ? "No students in your assigned classes yet." : "No students found matching your search."}
+                  </td></tr>
+                ) : isGrouped && groupedStudents ? (
                 Array.from(groupedStudents.entries()).map(([cls, clsStudents]) => (
                   <Fragment key={cls}>
                     <GroupHeader className={cls} students={clsStudents} />
@@ -356,11 +346,12 @@ export default function TeacherStudentsPage() {
           </table>
         </div>
       </div>
+    )}
 
       {/* Cards mobile */}
       <div className="flex flex-col gap-3 md:hidden">
         {isLoading ? (
-          <>{[1,2,3].map(i => <div key={i} className="rounded-lg border border-border bg-card p-4 animate-pulse"><div className="flex items-center gap-3"><div className="size-11 rounded-full bg-muted" /><div className="flex flex-col gap-2"><div className="h-4 w-28 rounded bg-muted" /><div className="h-3 w-16 rounded bg-muted" /></div></div></div>)}</>
+          <ListSkeleton count={4} hasAvatar={true} />
         ) : filtered.length === 0 && !fetchError ? (
           <div className="rounded-lg border border-border bg-card px-4 py-12 text-center text-muted-foreground">
             {students.length === 0 ? "No students in your assigned classes yet." : "No students found matching your search."}

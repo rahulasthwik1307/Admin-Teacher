@@ -20,6 +20,8 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
+import { TableSkeleton, ListSkeleton, CardSkeleton, ChartSkeleton } from "@/components/ui/skeletons"
 
 /* ── Types ── */
 interface TeacherActivityRow {
@@ -402,7 +404,10 @@ export default function ReportsPage() {
           </div>
 
           {loadingTeachers ? (
-            <div className="flex justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+              <CardSkeleton />
+              <TableSkeleton cols={5} rows={6} hasAvatar={true} />
+            </div>
           ) : (
             <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
               {/* Completion Overview Chart */}
@@ -542,7 +547,15 @@ export default function ReportsPage() {
       ════════════════════════════════ */}
       {activeTab === "attendance-overview" && (
         loadingOverview ? (
-          <div className="flex justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+          <div className="flex flex-col gap-5">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[1, 2, 3, 4].map(i => <CardSkeleton key={i} />)}
+            </div>
+            <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+              <ChartSkeleton />
+              <ListSkeleton count={4} hasAvatar={false} />
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col gap-5">
             {/* Stat cards */}
@@ -780,7 +793,14 @@ export default function ReportsPage() {
           </div>
 
           {loadingLogs ? (
-            <div className="flex justify-center py-12"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+            <div className="flex flex-col gap-4">
+              {[1, 2].map(i => (
+                <div key={i} className="flex flex-col gap-3">
+                  <Skeleton className="h-4 w-28" />
+                  <TableSkeleton cols={4} rows={3} hasAvatar={false} />
+                </div>
+              ))}
+            </div>
           ) : filteredLogs.length === 0 ? (
             <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No logs match the selected filters.</CardContent></Card>
           ) : (

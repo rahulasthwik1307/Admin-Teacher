@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Loader2, Activity, CheckCircle2, Radio, UserPlus, ScanFace } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { RecentActivitySkeleton } from "@/components/ui/skeletons"
 
 interface ActivityItem {
   description: string
@@ -151,6 +152,10 @@ export function RecentActivity() {
     load()
   }, [])
 
+  if (loading) {
+    return <RecentActivitySkeleton />
+  }
+
   return (
     <>
       <style>{`
@@ -168,11 +173,7 @@ export function RecentActivity() {
           <h3 className="text-base font-semibold text-foreground">Recent Activity</h3>
         </div>
 
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center py-8">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : activities.length === 0 ? (
+        {activities.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
               <Activity className="size-5 text-muted-foreground" />

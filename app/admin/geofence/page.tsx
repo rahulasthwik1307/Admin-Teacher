@@ -11,6 +11,7 @@ import { MapPin, Info, Loader2, Search, Navigation, Target, Maximize2 } from "lu
 import { createClient } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
 import type { ComponentType } from "react"
+import { MapSkeleton } from "@/components/ui/skeletons"
 
 interface GeofenceMapProps {
   center: { lat: number; lng: number }
@@ -21,14 +22,7 @@ interface GeofenceMapProps {
 
 const GeofenceMap = dynamic(
   () => import("./geofence-map") as Promise<{ default: ComponentType<GeofenceMapProps> }>,
-  { ssr: false, loading: () => (
-    <div className="flex h-full min-h-120 items-center justify-center rounded-xl bg-muted/30">
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="size-8 animate-spin text-primary" />
-        <span className="text-sm text-muted-foreground">{"Loading map…"}</span>
-      </div>
-    </div>
-  )}
+  { ssr: false, loading: () => <MapSkeleton /> }
 )
 
 export default function GeofencePage() {

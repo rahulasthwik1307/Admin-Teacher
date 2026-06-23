@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
+import { MyTimetableSkeleton } from "@/components/ui/skeletons"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -466,11 +467,7 @@ export default function TimetablePage() {
       )}
 
       {/* ── Loading ── */}
-      {isLoading && (
-        <Card><CardContent className="flex justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </CardContent></Card>
-      )}
+      {isLoading && <MyTimetableSkeleton />}
 
       {/* ══════════════════════════════════════
           GRID VIEW

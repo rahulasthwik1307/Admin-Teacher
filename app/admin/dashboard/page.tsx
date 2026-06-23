@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { AdminDashboardSkeleton } from "@/components/ui/skeletons"
 import {
   Users,
   GraduationCap,
@@ -337,11 +338,7 @@ export default function AdminDashboardPage() {
   ]
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    )
+    return <AdminDashboardSkeleton />
   }
 
   return (

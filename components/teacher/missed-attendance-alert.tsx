@@ -7,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle } from "lucide-react"
 
+import { MissedAttendanceAlertSkeleton } from "@/components/ui/skeletons"
+
 export function MissedAttendanceAlert() {
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -17,7 +19,7 @@ export function MissedAttendanceAlert() {
       try {
         const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) { setLoading(false); return }
 
         const todayStr = new Date().toISOString().split("T")[0]
         const thirtyDaysAgo = new Date()
@@ -81,7 +83,8 @@ export function MissedAttendanceAlert() {
     fetchCount()
   }, [])
 
-  if (loading || count === 0) return null
+  if (loading) return <MissedAttendanceAlertSkeleton />
+  if (count === 0) return null
 
   return (
     <Card className="border-amber-200 bg-amber-500/5">

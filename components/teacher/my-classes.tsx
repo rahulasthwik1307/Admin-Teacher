@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, BookOpen, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
+import { MyClassesSkeleton } from "@/components/ui/skeletons"
+
 interface ClassRow {
   key: string
   subject: string
@@ -76,6 +78,10 @@ export function MyClasses() {
     fetch()
   }, [])
 
+  if (loading) {
+    return <MyClassesSkeleton />
+  }
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-0">
@@ -85,11 +91,7 @@ export function MyClasses() {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-4">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : rows.length === 0 ? (
+        {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-10">No subjects assigned yet.</p>
         ) : (
           <>

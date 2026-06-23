@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Loader2, BarChart2, Users, UserCheck, UserX, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { TodayAttendanceSummarySkeleton } from "@/components/ui/skeletons"
 
 interface SubjectSummary {
   id: string
@@ -90,43 +91,46 @@ export function TodayAttendanceSummary() {
       const teacherId = session.user.id
       const today = new Date().toISOString().split("T")[0]
 
-      const { data: todaySessions } = await supabase
+      const { data: activeSessions } = await supabase
         .from("attendance_sessions")
-        .select(`id, subject_id, class_id, opened_at, subjects ( name ), classes ( name, section )`)
+        .select(`
+          id, subject_id, class_id, status, opened_at,
+          subject:subjects ( name ),
+          class:classes ( name, section )
+        `)
         .eq("teacher_id", teacherId)
         .eq("session_date", today)
-        .order("opened_at", { ascending: false })
 
-      if (!todaySessions || todaySessions.length === 0) {
+      if (!activeSessions || activeSessions.length === 0) {
         setSubjects([])
         setLoading(false)
         return
       }
 
-      const sessionIds = todaySessions.map((s: any) => s.id)
-      const { data: attendance } = await supabase
-        .from("period_attendance")
-        .select("session_id, status")
-        .in("session_id", sessionIds)
-        .in("status", ["present", "absent"])
+      const allSummaries = await Promise.all(activeSessions.map(async (sess: any) => {
+        const { count: presentCount } = await supabase
+          .from("period_attendance")
+          .select("id", { count: "exact", head: true })
+          .eq("session_id", sess.id)
+          .eq("status", "present")
 
-      const rows = attendance ?? []
+        const { count: studentCount } = await supabase
+          .from("students")
+          .select("id", { count: "exact", head: true })
+          .eq("class_id", sess.class_id)
+          .eq("is_active", true)
 
-      const allSummaries: (SubjectSummary & { dedupeKey: string; openedAt: string })[] =
-        todaySessions.map((s: any) => {
-          const sessionRows = rows.filter((r: any) => r.session_id === s.id)
-          const present = sessionRows.filter((r: any) => r.status === "present").length
-          const total = sessionRows.length
-          const subName = s.subjects?.name ?? "Unknown"
-          const clsLabel = s.classes ? `${s.classes.name} ${s.classes.section}` : ""
-          return {
-            id: s.id,
-            name: clsLabel ? `${subName} — ${clsLabel}` : subName,
-            dedupeKey: `${s.subject_id}__${s.class_id}`,
-            present, total,
-            openedAt: s.opened_at ?? s.id,
-          }
-        })
+        const sectionName = sess.class ? `${sess.class.name}-${sess.class.section}` : "Unknown"
+        const subjectName = sess.subject?.name ?? "Unknown"
+        return {
+          id: sess.id,
+          name: `${subjectName} (${sectionName})`,
+          present: presentCount ?? 0,
+          total: studentCount ?? 0,
+          openedAt: sess.opened_at,
+          dedupeKey: `${sess.subject_id}__${sess.class_id}`,
+        }
+      }))
 
       const latestMap = new Map<string, typeof allSummaries[0]>()
       for (const s of allSummaries) {
@@ -138,6 +142,10 @@ export function TodayAttendanceSummary() {
     }
     load()
   }, [])
+
+  if (loading) {
+    return <TodayAttendanceSummarySkeleton />
+  }
 
   // Totals across all subjects for the overview strip
   const totalPresent = subjects.reduce((a, s) => a + s.present, 0)
@@ -155,11 +163,7 @@ export function TodayAttendanceSummary() {
         <h3 className="text-base font-semibold text-foreground">{"Today's Attendance Summary"}</h3>
       </div>
 
-      {loading ? (
-        <div className="flex flex-1 items-center justify-center py-8">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : subjects.length === 0 ? (
+      {subjects.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
           <div className="flex size-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
             <Clock className="size-6 text-muted-foreground" />

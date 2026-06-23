@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -330,10 +331,15 @@ export default function AcademicStructurePage() {
             {loadingDepts ? (
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map(i => (
-                  <Card key={i} className="animate-pulse">
-                    <CardContent className="p-5">
-                      <div className="h-5 w-40 rounded bg-muted mb-3" />
-                      <div className="h-3 w-16 rounded bg-muted" />
+                  <Card key={i}>
+                    <CardContent className="p-5 flex flex-col gap-3">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-3 w-16" />
+                      <div className="h-px bg-border my-2" />
+                      <div className="flex gap-4">
+                        <Skeleton className="h-4 w-12" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -380,7 +386,17 @@ export default function AcademicStructurePage() {
           <div className="flex flex-col gap-3">
             {loadingClasses ? (
               <div className="flex flex-col gap-3">
-                {[1, 2].map(i => <Card key={i} className="animate-pulse"><CardContent className="p-5"><div className="h-4 w-40 rounded bg-muted" /></CardContent></Card>)}
+                {[1, 2].map(i => (
+                  <Card key={i}>
+                    <CardContent className="p-5 flex flex-col gap-3">
+                      <Skeleton className="h-4 w-40" />
+                      <div className="flex items-center gap-4 mt-2">
+                        <Skeleton className="h-3.5 w-12" />
+                        <Skeleton className="h-3.5 w-20" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             ) : classes.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No classes yet.</CardContent></Card>
@@ -432,7 +448,17 @@ export default function AcademicStructurePage() {
           <div className="flex flex-col gap-3">
             {loadingSubjects ? (
               <div className="flex flex-col gap-3">
-                {[1, 2].map(i => <Card key={i} className="animate-pulse"><CardContent className="p-5"><div className="h-4 w-40 rounded bg-muted" /></CardContent></Card>)}
+                {[1, 2].map(i => (
+                  <Card key={i}>
+                    <CardContent className="p-5 flex flex-col gap-3">
+                      <Skeleton className="h-4 w-40" />
+                      <div className="flex items-center gap-4 mt-2">
+                        <Skeleton className="h-3.5 w-16" />
+                        <Skeleton className="h-3.5 w-12" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             ) : subjects.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No subjects yet.</CardContent></Card>
@@ -485,7 +511,16 @@ export default function AcademicStructurePage() {
             {loadingPeriods ? (
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="animate-pulse shrink-0 h-28 w-36 rounded-xl bg-muted" />
+                  <div key={i} className="shrink-0 h-28 w-36 rounded-xl border border-border p-4 flex flex-col justify-between bg-card">
+                    <div className="flex justify-between items-center">
+                      <Skeleton className="h-3 w-10" />
+                      <Skeleton className="h-4 w-6" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Skeleton className="h-3.5 w-12" />
+                      <Skeleton className="h-3.5 w-14" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : periods.length === 0 ? (

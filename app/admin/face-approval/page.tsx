@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import { FaceApprovalSkeleton } from "@/components/ui/skeletons"
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { CheckCircle2, ScanFace, Loader2, RefreshCw, Check, X, Users, Clock, ShieldCheck } from "lucide-react"
@@ -218,7 +219,7 @@ export default function AdminFaceApprovalPage() {
         <div className="flex flex-col gap-4">
           <SectionFilterPills sections={pendingSections} active={pendingSectionFilter} onChange={setPendingSectionFilter} variant="pending" />
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Loader2 className="size-8 animate-spin mb-4" /><p className="text-sm">Loading pending approvals...</p></div>
+            <FaceApprovalSkeleton />
           ) : pending.length === 0 ? (
             <Card className="shadow-sm"><CardContent className="flex flex-col items-center justify-center py-16"><div className="mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30"><CheckCircle2 className="size-8 text-emerald-500" /></div><p className="text-base font-bold text-foreground">All caught up!</p><p className="text-sm text-muted-foreground mt-1">No pending face registrations to review.</p></CardContent></Card>
           ) : (

@@ -5,6 +5,8 @@ import { Users, UserCheck, ScanFace, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
+import { DashboardStatsSkeleton } from "@/components/ui/skeletons"
+
 interface Stat {
   label: string
   value: number | string
@@ -61,6 +63,7 @@ function StatCard({ stat, index }: { stat: Stat; index: number }) {
 
 export function DashboardStats() {
   const supabase = createClient()
+  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stat[]>([
     { label: "Total Students", value: "—", icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
     { label: "Today Present", value: "—", icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
@@ -70,72 +73,82 @@ export function DashboardStats() {
 
   useEffect(() => {
     async function fetch() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const teacherId = session.user.id
-      const today = new Date().toISOString().split("T")[0]
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const teacherId = session.user.id
+        const today = new Date().toISOString().split("T")[0]
 
-      const { data: assignments } = await supabase
-        .from("teacher_assignments")
-        .select("class_id, subject_id")
-        .eq("teacher_id", teacherId)
+        const { data: assignments } = await supabase
+          .from("teacher_assignments")
+          .select("class_id, subject_id")
+          .eq("teacher_id", teacherId)
 
-      const classIds = [...new Set((assignments ?? []).map((a: any) => a.class_id))]
+        const classIds = [...new Set((assignments ?? []).map((a: any) => a.class_id))]
 
-      let totalStudents = 0
-      if (classIds.length > 0) {
-        const { count } = await supabase
-          .from("students")
+        let totalStudents = 0
+        if (classIds.length > 0) {
+          const { count } = await supabase
+            .from("students")
+            .select("id", { count: "exact", head: true })
+            .in("class_id", classIds)
+            .eq("is_active", true)
+          totalStudents = count ?? 0
+        }
+
+        const { data: todaySessions } = await supabase
+          .from("attendance_sessions")
+          .select("id")
+          .eq("teacher_id", teacherId)
+          .eq("session_date", today)
+
+        const todaySessionIds = (todaySessions ?? []).map((s: any) => s.id)
+        let todayPresent = 0
+        if (todaySessionIds.length > 0) {
+          const { count } = await supabase
+            .from("period_attendance")
+            .select("id", { count: "exact", head: true })
+            .in("session_id", todaySessionIds)
+            .eq("status", "present")
+          todayPresent = count ?? 0
+        }
+
+        let pendingCount = 0
+        if (classIds.length > 0) {
+          const { count } = await supabase
+            .from("students")
+            .select("id", { count: "exact", head: true })
+            .in("class_id", classIds)
+            .eq("face_registered", true)
+            .eq("is_approved", false)
+            .eq("is_rejected", false)
+          pendingCount = count ?? 0
+        }
+
+        const { count: activeCount } = await supabase
+          .from("attendance_sessions")
           .select("id", { count: "exact", head: true })
-          .in("class_id", classIds)
-          .eq("is_active", true)
-        totalStudents = count ?? 0
+          .eq("teacher_id", teacherId)
+          .eq("status", "active")
+
+        setStats([
+          { label: "Total Students", value: totalStudents, icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
+          { label: "Today Present", value: todayPresent, icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
+          { label: "Pending Face Approvals", value: pendingCount ?? 0, icon: ScanFace, iconColor: "text-amber-600", iconBg: "bg-amber-50", borderColor: "#f59e0b" },
+          { label: "Active Attendance Windows", value: activeCount ?? 0, icon: Radio, iconColor: activeCount ? "text-emerald-600" : "text-muted-foreground", iconBg: activeCount ? "bg-emerald-50" : "bg-muted", borderColor: activeCount ? "#10b981" : "#e2e8f0" },
+        ])
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
       }
-
-      const { data: todaySessions } = await supabase
-        .from("attendance_sessions")
-        .select("id")
-        .eq("teacher_id", teacherId)
-        .eq("session_date", today)
-
-      const todaySessionIds = (todaySessions ?? []).map((s: any) => s.id)
-      let todayPresent = 0
-      if (todaySessionIds.length > 0) {
-        const { count } = await supabase
-          .from("period_attendance")
-          .select("id", { count: "exact", head: true })
-          .in("session_id", todaySessionIds)
-          .eq("status", "present")
-        todayPresent = count ?? 0
-      }
-
-      let pendingCount = 0
-      if (classIds.length > 0) {
-        const { count } = await supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .in("class_id", classIds)
-          .eq("face_registered", true)
-          .eq("is_approved", false)
-          .eq("is_rejected", false)
-        pendingCount = count ?? 0
-      }
-
-      const { count: activeCount } = await supabase
-        .from("attendance_sessions")
-        .select("id", { count: "exact", head: true })
-        .eq("teacher_id", teacherId)
-        .eq("status", "active")
-
-      setStats([
-        { label: "Total Students", value: totalStudents, icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
-        { label: "Today Present", value: todayPresent, icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
-        { label: "Pending Face Approvals", value: pendingCount ?? 0, icon: ScanFace, iconColor: "text-amber-600", iconBg: "bg-amber-50", borderColor: "#f59e0b" },
-        { label: "Active Attendance Windows", value: activeCount ?? 0, icon: Radio, iconColor: activeCount ? "text-emerald-600" : "text-muted-foreground", iconBg: activeCount ? "bg-emerald-50" : "bg-muted", borderColor: activeCount ? "#10b981" : "#e2e8f0" },
-      ])
     }
     fetch()
   }, [])
+
+  if (loading) {
+    return <DashboardStatsSkeleton />
+  }
 
   return (
     <>

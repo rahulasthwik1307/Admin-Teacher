@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -455,15 +456,15 @@ export default function TeacherAssignmentsPage() {
         <div className="flex flex-col gap-3">
           {[1, 2].map(i => (
             <Card key={i}>
-              <div className="animate-pulse bg-muted/40 px-5 py-3 border-b border-border">
-                <div className="h-4 w-24 rounded bg-muted" />
+              <div className="bg-muted/40 px-5 py-3 border-b border-border">
+                <Skeleton className="h-4 w-24" />
               </div>
               {[1, 2, 3].map(j => (
-                <div key={j} className="flex gap-4 px-5 py-3 border-t border-border animate-pulse">
-                  <div className="size-7 rounded-full bg-muted" />
-                  <div className="flex gap-8 flex-1">
-                    <div className="h-4 w-20 rounded bg-muted" />
-                    <div className="h-4 w-28 rounded bg-muted" />
+                <div key={j} className="flex gap-4 px-5 py-3 border-t border-border items-center">
+                  <Skeleton className="size-7 rounded-full shrink-0" />
+                  <div className="flex gap-8 flex-1 items-center">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-28" />
                   </div>
                 </div>
               ))}

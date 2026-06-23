@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertTriangle, ChevronRight, X, Check, Users } from "lucide-react"
+import { MissedAttendanceSkeleton, StudentSheetSkeleton } from "@/components/ui/skeletons"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -214,7 +215,7 @@ export default function MissedAttendancePage() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+        <MissedAttendanceSkeleton />
       ) : filteredSlots.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">
@@ -270,7 +271,7 @@ export default function MissedAttendancePage() {
             </SheetDescription>
           </SheetHeader>
           {studentsLoading ? (
-            <div className="flex flex-1 items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
+            <StudentSheetSkeleton />
           ) : students.length === 0 ? (
             <div className="flex flex-1 items-center justify-center">
               <div className="flex flex-col items-center gap-2 text-center">

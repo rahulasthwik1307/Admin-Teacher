@@ -33,6 +33,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { AttendanceHistorySkeleton, StudentDetailsSkeleton } from "@/components/ui/skeletons"
 
 /* ── types ─────────────────────────────────────────────── */
 interface Session {
@@ -467,7 +468,7 @@ export default function AttendanceHistoryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border">
           
           {/* Subject Filter */}
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-[220px]">
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-55">
             <BookOpen className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Subject</span>
@@ -484,7 +485,7 @@ export default function AttendanceHistoryPage() {
           </div>
 
           {/* Class Filter */}
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-[180px]">
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-45">
             <Users className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class</span>
@@ -510,7 +511,7 @@ export default function AttendanceHistoryPage() {
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-[125px]"
+                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-31.25"
                   aria-label="Start date"
                 />
                 <span className="text-[10px] font-semibold text-muted-foreground/60 w-4 text-center">TO</span>
@@ -518,7 +519,7 @@ export default function AttendanceHistoryPage() {
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-[125px]"
+                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-31.25"
                   aria-label="End date"
                 />
               </div>
@@ -528,7 +529,7 @@ export default function AttendanceHistoryPage() {
 
         {/* Export Button */}
         <Button
-          className="gap-2 sm:self-end lg:self-auto h-[52px] rounded-2xl w-full sm:w-auto shadow-sm shrink-0"
+          className="gap-2 sm:self-end lg:self-auto h-13 rounded-2xl w-full sm:w-auto shadow-sm shrink-0"
           disabled={filtered.length === 0}
           onClick={() => { exportSessionsCSV(filtered); toast.success("Exported successfully.") }}
         >
@@ -596,11 +597,7 @@ export default function AttendanceHistoryPage() {
       </div>
 
       {/* ── Loading ─────────────────────────────────────────── */}
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
+      {loading && <AttendanceHistorySkeleton />}
 
       {/* ── Grouped sessions ────────────────────────────────── */}
       {!loading && filtered.length === 0 && (
@@ -658,7 +655,7 @@ export default function AttendanceHistoryPage() {
             <div className="flex flex-col gap-5 px-4 py-3">
               {/* Session info card */}
               <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className="h-1 w-full bg-gradient-to-r from-primary/60 to-primary" />
+                <div className="h-1 w-full bg-linear-to-r from-primary/60 to-primary" />
                 <div className="p-4 flex flex-col gap-1">
                   <span className="text-base font-bold text-foreground">{selectedSession.subject}</span>
                   <span className="text-sm font-medium text-foreground">{selectedSession.class}</span>
@@ -705,9 +702,7 @@ export default function AttendanceHistoryPage() {
                 </h3>
 
                 {detailLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                  </div>
+                  <StudentDetailsSkeleton />
                 ) : detailStudents.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">No records found.</p>
                 ) : (

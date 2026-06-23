@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -543,16 +544,16 @@ export default function TeacherManagementPage() {
           {[1, 2].map((i) => (
             <Card key={i}>
               <CardContent className="p-0">
-                <div className="border-b border-border px-5 py-3 animate-pulse">
-                  <div className="h-4 w-48 rounded bg-muted" />
+                <div className="border-b border-border px-5 py-3">
+                  <Skeleton className="h-4 w-48" />
                 </div>
                 {[1, 2, 3].map((j) => (
-                  <div key={j} className="flex items-center gap-3 border-b border-border px-5 py-3 animate-pulse last:border-0">
-                    <div className="size-9 rounded-full bg-muted" />
-                    <div className="flex flex-1 gap-8">
-                      <div className="h-4 w-28 rounded bg-muted" />
-                      <div className="h-4 w-16 rounded bg-muted" />
-                      <div className="h-4 w-32 rounded bg-muted" />
+                  <div key={j} className="flex items-center gap-3 border-b border-border px-5 py-3 last:border-0">
+                    <Skeleton className="size-9 rounded-full shrink-0" />
+                    <div className="flex flex-1 gap-8 items-center">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-32" />
                     </div>
                   </div>
                 ))}

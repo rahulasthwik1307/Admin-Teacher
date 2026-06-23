@@ -6,35 +6,42 @@ import { ScanFace } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 
+import { FaceApprovalAlertSkeleton } from "@/components/ui/skeletons"
+
 export function FaceApprovalAlert() {
   const supabase = createClient()
   const [count, setCount] = useState<number | null>(null)
 
   useEffect(() => {
     async function fetch() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const { data: assignments } = await supabase
-        .from("teacher_assignments")
-        .select("class_id")
-        .eq("teacher_id", session.user.id)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) { setCount(0); return }
+        const { data: assignments } = await supabase
+          .from("teacher_assignments")
+          .select("class_id")
+          .eq("teacher_id", session.user.id)
 
-      const classIds = [...new Set((assignments ?? []).map((a: any) => a.class_id))]
-      if (classIds.length === 0) { setCount(0); return }
+        const classIds = [...new Set((assignments ?? []).map((a: any) => a.class_id))]
+        if (classIds.length === 0) { setCount(0); return }
 
-      const { count: c } = await supabase
-        .from("students")
-        .select("id", { count: "exact", head: true })
-        .in("class_id", classIds)
-        .eq("face_registered", true)
-        .eq("is_approved", false)
-        .eq("is_rejected", false)
-      setCount(c ?? 0)
+        const { count: c } = await supabase
+          .from("students")
+          .select("id", { count: "exact", head: true })
+          .in("class_id", classIds)
+          .eq("face_registered", true)
+          .eq("is_approved", false)
+          .eq("is_rejected", false)
+        setCount(c ?? 0)
+      } catch {
+        setCount(0)
+      }
     }
     fetch()
   }, [])
 
-  if (count === null || count === 0) return null
+  if (count === null) return <FaceApprovalAlertSkeleton />
+  if (count === 0) return null
 
   return (
     <>

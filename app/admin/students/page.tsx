@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { TableSkeleton, ListSkeleton } from "@/components/ui/skeletons"
 
 interface Student {
   id: string
@@ -170,38 +171,7 @@ function FormField({ icon: Icon, label, htmlFor, children }: { icon: React.Eleme
   )
 }
 
-function TableSkeleton() {
-  return (
-    <>
-      {[1, 2, 3, 4].map((i) => (
-        <tr key={i} className="border-b border-border last:border-0 animate-pulse">
-          <td className="px-4 py-3"><div className="flex items-center gap-3"><div className="size-11 rounded-full bg-muted shrink-0" /><div className="h-4 w-24 rounded bg-muted" /></div></td>
-          <td className="px-4 py-3"><div className="h-4 w-16 rounded bg-muted" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-12 rounded bg-muted" /></td>
-          <td className="px-4 py-3"><div className="h-4 w-14 rounded bg-muted" /></td>
-          <td className="px-4 py-3"><div className="h-5 w-16 rounded-full bg-muted" /></td>
-          <td className="px-4 py-3 text-right"><div className="size-7 ml-auto rounded bg-muted" /></td>
-        </tr>
-      ))}
-    </>
-  )
-}
 
-function MobileSkeleton() {
-  return (
-    <>
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-lg border border-border bg-card p-4 animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="size-11 rounded-full bg-muted" />
-            <div className="flex flex-col gap-2"><div className="h-4 w-28 rounded bg-muted" /><div className="h-3 w-16 rounded bg-muted" /></div>
-          </div>
-          <div className="mt-3 flex items-center gap-3"><div className="h-3 w-10 rounded bg-muted" /><div className="h-3 w-14 rounded bg-muted" /><div className="ml-auto h-5 w-14 rounded-full bg-muted" /></div>
-        </div>
-      ))}
-    </>
-  )
-}
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
@@ -531,21 +501,26 @@ export default function AdminStudentsPage() {
       )}
 
       {/* Table desktop */}
-      <div className="hidden rounded-xl border border-border bg-card md:block overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/60">
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Student</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Roll Number</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Class</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Year</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Face Status</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? <TableSkeleton /> : filtered.length === 0 && !fetchError ? (
+      {isLoading ? (
+        <div className="hidden md:block">
+          <TableSkeleton cols={6} rows={6} hasAvatar={true} />
+        </div>
+      ) : (
+        <div className="hidden rounded-xl border border-border bg-card md:block overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-slate-50/80 dark:bg-slate-900/60">
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Student</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Roll Number</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Class</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Year</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide">Face Status</th>
+                  <th className="px-4 py-3 text-right font-semibold text-muted-foreground text-xs uppercase tracking-wide">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && !fetchError ? (
                 <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                   {students.length === 0 ? 'No students yet. Click "Add Student" to create one.' : "No students found matching your search."}
                 </td></tr>
@@ -563,10 +538,13 @@ export default function AdminStudentsPage() {
           </table>
         </div>
       </div>
+    )}
 
       {/* Cards mobile */}
       <div className="flex flex-col gap-3 md:hidden">
-        {isLoading ? <MobileSkeleton /> : filtered.length === 0 && !fetchError ? (
+        {isLoading ? (
+          <ListSkeleton count={4} hasAvatar={true} />
+        ) : filtered.length === 0 && !fetchError ? (
           <div className="rounded-lg border border-border bg-card px-4 py-12 text-center text-muted-foreground">
             {students.length === 0 ? 'No students yet. Tap "Add Student" to create one.' : "No students found matching your search."}
           </div>

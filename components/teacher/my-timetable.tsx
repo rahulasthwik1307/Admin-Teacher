@@ -24,6 +24,8 @@ const SUBJECT_COLORS = [
   { bg: "bg-sky-500/10", text: "text-sky-700", border: "border-sky-300" },
 ]
 
+import { MyTimetableSkeleton } from "@/components/ui/skeletons"
+
 interface TimetableSlot {
   dayOfWeek: number
   periodNumber: number
@@ -106,19 +108,7 @@ export function MyTimetable() {
   }
 
   if (loading) {
-    return (
-      <Card>
-        <CardHeader className="pb-0">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <CalendarDays className="size-4 text-primary" />
-            My Timetable
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4 flex justify-center py-10">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    )
+    return <MyTimetableSkeleton />
   }
 
   if (slots.length === 0) {

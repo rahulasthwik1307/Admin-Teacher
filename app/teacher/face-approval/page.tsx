@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { FaceApprovalSkeleton } from "@/components/ui/skeletons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -344,10 +345,7 @@ export default function FaceApprovalPage() {
           />
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Loader2 className="size-8 animate-spin mb-4" />
-              <p className="text-sm">Loading pending approvals...</p>
-            </div>
+            <FaceApprovalSkeleton />
           ) : pending.length === 0 ? (
             <Card className="shadow-sm">
               <CardContent className="flex flex-col items-center justify-center py-16">
