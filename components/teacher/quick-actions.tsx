@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { QrCode, ScanFace, UserPlus, ArrowRight } from "lucide-react"
+import { QrCode, Users, CalendarDays, ArrowRight } from "lucide-react"
 
 const actions = [
   {
@@ -11,18 +11,18 @@ const actions = [
     iconBg: "bg-primary/10",
   },
   {
-    label: "Review Face Approvals",
-    description: "Approve pending face registrations",
-    href: "/teacher/face-approval",
-    icon: ScanFace,
-    iconColor: "text-amber-600",
-    iconBg: "bg-amber-50",
+    label: "View Students",
+    description: "See students in your assigned classes",
+    href: "/teacher/students",
+    icon: Users,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-50",
   },
   {
-    label: "Add New Student",
-    description: "Register a student to your class",
-    href: "/teacher/students",
-    icon: UserPlus,
+    label: "Attendance History",
+    description: "View past sessions and records",
+    href: "/teacher/attendance-history",
+    icon: CalendarDays,
     iconColor: "text-emerald-600",
     iconBg: "bg-emerald-50",
   },

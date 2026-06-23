@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import { Users, UserCheck, ScanFace, Radio } from "lucide-react"
+import { Users, UserCheck, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 
@@ -67,7 +67,6 @@ export function DashboardStats() {
   const [stats, setStats] = useState<Stat[]>([
     { label: "Total Students", value: "—", icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
     { label: "Today Present", value: "—", icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
-    { label: "Pending Face Approvals", value: "—", icon: ScanFace, iconColor: "text-amber-600", iconBg: "bg-amber-50", borderColor: "#f59e0b" },
     { label: "Active Attendance Windows", value: "—", icon: Radio, iconColor: "text-muted-foreground", iconBg: "bg-muted", borderColor: "#e2e8f0" },
   ])
 
@@ -113,17 +112,7 @@ export function DashboardStats() {
           todayPresent = count ?? 0
         }
 
-        let pendingCount = 0
-        if (classIds.length > 0) {
-          const { count } = await supabase
-            .from("students")
-            .select("id", { count: "exact", head: true })
-            .in("class_id", classIds)
-            .eq("face_registered", true)
-            .eq("is_approved", false)
-            .eq("is_rejected", false)
-          pendingCount = count ?? 0
-        }
+
 
         const { count: activeCount } = await supabase
           .from("attendance_sessions")
@@ -134,7 +123,6 @@ export function DashboardStats() {
         setStats([
           { label: "Total Students", value: totalStudents, icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
           { label: "Today Present", value: todayPresent, icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
-          { label: "Pending Face Approvals", value: pendingCount ?? 0, icon: ScanFace, iconColor: "text-amber-600", iconBg: "bg-amber-50", borderColor: "#f59e0b" },
           { label: "Active Attendance Windows", value: activeCount ?? 0, icon: Radio, iconColor: activeCount ? "text-emerald-600" : "text-muted-foreground", iconBg: activeCount ? "bg-emerald-50" : "bg-muted", borderColor: activeCount ? "#10b981" : "#e2e8f0" },
         ])
       } catch (e) {
@@ -158,7 +146,7 @@ export function DashboardStats() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {stats.map((stat, i) => <StatCard key={stat.label} stat={stat} index={i} />)}
       </div>
     </>

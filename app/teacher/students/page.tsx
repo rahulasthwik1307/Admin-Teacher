@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback, Fragment } from "react"
-import { Search, Users, UserCheck, UserCog, Loader2 } from "lucide-react"
+import { Search, Users, UserCheck, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -231,7 +231,6 @@ export default function TeacherStudentsPage() {
   const stats = useMemo(() => ({
     total: students.length,
     active: students.filter((s) => s.faceStatus === "Approved").length,
-    pending: students.filter((s) => s.faceStatus === "Pending").length,
   }), [students])
 
   const uniqueClasses = Array.from(new Set(students.map((s) => s.class))).filter((c) => c !== "—")
@@ -248,10 +247,7 @@ export default function TeacherStudentsPage() {
           <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/50"><UserCheck className="size-4 text-emerald-600" /></div>
           <div><p className="text-xs text-emerald-700 dark:text-emerald-400">Face Approved</p><p className="text-lg font-bold text-emerald-700 dark:text-emerald-400 leading-tight">{isLoading ? "—" : stats.active}</p></div>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 shadow-sm">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50"><UserCog className="size-4 text-amber-600" /></div>
-          <div><p className="text-xs text-amber-700 dark:text-amber-400">Pending Approval</p><p className="text-lg font-bold text-amber-700 dark:text-amber-400 leading-tight">{isLoading ? "—" : stats.pending}</p></div>
-        </div>
+
       </div>
 
       {/* Info banner */}
