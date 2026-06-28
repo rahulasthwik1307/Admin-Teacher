@@ -1,86 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, BookOpen, ArrowRight } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-
+import { BookOpen, ArrowRight } from "lucide-react"
+import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { MyClassesSkeleton } from "@/components/ui/skeletons"
 
-interface ClassRow {
-  key: string
-  subject: string
-  className: string
-  section: string
-  students: number
-  lastAttendance: string
-}
-
 export function MyClasses() {
-  const supabase = createClient()
-  const [rows, setRows] = useState<ClassRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useTeacherDashboard()
 
-  useEffect(() => {
-    async function fetch() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const teacherId = session.user.id
+  if (isLoading || !data) return <MyClassesSkeleton />
 
-      const { data: assignments } = await supabase
-        .from("teacher_assignments")
-        .select(`id, subject_id, class_id, subjects ( name ), classes ( name, section )`)
-        .eq("teacher_id", teacherId)
-
-      if (!assignments || assignments.length === 0) { setRows([]); setLoading(false); return }
-
-      const built: ClassRow[] = await Promise.all(
-        assignments.map(async (asgn: any) => {
-          const { count: studentCount } = await supabase
-            .from("students")
-            .select("id", { count: "exact", head: true })
-            .eq("class_id", asgn.class_id)
-            .eq("is_active", true)
-
-          const { data: lastSession } = await supabase
-            .from("attendance_sessions")
-            .select("session_date")
-            .eq("teacher_id", teacherId)
-            .eq("subject_id", asgn.subject_id)
-            .eq("class_id", asgn.class_id)
-            .eq("status", "finalized")
-            .order("session_date", { ascending: false })
-            .limit(1)
-            .maybeSingle()
-
-          let lastAttendance = "No sessions yet"
-          if (lastSession?.session_date) {
-            const d = new Date(lastSession.session_date + "T00:00:00")
-            lastAttendance = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-          }
-
-          return {
-            key: asgn.id,
-            subject: asgn.subjects?.name ?? "Unknown",
-            className: asgn.classes?.name ?? "Unknown",
-            section: asgn.classes?.section ?? "",
-            students: studentCount ?? 0,
-            lastAttendance,
-          }
-        })
-      )
-
-      setRows(built)
-      setLoading(false)
-    }
-    fetch()
-  }, [])
-
-  if (loading) {
-    return <MyClassesSkeleton />
-  }
+  const rows = data.myClasses
 
   return (
     <Card className="overflow-hidden">
@@ -110,26 +42,18 @@ export function MyClasses() {
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr
-                      key={row.key}
-                      className="group border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/40"
-                    >
+                    <tr key={row.key} className="group border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/40">
                       <td className="py-3.5 pr-4 truncate max-w-30" title={row.subject}>
                         <span className="font-semibold text-foreground">{row.subject}</span>
                       </td>
                       <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.className}</td>
                       <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.section}</td>
                       <td className="py-3.5 pr-4">
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                          {row.students}
-                        </span>
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{row.students}</span>
                       </td>
                       <td className="py-3.5 pr-4 text-muted-foreground text-xs truncate">{row.lastAttendance}</td>
                       <td className="py-3.5 text-right">
-                        <Button
-                          asChild size="sm"
-                          className="transition-all duration-150 hover:scale-[1.03] group/btn gap-1.5 px-2.5"
-                        >
+                        <Button asChild size="sm" className="transition-all duration-150 hover:scale-[1.03] group/btn gap-1.5 px-2.5">
                           <Link href="/teacher/qr-attendance">
                             Take Attendance
                             <ArrowRight className="size-3.5 transition-transform duration-150 group-hover/btn:translate-x-0.5" />
@@ -151,17 +75,12 @@ export function MyClasses() {
                       <p className="font-semibold text-foreground">{row.subject}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{row.className} — Section {row.section}</p>
                     </div>
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                      {row.students} students
-                    </span>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{row.students} students</span>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Last: {row.lastAttendance}</span>
                     <Button asChild size="sm" className="gap-1.5">
-                      <Link href="/teacher/qr-attendance">
-                        Take Attendance
-                        <ArrowRight className="size-3.5" />
-                      </Link>
+                      <Link href="/teacher/qr-attendance">Take Attendance <ArrowRight className="size-3.5" /></Link>
                     </Button>
                   </div>
                 </div>

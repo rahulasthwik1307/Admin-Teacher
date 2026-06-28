@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CardSkeleton, ChartSkeleton } from "@/components/ui/skeletons"
 import { Card, CardContent } from "@/components/ui/card"
@@ -31,40 +30,17 @@ import {
 } from "recharts"
 import { cn } from "@/lib/utils"
 
+import {
+  useAnalytics,
+  Period,
+  SubjectCard,
+  ChartPoint,
+  StudentRow
+} from "@/hooks/use-analytics"
+
 /* ── types ─────────────────────────────────────────────── */
 const periods = ["This Week", "This Month", "This Semester"] as const
-type Period = (typeof periods)[number]
 type Trend = "Improving" | "Stable" | "Declining"
-
-interface SubjectCard {
-  assignmentId: string
-  subjectId: string
-  subjectName: string
-  classId: string
-  className: string
-  percentage: number
-  totalStudents: number
-  totalClasses: number
-  trend: Trend
-  presentTotal: number
-  absentTotal: number
-  insight: string
-}
-
-interface ChartPoint {
-  date: string
-  percentage: number
-  sessionId: string
-}
-
-interface StudentRow {
-  name: string
-  roll: string
-  subject: string
-  percentage: number
-  attended: number
-  total: number
-}
 
 /* ── date range helpers ────────────────────────────────── */
 function getDateRange(period: Period): { from: string; to: string } {
@@ -303,229 +279,14 @@ function StudentTable({
 
 /* ── Page ──────────────────────────────────────────────── */
 export default function AnalyticsPage() {
-  const supabase = createClient()
   const [period, setPeriod] = useState<Period>("This Month")
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading: loading } = useAnalytics(period)
 
-  const [subjectCards, setSubjectCards] = useState<SubjectCard[]>([])
-  const [chartData, setChartData] = useState<ChartPoint[]>([])
-  const [lowStudents, setLowStudents] = useState<StudentRow[]>([])
-  const [topStudents, setTopStudents] = useState<StudentRow[]>([])
-
-  // Summary strip stats
-  const [summaryStats, setSummaryStats] = useState({
-    totalClasses: 0,
-    overallPct: 0,
-    belowThresholdCount: 0,
-  })
-
-  const fetchAnalytics = useCallback(async (selectedPeriod: Period) => {
-    setLoading(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const teacherId = session.user.id
-      const { from, to } = getDateRange(selectedPeriod)
-
-      const { data: assignments } = await supabase
-        .from("teacher_assignments")
-        .select(`
-          id, subject_id, class_id,
-          subjects ( id, name ),
-          classes ( id, name, section )
-        `)
-        .eq("teacher_id", teacherId)
-
-      if (!assignments || assignments.length === 0) {
-        setSubjectCards([])
-        setChartData([])
-        setLowStudents([])
-        setTopStudents([])
-        setSummaryStats({ totalClasses: 0, overallPct: 0, belowThresholdCount: 0 })
-        setLoading(false)
-        return
-      }
-
-      const { data: allSessions } = await supabase
-        .from("attendance_sessions")
-        .select("id, session_date, subject_id, class_id")
-        .eq("teacher_id", teacherId)
-        .eq("status", "finalized")
-        .gte("session_date", from)
-        .lte("session_date", to)
-        .order("session_date", { ascending: true })
-
-      const sessionIds = (allSessions ?? []).map((s: any) => s.id)
-
-      const { data: allAttendance } = sessionIds.length > 0
-        ? await supabase
-            .from("period_attendance")
-            .select(`
-              session_id, student_id, status,
-              students ( id, roll_number, class_id, users ( full_name ) )
-            `)
-            .in("session_id", sessionIds)
-            .in("status", ["present", "absent"])
-        : { data: [] }
-
-      const attendance = allAttendance ?? []
-
-      /* ── Subject cards ── */
-      const cards: SubjectCard[] = []
-
-      for (const asgn of assignments) {
-        const sub = asgn.subjects as any
-        const cls = asgn.classes as any
-        const subjectId = asgn.subject_id
-        const classId = asgn.class_id
-
-        const relevantSessions = (allSessions ?? []).filter(
-          (s: any) => s.subject_id === subjectId && s.class_id === classId
-        )
-        const relevantSessionIds = relevantSessions.map((s: any) => s.id)
-        const rows = attendance.filter((a: any) => relevantSessionIds.includes(a.session_id))
-
-        const { count: studentCount } = await supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .eq("class_id", classId)
-          .eq("is_active", true)
-
-        const totalClasses = relevantSessions.length
-        const presentTotal = rows.filter((r: any) => r.status === "present").length
-        const absentTotal = rows.filter((r: any) => r.status === "absent").length
-        const totalRows = rows.length
-        const percentage = totalRows > 0 ? Math.round((presentTotal / totalRows) * 100) : 0
-
-        let trend: Trend = "Stable"
-        if (relevantSessions.length >= 4) {
-          const sorted = [...relevantSessions].sort(
-            (a: any, b: any) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime()
-          )
-          const recent3 = sorted.slice(0, 3).map((s: any) => s.id)
-          const prev3 = sorted.slice(3, 6).map((s: any) => s.id)
-          const avgPct = (ids: string[]) => {
-            const r = attendance.filter((a: any) => ids.includes(a.session_id))
-            if (r.length === 0) return 0
-            return (r.filter((a: any) => a.status === "present").length / r.length) * 100
-          }
-          const diff = avgPct(recent3) - avgPct(prev3)
-          if (diff > 5) trend = "Improving"
-          else if (diff < -5) trend = "Declining"
-        }
-
-        const insight = generateInsight(percentage, trend, totalClasses, presentTotal, absentTotal, studentCount ?? 0)
-
-        cards.push({
-          assignmentId: asgn.id,
-          subjectId,
-          subjectName: sub?.name ?? "Unknown",
-          classId,
-          // hyphen format CSE-A
-          className: cls ? `${cls.name}-${cls.section}` : "Unknown",
-          percentage,
-          totalStudents: studentCount ?? 0,
-          totalClasses,
-          trend,
-          presentTotal,
-          absentTotal,
-          insight,
-        })
-      }
-
-      setSubjectCards(cards)
-
-      /* ── Summary strip stats ── */
-      const totalClasses = (allSessions ?? []).length
-      const overallPresent = attendance.filter((a: any) => a.status === "present").length
-      const overallTotal = attendance.length
-      const overallPct = overallTotal > 0 ? Math.round((overallPresent / overallTotal) * 100) : 0
-
-      // Count unique student+subject combos below 75%
-      const studentSubjectPct: Record<string, { present: number; total: number }> = {}
-      for (const asgn of assignments) {
-        const subjectId = asgn.subject_id
-        const classId = asgn.class_id
-        const relevantSessionIds = (allSessions ?? [])
-          .filter((s: any) => s.subject_id === subjectId && s.class_id === classId)
-          .map((s: any) => s.id)
-        const rows = attendance.filter((a: any) => relevantSessionIds.includes(a.session_id))
-        for (const row of rows) {
-          const key = `${row.student_id}__${subjectId}`
-          if (!studentSubjectPct[key]) studentSubjectPct[key] = { present: 0, total: 0 }
-          studentSubjectPct[key].total++
-          if (row.status === "present") studentSubjectPct[key].present++
-        }
-      }
-      const belowThresholdCount = Object.values(studentSubjectPct).filter(
-        v => v.total > 0 && Math.round((v.present / v.total) * 100) < 75
-      ).length
-
-      setSummaryStats({ totalClasses, overallPct, belowThresholdCount })
-
-      /* ── Chart data ── */
-      const last8 = [...(allSessions ?? [])]
-        .sort((a: any, b: any) => new Date(b.session_date).getTime() - new Date(a.session_date).getTime())
-        .slice(0, 8)
-        .reverse()
-
-      const chartPoints: ChartPoint[] = last8.map((s: any) => {
-        const rows = attendance.filter((a: any) => a.session_id === s.id)
-        const present = rows.filter((a: any) => a.status === "present").length
-        const pct = rows.length > 0 ? Math.round((present / rows.length) * 100) : 0
-        return { date: formatChartDate(s.session_date), percentage: pct, sessionId: s.id }
-      })
-      setChartData(chartPoints)
-
-      /* ── Student rows ── */
-      const studentSubjectMap: Record<string, {
-        name: string; roll: string; subject: string; attended: number; total: number
-      }> = {}
-
-      for (const asgn of assignments) {
-        const sub = asgn.subjects as any
-        const subjectId = asgn.subject_id
-        const classId = asgn.class_id
-        const relevantSessionIds = (allSessions ?? [])
-          .filter((s: any) => s.subject_id === subjectId && s.class_id === classId)
-          .map((s: any) => s.id)
-        if (relevantSessionIds.length === 0) continue
-        const rows = attendance.filter((a: any) => relevantSessionIds.includes(a.session_id))
-        const byStudent: Record<string, { present: number; total: number; name: string; roll: string }> = {}
-        for (const row of rows) {
-          const sid = row.student_id
-          if (!byStudent[sid]) {
-            const st = row.students as any
-            byStudent[sid] = { name: st?.users?.full_name ?? "Unknown", roll: st?.roll_number ?? "—", present: 0, total: 0 }
-          }
-          byStudent[sid].total++
-          if (row.status === "present") byStudent[sid].present++
-        }
-        for (const [sid, val] of Object.entries(byStudent)) {
-          studentSubjectMap[`${sid}__${subjectId}`] = {
-            name: val.name, roll: val.roll,
-            subject: sub?.name ?? "Unknown",
-            attended: val.present, total: val.total,
-          }
-        }
-      }
-
-      const allStudentRows: StudentRow[] = Object.values(studentSubjectMap).map(v => ({
-        ...v,
-        percentage: v.total > 0 ? Math.round((v.attended / v.total) * 100) : 0,
-      }))
-
-      setLowStudents(allStudentRows.filter(r => r.percentage < 75).sort((a, b) => a.percentage - b.percentage).slice(0, 10))
-      setTopStudents(allStudentRows.filter(r => r.percentage >= 90).sort((a, b) => b.percentage - a.percentage).slice(0, 10))
-
-    } catch (e) {
-      console.error("Analytics fetch error:", e)
-    } finally {
-      setLoading(false)
-    }
-  }, [supabase])
-
-  useEffect(() => { fetchAnalytics(period) }, [period, fetchAnalytics])
+  const subjectCards = data?.subjectCards ?? []
+  const chartData = data?.chartData ?? []
+  const lowStudents = data?.lowStudents ?? []
+  const topStudents = data?.topStudents ?? []
+  const summaryStats = data?.summaryStats ?? { totalClasses: 0, overallPct: 0, belowThresholdCount: 0 }
 
   return (
     <div className="flex flex-col gap-8">

@@ -18,15 +18,28 @@ export async function POST(request: Request) {
     const admin = createAdminClient()
     const email = `${roll_number.trim().toLowerCase()}@nnrg.student`
 
-    // Check if roll number already exists
+    // Check if roll number already exists IN THE SAME CLASS only
     const { data: existing } = await admin
       .from("students")
       .select("id")
       .eq("roll_number", roll_number.trim().toUpperCase())
+      .eq("class_id", class_id)
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json({ error: "A student with this roll number already exists" }, { status: 409 })
+      return NextResponse.json({ error: "A student with this roll number already exists in this class" }, { status: 409 })
+    }
+
+    // Also check if email (derived from roll number) is already taken in auth
+    // This handles cases where a student with same roll number was deleted from students table but auth entry remains
+    const { data: emailCheck } = await admin
+      .from("users")
+      .select("id")
+      .eq("email", `${roll_number.trim().toLowerCase()}@nnrg.student`)
+      .maybeSingle()
+
+    if (emailCheck) {
+      return NextResponse.json({ error: "A user account with this roll number already exists. Please use a different roll number." }, { status: 409 })
     }
 
     // Create auth user

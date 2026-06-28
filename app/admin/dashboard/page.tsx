@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -25,32 +24,14 @@ import {
   ScanFace,
   ArrowRight,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import {
+  useAdminDashboard,
+  TeacherActivityRow,
+  SystemStatusItem,
+  RecentActivityItem,
+} from "@/hooks/use-admin-dashboard"
 
-function getInitials(name: string): string {
-  return (
-    name
-      .split(" ")
-      .filter((w) => w[0] && w[0] === w[0].toUpperCase())
-      .map((w) => w[0])
-      .join("")
-      .slice(0, 2) || "NA"
-  )
-}
 
-function timeAgo(dateStr: string): string {
-  const now = new Date()
-  const then = new Date(dateStr)
-  const diffMs = now.getTime() - then.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
-  if (diffMin < 1) return "Just now"
-  if (diffMin < 60) return `${diffMin}m ago`
-  if (diffHour < 24) return `${diffHour}h ago`
-  if (diffDay === 1) return "Yesterday"
-  return `${diffDay}d ago`
-}
 
 function getActionConfig(actionType: string) {
   switch (actionType) {
@@ -111,188 +92,16 @@ function getActionConfig(actionType: string) {
   }
 }
 
-interface TeacherActivityRow {
-  id: string
-  name: string
-  initials: string
-  subject: string
-  sessions: number
-  lastActive: string
-}
 
-interface RecentActivityItem {
-  text: string
-  time: string
-  actionType: string
-}
-
-interface DashboardStats {
-  teachers: number
-  students: number
-  departments: number
-  activeSessions: number
-  pendingFaceApprovals: number
-}
-
-interface SystemStatusItem {
-  label: string
-  value: number | string
-  status: "ok" | "warn" | "info"
-}
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    teachers: 0,
-    students: 0,
-    departments: 0,
-    activeSessions: 0,
-    pendingFaceApprovals: 0,
-  })
-  const [teacherActivity, setTeacherActivity] = useState<TeacherActivityRow[]>([])
-  const [systemStatus, setSystemStatus] = useState<SystemStatusItem[]>([])
-  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [maxSessions, setMaxSessions] = useState(1)
+  const { data, isLoading: loading } = useAdminDashboard()
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true)
-    try {
-      const supabase = createClient()
-
-      const now = new Date()
-      const day = now.getDay()
-      const diffToMon = day === 0 ? -6 : 1 - day
-      const weekStart = new Date(now)
-      weekStart.setDate(now.getDate() + diffToMon)
-      weekStart.setHours(0, 0, 0, 0)
-      const weekStartStr = weekStart.toISOString().split("T")[0]
-
-      const [
-        { count: teacherCount },
-        { count: studentCount },
-        { count: deptCount },
-        { count: activeSessionCount },
-        { data: teachers },
-        { data: weekSessions },
-        { data: activeTeachers },
-        { data: logs },
-        { count: pendingFaceCount },
-      ] = await Promise.all([
-        supabase.from("teachers").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("departments").select("id", { count: "exact", head: true }),
-        supabase.from("attendance_sessions").select("id", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("teachers").select(`id, title, user:users ( full_name )`),
-        supabase
-          .from("attendance_sessions")
-          .select("id, teacher_id, subject_id, session_date, finalized_at, subject:subjects ( name )")
-          .eq("status", "finalized")
-          .gte("session_date", weekStartStr)
-          .order("finalized_at", { ascending: false }),
-        supabase.from("teachers").select("id").eq("is_active", true),
-        supabase
-          .from("system_logs")
-          .select("id, created_at, description, performed_by, action_type")
-          .order("created_at", { ascending: false })
-          .limit(8),
-        supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .eq("is_approved", false)
-          .eq("is_rejected", false)
-          .not("embedding_a", "is", null),
-      ])
-
-      setStats({
-        teachers: teacherCount ?? 0,
-        students: studentCount ?? 0,
-        departments: deptCount ?? 0,
-        activeSessions: activeSessionCount ?? 0,
-        pendingFaceApprovals: pendingFaceCount ?? 0,
-      })
-
-      // ── Teacher Activity ──
-      const teacherMap: Record<
-        string,
-        { name: string; initials: string; subject: string; sessions: number; lastActive: string }
-      > = {}
-      for (const t of teachers || []) {
-        const fullName = (t as any).user?.full_name ?? "Unknown"
-        const title = (t as any).title ?? ""
-        teacherMap[t.id] = {
-          name: `${title}. ${fullName}`,
-          initials: getInitials(fullName),
-          subject: "—",
-          sessions: 0,
-          lastActive: "No sessions this week",
-        }
-      }
-
-      for (const s of weekSessions || []) {
-        const tid = (s as any).teacher_id
-        if (!teacherMap[tid]) continue
-        teacherMap[tid].sessions++
-        const subjectName = (s as any).subject?.name ?? "—"
-        if (teacherMap[tid].subject === "—") teacherMap[tid].subject = subjectName
-        if (teacherMap[tid].lastActive === "No sessions this week") {
-          const finalizedAt = (s as any).finalized_at
-          if (finalizedAt) {
-            const d = new Date(finalizedAt)
-            const todayDate = new Date()
-            todayDate.setHours(0, 0, 0, 0)
-            const sessionDate = new Date(d)
-            sessionDate.setHours(0, 0, 0, 0)
-            const isToday = sessionDate.getTime() === todayDate.getTime()
-            const timeStr = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
-            teacherMap[tid].lastActive = isToday
-              ? `Today, ${timeStr}`
-              : `${sessionDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${timeStr}`
-          }
-        }
-      }
-
-      const activityRows: TeacherActivityRow[] = Object.entries(teacherMap)
-        .map(([id, v]) => ({ id, ...v }))
-        .sort((a, b) => b.sessions - a.sessions)
-        .slice(0, 5)
-
-      const max = Math.max(...activityRows.map((r) => r.sessions), 1)
-      setMaxSessions(max)
-      setTeacherActivity(activityRows)
-
-      // ── System Status ──
-      const statusItems: SystemStatusItem[] = [
-        { label: "Departments Active", value: deptCount ?? 0, status: "ok" },
-        { label: "Teachers Active", value: (activeTeachers || []).length, status: "ok" },
-        { label: "Students Enrolled", value: studentCount ?? 0, status: "info" },
-        {
-          label: (activeSessionCount ?? 0) > 0 ? "Active Sessions Now" : "No Active Sessions",
-          value: activeSessionCount ?? 0,
-          status: (activeSessionCount ?? 0) > 0 ? "warn" : "ok",
-        },
-      ]
-      setSystemStatus(statusItems)
-
-      // ── Recent Activity ──
-      if (logs && logs.length > 0) {
-        setRecentActivity(
-          logs.map((l: any) => ({
-            text: l.description ?? "System action",
-            time: timeAgo(l.created_at),
-            actionType: l.action_type ?? "create",
-          }))
-        )
-      }
-    } catch (e) {
-      console.error("Admin dashboard fetch error:", e)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchAll()
-  }, [fetchAll])
+  const stats = data?.stats ?? { teachers: 0, students: 0, departments: 0, activeSessions: 0, pendingFaceApprovals: 0 }
+  const teacherActivity: TeacherActivityRow[] = data?.teacherActivity ?? []
+  const systemStatus: SystemStatusItem[] = data?.systemStatus ?? []
+  const recentActivity: RecentActivityItem[] = data?.recentActivity ?? []
+  const maxSessions = data?.maxSessions ?? 1
 
   const statCards = [
     {
@@ -431,7 +240,7 @@ export default function AdminDashboardPage() {
               <CardTitle className="text-base font-semibold">Teacher Activity This Week</CardTitle>
             </div>
             <Badge variant="secondary" className="text-xs">
-              {teacherActivity.filter((t) => t.sessions > 0).length} active
+              {teacherActivity.filter((t: TeacherActivityRow) => t.sessions > 0).length} active
             </Badge>
           </CardHeader>
           <CardContent className="p-0">
@@ -462,7 +271,7 @@ export default function AdminDashboardPage() {
                       </td>
                     </tr>
                   ) : (
-                    teacherActivity.map((t, i) => (
+                    teacherActivity.map((t: TeacherActivityRow, i: number) => (
                       <tr
                         key={t.id}
                         className={`border-t border-border transition-colors hover:bg-muted/30 ${i === 0 && t.sessions > 0 ? "bg-primary/3" : ""}`}
@@ -518,7 +327,7 @@ export default function AdminDashboardPage() {
             </div>
             {/* Mobile */}
             <div className="flex flex-col gap-2 p-4 sm:hidden">
-              {teacherActivity.map((t, i) => (
+              {teacherActivity.map((t: TeacherActivityRow, i: number) => (
                 <div
                   key={t.id}
                   className="flex items-center gap-3 rounded-lg border border-border p-3"
@@ -563,7 +372,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent className="p-4 pt-0 flex-1">
             <div className="grid grid-cols-2 gap-3 h-full">
-              {systemStatus.map((item) => {
+              {systemStatus.map((item: SystemStatusItem) => {
                 const dotColor = item.status === "ok" ? "bg-emerald-500" : item.status === "warn" ? "bg-amber-500" : "bg-blue-500"
                 const pingColor = item.status === "ok" ? "bg-emerald-400" : item.status === "warn" ? "bg-amber-400" : "bg-blue-400"
                 const cardBg = item.status === "ok" ? "bg-emerald-500/5 border-emerald-200/60" : item.status === "warn" ? "bg-amber-500/5 border-amber-200/60" : "bg-blue-500/5 border-blue-200/60"
@@ -610,7 +419,7 @@ export default function AdminDashboardPage() {
             <p className="py-6 text-center text-sm text-muted-foreground">No recent activity.</p>
           ) : (
             <div className="relative flex flex-col gap-0">
-              {recentActivity.map((item, i) => {
+              {recentActivity.map((item: RecentActivityItem, i: number) => {
                 const config = getActionConfig(item.actionType)
                 const IconComponent = config.icon
                 return (

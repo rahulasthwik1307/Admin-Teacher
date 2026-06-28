@@ -1,17 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Loader2, Activity, CheckCircle2, Radio, UserPlus, ScanFace } from "lucide-react"
+import { Activity, CheckCircle2, Radio, UserPlus, ScanFace } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
+import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { RecentActivitySkeleton } from "@/components/ui/skeletons"
-
-interface ActivityItem {
-  description: string
-  time: string
-  sortKey: number
-  type: "finalized" | "opened" | "approved" | "added"
-}
 
 function timeAgo(dateStr: string): string {
   const now = new Date()
@@ -68,93 +60,15 @@ const typeConfig = {
 }
 
 export function RecentActivity() {
-  const supabase = createClient()
-  const [activities, setActivities] = useState<ActivityItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useTeacherDashboard()
 
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const teacherId = session.user.id
-      const items: ActivityItem[] = []
+  if (isLoading || !data) return <RecentActivitySkeleton />
 
-      const { data: finalizedSessions } = await supabase
-        .from("attendance_sessions")
-        .select(`id, finalized_at, subjects ( name ), classes ( name, section )`)
-        .eq("teacher_id", teacherId).eq("status", "finalized")
-        .not("finalized_at", "is", null).order("finalized_at", { ascending: false }).limit(5)
-
-      for (const s of (finalizedSessions ?? [])) {
-        const subject: any = Array.isArray(s.subjects) ? s.subjects[0] : s.subjects
-        const cls: any = Array.isArray(s.classes) ? s.classes[0] : s.classes
-        items.push({
-          description: `${subject?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""}`,
-          time: timeAgo(s.finalized_at),
-          sortKey: new Date(s.finalized_at).getTime(),
-          type: "finalized",
-        })
-      }
-
-      const { data: openedSessions } = await supabase
-        .from("attendance_sessions")
-        .select(`id, opened_at, subjects ( name ), classes ( name, section )`)
-        .eq("teacher_id", teacherId).not("opened_at", "is", null)
-        .order("opened_at", { ascending: false }).limit(5)
-
-      for (const s of (openedSessions ?? [])) {
-        const subject: any = Array.isArray(s.subjects) ? s.subjects[0] : s.subjects
-        const cls: any = Array.isArray(s.classes) ? s.classes[0] : s.classes
-        items.push({
-          description: `${subject?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""}`,
-          time: timeAgo(s.opened_at),
-          sortKey: new Date(s.opened_at).getTime(),
-          type: "opened",
-        })
-      }
-
-      const { data: approvedStudents } = await supabase
-        .from("students")
-        .select(`id, updated_at, users ( full_name )`)
-        .eq("created_by", teacherId).eq("is_approved", true)
-        .not("updated_at", "is", null).order("updated_at", { ascending: false }).limit(5)
-
-      for (const s of (approvedStudents ?? [])) {
-        const user: any = Array.isArray(s.users) ? s.users[0] : s.users
-        items.push({
-          description: user?.full_name ?? "Unknown",
-          time: timeAgo(s.updated_at),
-          sortKey: new Date(s.updated_at).getTime(),
-          type: "approved",
-        })
-      }
-
-      const { data: newStudents } = await supabase
-        .from("students")
-        .select(`id, created_at, users ( full_name )`)
-        .eq("created_by", teacherId).not("created_at", "is", null)
-        .order("created_at", { ascending: false }).limit(5)
-
-      for (const s of (newStudents ?? [])) {
-        const user: any = Array.isArray(s.users) ? s.users[0] : s.users
-        items.push({
-          description: user?.full_name ?? "Unknown",
-          time: timeAgo(s.created_at),
-          sortKey: new Date(s.created_at).getTime(),
-          type: "added",
-        })
-      }
-
-      items.sort((a, b) => b.sortKey - a.sortKey)
-      setActivities(items.slice(0, 8))
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  if (loading) {
-    return <RecentActivitySkeleton />
-  }
+  const activities = data.recentActivity.map(item => ({
+    ...item,
+    time: timeAgo(item.time),
+    sortKey: new Date(item.time).getTime(),
+  }))
 
   return (
     <>

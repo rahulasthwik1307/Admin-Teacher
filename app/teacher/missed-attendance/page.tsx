@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,7 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet"
+import { useMissedAttendance } from "@/hooks/use-missed-attendance"
 
 interface MissedSlot {
   date: string; dateLabel: string; subjectId: string; subjectName: string
@@ -38,8 +39,6 @@ function formatDateLabel(dateStr: string): string {
 }
 
 export default function MissedAttendancePage() {
-  const [missedSlots, setMissedSlots] = useState<MissedSlot[]>([])
-  const [loading, setLoading] = useState(true)
   const [filterSubject, setFilterSubject] = useState("all")
   const [filterClass, setFilterClass] = useState("all")
   const [filterDays, setFilterDays] = useState("30")
@@ -49,77 +48,7 @@ export default function MissedAttendancePage() {
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const fetchMissedSlots = useCallback(async () => {
-    setLoading(true)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const daysBack = parseInt(filterDays)
-      const startDate = new Date(); startDate.setDate(startDate.getDate() - daysBack)
-      const startDateStr = startDate.toISOString().split("T")[0]
-      const todayStr = new Date().toISOString().split("T")[0]
-
-      const { data: timetable } = await supabase
-        .from("timetables")
-        .select(`day_of_week, subject_id, class_id, period_id,
-          subject:subjects ( id, name, code ),
-          class:classes ( id, name, section ),
-          period:periods ( id, period_number, start_time, end_time )`)
-        .eq("teacher_id", user.id)
-
-      if (!timetable || timetable.length === 0) { setMissedSlots([]); setLoading(false); return }
-
-      const { data: existingSessions } = await supabase
-        .from("attendance_sessions")
-        .select("subject_id, class_id, period_id, session_date")
-        .eq("teacher_id", user.id)
-        .gte("session_date", startDateStr)
-        .lte("session_date", todayStr)
-
-      const existingKeys = new Set(
-        (existingSessions || []).map((s: any) => `${s.session_date}__${s.subject_id}__${s.class_id}__${s.period_id}`)
-      )
-
-      const missed: MissedSlot[] = []
-      const cursor = new Date(startDate)
-      const today = new Date(); today.setHours(23,59,59,999)
-
-      while (cursor <= today) {
-        const dayOfWeek = cursor.getDay() === 0 ? 7 : cursor.getDay()
-        if (dayOfWeek !== 7) {
-          const dateStr = cursor.toISOString().split("T")[0]
-          const isToday = dateStr === todayStr
-          const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
-          for (const slot of timetable) {
-            if ((slot as any).day_of_week !== dayOfWeek) continue
-            const key = `${dateStr}__${slot.subject_id}__${slot.class_id}__${slot.period_id}`
-            if (existingKeys.has(key)) continue
-            if (isToday) {
-              const endStr = ((slot as any).period?.end_time as string) ?? "00:00"
-              const [endH, endM] = endStr.split(":").map(Number)
-              if (nowMinutes < endH * 60 + endM) continue
-            }
-            missed.push({
-              date: dateStr, dateLabel: formatDateLabel(dateStr),
-              subjectId: slot.subject_id, subjectName: (slot as any).subject?.name ?? "Unknown",
-              subjectCode: (slot as any).subject?.code ?? "", classId: slot.class_id,
-              className: `${(slot as any).class?.name ?? ""}-${(slot as any).class?.section ?? ""}`,
-              periodId: slot.period_id, periodNumber: (slot as any).period?.period_number ?? 0,
-              startTime: ((slot as any).period?.start_time ?? "").substring(0, 5),
-              endTime: ((slot as any).period?.end_time ?? "").substring(0, 5),
-            })
-          }
-        }
-        cursor.setDate(cursor.getDate() + 1)
-      }
-      missed.sort((a, b) => { const d = b.date.localeCompare(a.date); return d !== 0 ? d : a.periodNumber - b.periodNumber })
-      setMissedSlots(missed)
-    } catch (e) { console.error("fetchMissedSlots error:", e) }
-    finally { setLoading(false) }
-  }, [filterDays])
-
-  useEffect(() => { fetchMissedSlots() }, [fetchMissedSlots])
+  const { data: missedSlots = [], isLoading: loading, refetch } = useMissedAttendance(filterDays)
 
   const filteredSlots = missedSlots.filter((s) => {
     if (filterSubject !== "all" && s.subjectId !== filterSubject) return false
@@ -169,7 +98,7 @@ export default function MissedAttendancePage() {
         return
       }
       toast.success("Attendance saved successfully")
-      setSheetOpen(false); setSelectedSlot(null); fetchMissedSlots()
+      setSheetOpen(false); setSelectedSlot(null); refetch()
     } catch (e) {
       toast.error("An unexpected error occurred", { style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" } })
     } finally { setSaving(false) }

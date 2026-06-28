@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useTimetableData } from "@/hooks/use-timetable"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { MyTimetableSkeleton } from "@/components/ui/skeletons"
@@ -102,7 +104,6 @@ interface AssignmentOption {
 /* ---------- Component ---------- */
 export default function TimetablePage() {
   const [entries, setEntries] = useState<TimetableEntry[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -150,62 +151,40 @@ export default function TimetablePage() {
     return SUBJECT_COLORS[subjectColorMap[name] ?? 0]
   }
 
-  /* ---------- Fetch ---------- */
-  const fetchDropdownData = useCallback(async () => {
-    const supabase = createClient()
-    const [assignmentsRes, periodsRes, classesRes] = await Promise.all([
-      supabase.from("teacher_assignments").select(`teacher_id, subject_id, class_id, teacher:teachers ( id, user:users ( full_name ) ), subject:subjects ( id, name ), class:classes ( id, name, section )`),
-      supabase.from("periods").select("id, period_number, start_time, end_time").order("period_number"),
-      supabase.from("classes").select("id, name, section").order("name"),
-    ])
+  const queryClient = useQueryClient()
+  const { data: timetablePageData, isLoading } = useTimetableData()
 
-    if (assignmentsRes.data) {
-      setAssignmentOptions(assignmentsRes.data.map((a: any) => ({
-        teacherId: a.teacher_id, teacherName: a.teacher?.user?.full_name ?? "Unknown",
-        subjectId: a.subject_id, subjectName: a.subject?.name ?? "—",
-        classId: a.class_id, classLabel: a.class ? `${a.class.name}-${a.class.section}` : "—",
-      })))
-    }
-    if (periodsRes.data) {
-      setPeriodOptions(periodsRes.data.map((p: any) => ({
-        id: p.id, number: p.period_number,
-        start: p.start_time.slice(0, 5), end: p.end_time.slice(0, 5),
-        label: `Period ${p.period_number} (${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)})`,
-      })))
-    }
-    if (classesRes.data) {
-      setClassOptions(classesRes.data.map((c: any) => ({ id: c.id, label: `${c.name}-${c.section}` })))
-    }
-  }, [])
+  useEffect(() => {
+    if (!timetablePageData) return
 
-  const fetchEntries = useCallback(async () => {
-    setIsLoading(true); setFetchError(null)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("timetables")
-        .select(`id, day_of_week, teacher:teachers ( id, user:users ( full_name ) ), subject:subjects ( name ), class:classes ( name, section ), period:periods ( period_number, start_time, end_time )`)
-        .order("day_of_week")
+    const { assignments, periods, classes, timetable } = timetablePageData
 
-      if (error) { setFetchError("Failed to load timetable."); return }
+    setAssignmentOptions(assignments.map((a: any) => ({
+      teacherId: a.teacher_id, teacherName: a.teacher?.user?.full_name ?? "Unknown",
+      subjectId: a.subject_id, subjectName: a.subject?.name ?? "—",
+      classId: a.class_id, classLabel: a.class ? `${a.class.name}-${a.class.section}` : "—",
+    })))
 
-      const mapped: TimetableEntry[] = (data || []).map((t: any) => ({
-        id: t.id, day: t.day_of_week, dayLabel: getDayLabel(t.day_of_week),
-        periodNumber: t.period?.period_number ?? 0,
-        periodStart: t.period?.start_time?.slice(0, 5) ?? "",
-        periodEnd: t.period?.end_time?.slice(0, 5) ?? "",
-        period: t.period ? `Period ${t.period.period_number} (${t.period.start_time.slice(0, 5)} - ${t.period.end_time.slice(0, 5)})` : "—",
-        subject: t.subject?.name ?? "—",
-        teacher: t.teacher?.user?.full_name ?? "—",
-        classSection: t.class ? `${t.class.name}-${t.class.section}` : "—",
-      }))
-      mapped.sort((a, b) => a.day - b.day || a.periodNumber - b.periodNumber)
-      setEntries(mapped)
-    } catch { setFetchError("An unexpected error occurred.") }
-    finally { setIsLoading(false) }
-  }, [])
+    setPeriodOptions(periods.map((p: any) => ({
+      id: p.id, number: p.period_number,
+      start: p.start_time.slice(0, 5), end: p.end_time.slice(0, 5),
+      label: `Period ${p.period_number} (${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)})`,
+    })))
 
-  useEffect(() => { fetchDropdownData(); fetchEntries() }, [fetchDropdownData, fetchEntries])
+    setClassOptions(classes.map((c: any) => ({ id: c.id, label: `${c.name}-${c.section}` })))
+
+    const mapped: TimetableEntry[] = timetable.map((t: any) => ({
+      id: t.id, day: t.day_of_week, dayLabel: getDayLabel(t.day_of_week),
+      periodNumber: t.period?.period_number ?? 0,
+      periodStart: t.period?.start_time?.slice(0, 5) ?? "",
+      periodEnd: t.period?.end_time?.slice(0, 5) ?? "",
+      period: t.period ? `Period ${t.period.period_number} (${t.period.start_time.slice(0, 5)} - ${t.period.end_time.slice(0, 5)})` : "—",
+      subject: t.subject?.name ?? "—", teacher: t.teacher?.user?.full_name ?? "—",
+      classSection: t.class ? `${t.class.name}-${t.class.section}` : "—",
+    }))
+    mapped.sort((a, b) => a.day - b.day || a.periodNumber - b.periodNumber)
+    setEntries(mapped)
+  }, [timetablePageData])
 
   /* ---------- Derived data ---------- */
   const uniqueClasses = useMemo(() =>
@@ -303,7 +282,7 @@ export default function TimetablePage() {
       if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Timetable entry added: ${assignment.subjectName} — ${assignment.classLabel} — ${getDayLabel(parseInt(formDay))}` })
       toast.success(`Added: ${assignment.subjectName} on ${getDayLabel(parseInt(formDay))}`)
       setSheetOpen(false); setFormClassId(""); setFormAssignmentKey(""); setFormPeriodId(""); setFormDay("")
-      fetchEntries()
+      queryClient.invalidateQueries({ queryKey: ["admin-timetable"] })
     } finally { setIsSubmitting(false) }
   }
 
@@ -336,7 +315,7 @@ export default function TimetablePage() {
       else toast.error("No slots were added. They may already exist.")
 
       setBulkSheetOpen(false); setBulkClassId(""); setBulkSlots({})
-      fetchEntries()
+      queryClient.invalidateQueries({ queryKey: ["admin-timetable"] })
     } finally { setIsSubmitting(false) }
   }
 
@@ -350,7 +329,7 @@ export default function TimetablePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "delete", description: `Timetable entry removed: ${removeTarget.subject} — ${removeTarget.classSection} — ${removeTarget.dayLabel}` })
       toast.success("Timetable entry removed")
-      fetchEntries()
+      queryClient.invalidateQueries({ queryKey: ["admin-timetable"] })
     } finally { setRemoveTarget(null); setIsSubmitting(false) }
   }
 
@@ -462,7 +441,7 @@ export default function TimetablePage() {
       {fetchError && (
         <Card><CardContent className="py-8 text-center">
           <p className="text-sm text-destructive">{fetchError}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={fetchEntries}>Retry</Button>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => queryClient.invalidateQueries({ queryKey: ["admin-timetable"] })}>Retry</Button>
         </CardContent></Card>
       )}
 

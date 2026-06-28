@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
         embedding_a: null,
         embedding_b: null,
         embedding_c: null,
+        face_embedding: null,
         registration_photo_url: null,
         face_registered: false,
         verification_threshold: null,

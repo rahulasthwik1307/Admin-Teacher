@@ -1,7 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { useState, useMemo, useEffect } from "react"
 import { toast } from "sonner"
 import {
   Download,
@@ -275,15 +274,12 @@ function SectionGroup({
   )
 }
 
+import { useAttendanceHistory } from "@/hooks/use-attendance-history"
+import { createClient } from "@/lib/supabase/client"
+
 /* ── Page ──────────────────────────────────────────────── */
 export default function AttendanceHistoryPage() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data: sessions = [], isLoading: loading } = useAttendanceHistory()
 
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
@@ -294,93 +290,13 @@ export default function AttendanceHistoryPage() {
   const [detailStudents, setDetailStudents] = useState<DetailStudent[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
-  /* ── fetch sessions ────────────────────────────────────── */
-  const fetchSessions = useCallback(async () => {
-    try {
-      setLoading(true)
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      if (!authSession) return
-      const teacherId = authSession.user.id
-
-      const { data: rawSessions, error } = await supabase
-        .from("attendance_sessions")
-        .select(`
-          id, session_date, finalized_at, subject_id, class_id, period_id,
-          subjects ( id, name ),
-          classes ( id, name, section ),
-          periods ( period_number, start_time, end_time )
-        `)
-        .eq("teacher_id", teacherId)
-        .eq("status", "finalized")
-        .order("session_date", { ascending: false })
-        .order("finalized_at", { ascending: false })
-
-      if (error) { toast.error("Failed to load attendance history."); return }
-      if (!rawSessions || rawSessions.length === 0) { setSessions([]); return }
-
-      const sessionIds = rawSessions.map((s: any) => s.id)
-      const { data: attendanceCounts } = await supabase
-        .from("period_attendance")
-        .select("session_id, status")
-        .in("session_id", sessionIds)
-        .in("status", ["present", "absent"])
-
-      const countMap: Record<string, { present: number; absent: number }> = {}
-      for (const row of (attendanceCounts ?? [])) {
-        if (!countMap[row.session_id]) countMap[row.session_id] = { present: 0, absent: 0 }
-        if (row.status === "present") countMap[row.session_id].present++
-        else if (row.status === "absent") countMap[row.session_id].absent++
-      }
-
-      const built: Session[] = rawSessions.map((s: any) => {
-        const counts = countMap[s.id] ?? { present: 0, absent: 0 }
-        const total = counts.present + counts.absent
-        const pct = total > 0 ? Math.round((counts.present / total) * 100) : 0
-        const subjectName = s.subjects?.name ?? "Unknown Subject"
-        // CSE-A format with hyphen
-        const className = s.classes ? `${s.classes.name}-${s.classes.section}` : "Unknown"
-        const periodNum = s.periods?.period_number ?? 0
-        const periodShort = periodNum > 0 ? `${getOrdinal(periodNum)} Period` : "Unknown Period"
-        const startTime = s.periods?.start_time?.slice(0, 5) ?? ""
-        const endTime = s.periods?.end_time?.slice(0, 5) ?? ""
-        const periodTime = startTime && endTime ? `${startTime} - ${endTime}` : ""
-        const period = `${periodShort}${periodTime ? ` · ${periodTime}` : ""}`
-
-        return {
-          id: s.id,
-          date: formatDate(s.session_date),
-          rawDate: s.session_date,
-          subject: subjectName,
-          subjectId: s.subject_id ?? "",
-          class: className,
-          classId: s.class_id ?? "",
-          period,
-          periodShort,
-          periodTime,
-          present: counts.present,
-          absent: counts.absent,
-          percentage: pct,
-          status: "Finalized",
-        }
-      })
-
-      setSessions(built)
-    } catch (e) {
-      console.error(e)
-      toast.error("Something went wrong loading history.")
-    } finally {
-      setLoading(false)
-    }
-  }, [supabase])
-
-  useEffect(() => { fetchSessions() }, [fetchSessions])
-
   /* ── fetch detail students ─────────────────────────────── */
   useEffect(() => {
     if (!selectedSession) { setDetailStudents([]); return }
     const fetchDetail = async () => {
       setDetailLoading(true)
       try {
+        const supabase = createClient()
         const { data, error } = await supabase
           .from("period_attendance")
           .select(`status, student_id, students ( roll_number, users ( full_name ) )`)
@@ -407,7 +323,7 @@ export default function AttendanceHistoryPage() {
       }
     }
     fetchDetail()
-  }, [selectedSession, supabase])
+  }, [selectedSession])
 
   /* ── filter options ────────────────────────────────────── */
   const subjectOptions = useMemo(() => {

@@ -24,6 +24,28 @@ export async function POST(request: Request) {
       if (nameError) return NextResponse.json({ error: "Failed to update name" }, { status: 500 })
     }
 
+    // Check roll number uniqueness within the target class (excluding current student)
+    if (roll_number) {
+      const targetClassId = class_id || (await (async () => {
+        const { data } = await admin.from("students").select("class_id").eq("id", student_id).maybeSingle()
+        return data?.class_id
+      })())
+
+      if (targetClassId) {
+        const { data: duplicateRoll } = await admin
+          .from("students")
+          .select("id")
+          .eq("roll_number", roll_number.trim().toUpperCase())
+          .eq("class_id", targetClassId)
+          .neq("id", student_id)
+          .maybeSingle()
+
+        if (duplicateRoll) {
+          return NextResponse.json({ error: "A student with this roll number already exists in this class" }, { status: 409 })
+        }
+      }
+    }
+
     // Update roll_number, class_id, department_id, year in students table
     const studentUpdate: any = {}
     if (roll_number) studentUpdate.roll_number = roll_number.trim().toUpperCase()

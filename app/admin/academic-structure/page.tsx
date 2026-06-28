@@ -1,5 +1,7 @@
 "use client"
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useAcademicStructure } from "@/hooks/use-academic-structure"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -75,6 +77,9 @@ type Tab = (typeof TABS)[number]
 
 /* ---------- Component ---------- */
 export default function AcademicStructurePage() {
+  const queryClient = useQueryClient()
+  const { data: structureData } = useAcademicStructure()
+
   const [activeTab, setActiveTab] = useState<Tab>("departments")
   const [departments, setDepartments] = useState<Department[]>([])
   const [classes, setClasses] = useState<ClassItem[]>([])
@@ -105,52 +110,17 @@ export default function AcademicStructurePage() {
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
-  /* ---------- Fetch ---------- */
-  const fetchDepartments = useCallback(async () => {
-    setLoadingDepts(true)
-    try {
-      const supabase = createClient()
-      const { data } = await supabase.from("departments").select("id, name, code").order("name")
-      const { data: classData } = await supabase.from("classes").select("department_id")
-      const { data: subjectData } = await supabase.from("subjects").select("department_id")
-      const classMap: Record<string, number> = {}
-      const subjectMap: Record<string, number> = {}
-      for (const c of classData || []) classMap[c.department_id] = (classMap[c.department_id] || 0) + 1
-      for (const s of subjectData || []) subjectMap[s.department_id] = (subjectMap[s.department_id] || 0) + 1
-      setDepartments((data || []).map((d: any) => ({ id: d.id, name: d.name, code: d.code, classes: classMap[d.id] || 0, subjects: subjectMap[d.id] || 0 })))
-    } finally { setLoadingDepts(false) }
-  }, [])
-
-  const fetchClasses = useCallback(async () => {
-    setLoadingClasses(true)
-    try {
-      const supabase = createClient()
-      const { data } = await supabase.from("classes").select("id, name, section, department:departments ( name, code )").order("name")
-      setClasses((data || []).map((c: any) => ({ id: c.id, name: c.name, section: c.section, department: c.department?.code ?? "—", departmentFull: c.department?.name ?? "—", displayName: `${c.name}-${c.section}` })))
-    } finally { setLoadingClasses(false) }
-  }, [])
-
-  const fetchSubjects = useCallback(async () => {
-    setLoadingSubjects(true)
-    try {
-      const supabase = createClient()
-      const { data } = await supabase.from("subjects").select("id, name, code, department:departments ( name, code )").order("name")
-      setSubjects((data || []).map((s: any) => ({ id: s.id, name: s.name, code: s.code, department: s.department?.code ?? "—", departmentFull: s.department?.name ?? "—" })))
-    } finally { setLoadingSubjects(false) }
-  }, [])
-
-  const fetchPeriods = useCallback(async () => {
-    setLoadingPeriods(true)
-    try {
-      const supabase = createClient()
-      const { data } = await supabase.from("periods").select("id, period_number, start_time, end_time").order("period_number")
-      setPeriods((data || []).map((p: any) => ({ id: p.id, number: p.period_number, start: p.start_time, end: p.end_time, duration: computeDuration(p.start_time, p.end_time) })))
-    } finally { setLoadingPeriods(false) }
-  }, [])
-
   useEffect(() => {
-    fetchDepartments(); fetchClasses(); fetchSubjects(); fetchPeriods()
-  }, [fetchDepartments, fetchClasses, fetchSubjects, fetchPeriods])
+    if (!structureData) return
+    setDepartments(structureData.departments)
+    setClasses(structureData.classes)
+    setSubjects(structureData.subjects)
+    setPeriods(structureData.periods)
+    setLoadingDepts(false)
+    setLoadingClasses(false)
+    setLoadingSubjects(false)
+    setLoadingPeriods(false)
+  }, [structureData])
 
   /* ---------- Grouped data ---------- */
   const classesByDept = useMemo(() => {
@@ -193,7 +163,7 @@ export default function AcademicStructurePage() {
       if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Department added: ${deptName}` })
       toast.success(`Department "${deptCode}" added`)
       setDeptDialog(false); setDeptName(""); setDeptCode("")
-      fetchDepartments()
+      queryClient.invalidateQueries({ queryKey: ["admin-academic-structure"] })
     } finally { setIsSubmitting(false) }
   }
 
@@ -210,7 +180,7 @@ export default function AcademicStructurePage() {
       if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Class added: ${className.toUpperCase()}-${classSection.toUpperCase()} (${classDept})` })
       toast.success(`Class "${className.toUpperCase()}-${classSection.toUpperCase()}" added`)
       setClassDialog(false); setClassName(""); setClassSection(""); setClassDept("")
-      fetchClasses(); fetchDepartments()
+      queryClient.invalidateQueries({ queryKey: ["admin-academic-structure"] })
     } finally { setIsSubmitting(false) }
   }
 
@@ -227,7 +197,7 @@ export default function AcademicStructurePage() {
       if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Subject added: ${subjName}` })
       toast.success(`Subject "${subjName}" added`)
       setSubjectDialog(false); setSubjName(""); setSubjCode(""); setSubjDept("")
-      fetchSubjects(); fetchDepartments()
+      queryClient.invalidateQueries({ queryKey: ["admin-academic-structure"] })
     } finally { setIsSubmitting(false) }
   }
 
@@ -241,7 +211,7 @@ export default function AcademicStructurePage() {
       if (error) { toast.error(`Failed: ${error.message}`); return }
       toast.success(`Period ${nextNum} added`)
       setPeriodDialog(false); setPerStart(""); setPerEnd("")
-      fetchPeriods()
+      queryClient.invalidateQueries({ queryKey: ["admin-academic-structure"] })
     } finally { setIsSubmitting(false) }
   }
 

@@ -48,6 +48,7 @@ export default function QRAttendancePage() {
   const [timetableMap, setTimetableMap] = useState<
     Map<string, { periodId: string; periodLabel: string }>
   >(new Map()) // key: "classId__subjectId"
+  const [classSubjectMap, setClassSubjectMap] = useState<Map<string, DropdownOption[]>>(new Map())
   const [periodAutoFilled, setPeriodAutoFilled] = useState(false)
 
   const canStart = !!selectedClass && !!selectedSubject && !!selectedPeriod
@@ -61,25 +62,24 @@ export default function QRAttendancePage() {
     try {
       const supabase = createClient()
 
-      // Today's day_of_week: JS Sunday=0, Mon=1...Sat=6
-      // Our DB: Mon=1...Sat=6. JS and DB match for Mon-Sat.
-      const jsDay = new Date().getDay() // 0=Sun,1=Mon,...,6=Sat
-      const todayDow = jsDay === 0 ? null : jsDay // null on Sunday (no classes)
+      const jsDay = new Date().getDay()
+      const todayDow = jsDay === 0 ? null : jsDay
 
       const [
-        { data: classAssignments },
         { data: assignments },
         { data: periods },
         { data: recent },
         { data: timetableEntries },
       ] = await Promise.all([
+        // Fetch assignments with BOTH class and subject joined together
         supabase
           .from("teacher_assignments")
-          .select("class:classes(id, name, section, department:departments(code))")
-          .eq("teacher_id", uid),
-        supabase
-          .from("teacher_assignments")
-          .select("subject:subjects(id, name)")
+          .select(`
+            class_id,
+            subject_id,
+            class:classes(id, name, section, department:departments(code)),
+            subject:subjects(id, name)
+          `)
           .eq("teacher_id", uid),
         supabase
           .from("periods")
@@ -91,11 +91,14 @@ export default function QRAttendancePage() {
             id, session_date, finalized_at, status,
             subject:subjects(name),
             class:classes(section, department:departments(code)),
-            period:periods(period_number)
+            period:periods(period_number),
+            present_count:period_attendance(count),
+            total_count:period_attendance(count)
           `)
           .eq("teacher_id", uid)
           .eq("status", "finalized")
-          .order("finalized_at", { ascending: false }),
+          .order("finalized_at", { ascending: false })
+          .limit(30),
         todayDow
           ? supabase
               .from("timetables")
@@ -105,12 +108,12 @@ export default function QRAttendancePage() {
           : Promise.resolve({ data: [] }),
       ])
 
-      // 1. Classes — only assigned
-      if (classAssignments) {
+      // 1. Classes — unique, from assignments
+      if (assignments) {
         const uniqueClasses = new Map()
-        for (const a of classAssignments as any[]) {
-          if (a.class && !uniqueClasses.has(a.class.id)) {
-            uniqueClasses.set(a.class.id, a.class)
+        for (const a of assignments as any[]) {
+          if (a.class && !uniqueClasses.has(a.class_id)) {
+            uniqueClasses.set(a.class_id, a.class)
           }
         }
         setClassOptions(
@@ -121,12 +124,31 @@ export default function QRAttendancePage() {
         )
       }
 
-      // 2. Subjects assigned to teacher
+      // 2. Store full assignment map: classId -> subject options
+      // This is the KEY fix — subjects are now filtered per class
       if (assignments) {
-        setSubjectOptions(
-          assignments.map((a: any) => ({
-            value: a.subject.id,
+        const classSubjectMap = new Map<string, DropdownOption[]>()
+        for (const a of assignments as any[]) {
+          if (!a.class_id || !a.subject) continue
+          if (!classSubjectMap.has(a.class_id)) {
+            classSubjectMap.set(a.class_id, [])
+          }
+          classSubjectMap.get(a.class_id)!.push({
+            value: a.subject_id,
             label: a.subject.name,
+          })
+        }
+        setClassSubjectMap(classSubjectMap)
+
+        // Set all unique subjects for initial state (will filter when class selected)
+        const allSubjects = new Map<string, string>()
+        for (const a of assignments as any[]) {
+          if (a.subject) allSubjects.set(a.subject_id, a.subject.name)
+        }
+        setSubjectOptions(
+          Array.from(allSubjects.entries()).map(([id, name]) => ({
+            value: id,
+            label: name,
           }))
         )
       }
@@ -141,7 +163,7 @@ export default function QRAttendancePage() {
         )
       }
 
-      // 4. Build timetable map for today: key = "classId__subjectId"
+      // 4. Timetable map
       if (timetableEntries && timetableEntries.length > 0) {
         const map = new Map<string, { periodId: string; periodLabel: string }>()
         for (const t of timetableEntries as any[]) {
@@ -157,45 +179,53 @@ export default function QRAttendancePage() {
         setTimetableMap(new Map())
       }
 
-      // 5. Recent sessions
-      if (recent) {
-        const processedRecent = await Promise.all(
-          recent.map(async (r: any) => {
-            const { count: presentCount } = await supabase
-              .from("period_attendance")
-              .select("*", { count: "exact", head: true })
-              .eq("session_id", r.id)
-              .eq("status", "present")
+      // 5. Recent sessions — fetch attendance counts in bulk, not per session
+      if (recent && recent.length > 0) {
+        const sessionIds = recent.map((r: any) => r.id)
 
-            const { count: totalCount } = await supabase
-              .from("period_attendance")
-              .select("*", { count: "exact", head: true })
-              .eq("session_id", r.id)
+        const [{ data: presentCounts }, { data: totalCounts }] = await Promise.all([
+          supabase
+            .from("period_attendance")
+            .select("session_id")
+            .in("session_id", sessionIds)
+            .eq("status", "present"),
+          supabase
+            .from("period_attendance")
+            .select("session_id")
+            .in("session_id", sessionIds),
+        ])
 
-            return {
-              subject: r.subject.name,
-              class: `${r.class.department.code}-${r.class.section}`,
-              period: (() => {
-                const n = r.period.period_number
-                const suffix =
-                  n >= 11 && n <= 13
-                    ? "th"
-                    : ["th", "st", "nd", "rd"][Math.min(n % 10, 3)] ?? "th"
-                return `${n}${suffix}`
-              })(),
-              date: new Date(r.session_date).toLocaleDateString(),
-              time: r.finalized_at
-                ? new Date(r.finalized_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "",
-              present: presentCount || 0,
-              total: totalCount || 0,
-              status: "Finalized",
-            }
-          })
-        )
+        const presentMap = new Map<string, number>()
+        for (const row of (presentCounts ?? [])) {
+          presentMap.set(row.session_id, (presentMap.get(row.session_id) ?? 0) + 1)
+        }
+        const totalMap = new Map<string, number>()
+        for (const row of (totalCounts ?? [])) {
+          totalMap.set(row.session_id, (totalMap.get(row.session_id) ?? 0) + 1)
+        }
+
+        const processedRecent = recent.map((r: any) => {
+          const n = r.period.period_number
+          const suffix =
+            n >= 11 && n <= 13
+              ? "th"
+              : ["th", "st", "nd", "rd"][Math.min(n % 10, 3)] ?? "th"
+          return {
+            subject: r.subject.name,
+            class: `${r.class.department.code}-${r.class.section}`,
+            period: `${n}${suffix}`,
+            date: new Date(r.session_date).toLocaleDateString(),
+            time: r.finalized_at
+              ? new Date(r.finalized_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "",
+            present: presentMap.get(r.id) ?? 0,
+            total: totalMap.get(r.id) ?? 0,
+            status: "Finalized",
+          }
+        })
         setRecentSessions(processedRecent)
       }
       setRecentSessionsLoading(false)
@@ -485,6 +515,19 @@ export default function QRAttendancePage() {
     setSelectedSubject("")
     setSelectedPeriod("")
     setPeriodAutoFilled(false)
+    // Filter subjects to only those assigned for this class
+    if (val && classSubjectMap.has(val)) {
+      setSubjectOptions(classSubjectMap.get(val)!)
+    } else {
+      // No class selected — show all subjects
+      const allSubjects = new Map<string, string>()
+      for (const [, subjects] of classSubjectMap) {
+        for (const s of subjects) allSubjects.set(s.value, s.label)
+      }
+      setSubjectOptions(
+        Array.from(allSubjects.entries()).map(([id, name]) => ({ value: id, label: name }))
+      )
+    }
   }
 
   // Handler for subject change — period will auto-fill via useEffect

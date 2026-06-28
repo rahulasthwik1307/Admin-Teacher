@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo } from "react"
+import { useReportsData } from "@/hooks/use-reports-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -128,138 +129,102 @@ export default function ReportsPage() {
     { bg: "bg-orange-500/10", text: "text-orange-600", border: "border-orange-500", avatar: "bg-orange-500/10 text-orange-600" },
   ], [])
 
-  const [teacherActivity, setTeacherActivity] = useState<TeacherActivityRow[]>([])
-  const [loadingTeachers, setLoadingTeachers] = useState(true)
+  const { data: reportsData, isLoading: reportsLoading } = useReportsData()
+
+  const loadingTeachers = reportsLoading
+  const loadingOverview = reportsLoading
+  const loadingLogs = reportsLoading
+
   const [teacherDeptFilter, setTeacherDeptFilter] = useState("all")
-
-  const [subjectAttendance, setSubjectAttendance] = useState<SubjectAttendanceRow[]>([])
-  const [overviewStats, setOverviewStats] = useState<OverviewStats | null>(null)
-  const [loadingOverview, setLoadingOverview] = useState(true)
-
-  const [systemLogs, setSystemLogs] = useState<LogEntry[]>([])
-  const [loadingLogs, setLoadingLogs] = useState(true)
   const [logFilterPerformer, setLogFilterPerformer] = useState("all")
   const [logFilterAction, setLogFilterAction] = useState("all")
   const [logFilterRange, setLogFilterRange] = useState("all")
 
-  /* ── Fetch Teacher Activity ── */
-  const fetchTeacherActivity = useCallback(async () => {
-    setLoadingTeachers(true)
-    try {
-      const supabase = createClient()
-      const { data: teachers } = await supabase.from("teachers").select(`id, title, department:departments ( name, code ), user:users ( full_name )`)
-      if (!teachers) return
-      const { data: sessions } = await supabase.from("attendance_sessions").select("id, teacher_id, session_date").eq("status", "finalized").order("session_date", { ascending: false })
-      const { data: assignments } = await supabase.from("teacher_assignments").select("teacher_id")
+  const teacherActivity = useMemo<TeacherActivityRow[]>(() => {
+    if (!reportsData) return []
+    const { teachers, sessions, assignments } = reportsData
+    const sessionsByTeacher: Record<string, { count: number; latest: string }> = {}
+    for (const s of sessions) {
+      if (!sessionsByTeacher[s.teacher_id]) sessionsByTeacher[s.teacher_id] = { count: 0, latest: "" }
+      sessionsByTeacher[s.teacher_id].count++
+      if (!sessionsByTeacher[s.teacher_id].latest || s.session_date > sessionsByTeacher[s.teacher_id].latest)
+        sessionsByTeacher[s.teacher_id].latest = s.session_date
+    }
+    const assignmentsByTeacher: Record<string, number> = {}
+    for (const a of assignments) assignmentsByTeacher[a.teacher_id] = (assignmentsByTeacher[a.teacher_id] || 0) + 1
 
-      const sessionsByTeacher: Record<string, { count: number; latest: string }> = {}
-      for (const s of sessions || []) {
-        if (!sessionsByTeacher[s.teacher_id]) sessionsByTeacher[s.teacher_id] = { count: 0, latest: "" }
-        sessionsByTeacher[s.teacher_id].count++
-        if (!sessionsByTeacher[s.teacher_id].latest || s.session_date > sessionsByTeacher[s.teacher_id].latest)
-          sessionsByTeacher[s.teacher_id].latest = s.session_date
+    return teachers.map((t: any) => {
+      const sessData = sessionsByTeacher[t.id]
+      const sessionCount = sessData?.count || 0
+      const assigned = assignmentsByTeacher[t.id] || 0
+      const rate = assigned > 0 ? Math.min(100, Math.round((sessionCount / assigned) * 100)) : 0
+      let lastSession = "Never"
+      if (sessData?.latest) {
+        const d = new Date(sessData.latest + "T00:00:00")
+        lastSession = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       }
-      const assignmentsByTeacher: Record<string, number> = {}
-      for (const a of assignments || []) assignmentsByTeacher[a.teacher_id] = (assignmentsByTeacher[a.teacher_id] || 0) + 1
+      return { id: t.id, name: `${t.title}. ${t.user?.full_name ?? "Unknown"}`, dept: t.department?.code ?? "—", sessions: sessionCount, assigned, rate, lastSession }
+    }).sort((a: any, b: any) => b.sessions - a.sessions)
+  }, [reportsData])
 
-      const rows: TeacherActivityRow[] = teachers.map((t: any) => {
-        const sessData = sessionsByTeacher[t.id]
-        const sessionCount = sessData?.count || 0
-        const assigned = assignmentsByTeacher[t.id] || 0
-        const rate = assigned > 0 ? Math.min(100, Math.round((sessionCount / assigned) * 100)) : 0
-        let lastSession = "Never"
-        if (sessData?.latest) {
-          const d = new Date(sessData.latest + "T00:00:00")
-          lastSession = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-        }
-        return { id: t.id, name: `${t.title}. ${t.user?.full_name ?? "Unknown"}`, dept: (t.department as any)?.code ?? "—", sessions: sessionCount, assigned, rate, lastSession }
-      })
-      rows.sort((a, b) => b.sessions - a.sessions)
-      setTeacherActivity(rows)
-    } catch (e) { console.error("fetchTeacherActivity error:", e) }
-    finally { setLoadingTeachers(false) }
-  }, [])
+  const { subjectAttendance, overviewStats } = useMemo(() => {
+    if (!reportsData) return { subjectAttendance: [], overviewStats: null }
+    const { sessions, attendance } = reportsData
+    if (!sessions.length) return { subjectAttendance: [], overviewStats: { overallPct: 0, highestSubject: "—", highestPct: 0, lowestSubject: "—", lowestPct: 0, studentsBelow75: 0 } }
 
-  /* ── Fetch Attendance Overview ── */
-  const fetchOverview = useCallback(async () => {
-    setLoadingOverview(true)
-    try {
-      const supabase = createClient()
-      const { data: sessions } = await supabase.from("attendance_sessions").select("id, subject_id, subject:subjects ( name, department:departments ( code ) )").eq("status", "finalized")
-      if (!sessions || sessions.length === 0) {
-        setOverviewStats({ overallPct: 0, highestSubject: "—", highestPct: 0, lowestSubject: "—", lowestPct: 0, studentsBelow75: 0 })
-        setSubjectAttendance([]); setLoadingOverview(false); return
-      }
-      const sessionIds = sessions.map((s: any) => s.id)
-      const allAttendance: any[] = []
-      for (let i = 0; i < sessionIds.length; i += 100) {
-        const { data } = await supabase.from("period_attendance").select("session_id, student_id, status").in("session_id", sessionIds.slice(i, i + 100))
-        if (data) allAttendance.push(...data)
-      }
-      const attendance = allAttendance.filter(a => a.status === "present" || a.status === "absent")
-      const subjectMap: Record<string, { name: string; dept: string; sessionIds: Set<string>; present: number; total: number; studentPresent: Record<string, number>; studentTotal: Record<string, number> }> = {}
-      for (const s of sessions) {
-        const subId = (s as any).subject_id
-        if (!subjectMap[subId]) subjectMap[subId] = { name: (s as any).subject?.name ?? "Unknown", dept: (s as any).subject?.department?.code ?? "—", sessionIds: new Set(), present: 0, total: 0, studentPresent: {}, studentTotal: {} }
-        subjectMap[subId].sessionIds.add(s.id)
-      }
-      const sessionSubject: Record<string, string> = {}
-      for (const s of sessions) sessionSubject[s.id] = (s as any).subject_id
-      for (const a of attendance) {
-        const subId = sessionSubject[a.session_id]
-        if (!subId || !subjectMap[subId]) continue
-        subjectMap[subId].total++
-        if (a.status === "present") subjectMap[subId].present++
-        if (!subjectMap[subId].studentTotal[a.student_id]) { subjectMap[subId].studentTotal[a.student_id] = 0; subjectMap[subId].studentPresent[a.student_id] = 0 }
-        subjectMap[subId].studentTotal[a.student_id]++
-        if (a.status === "present") subjectMap[subId].studentPresent[a.student_id]++
-      }
-      const subjectRows = Object.values(subjectMap).map(sub => {
-        const avg = sub.total > 0 ? Math.round((sub.present / sub.total) * 100) : 0
-        const below75 = Object.keys(sub.studentTotal).filter(sid => (sub.studentTotal[sid] > 0 ? sub.studentPresent[sid] / sub.studentTotal[sid] : 0) < 0.75).length
-        return { subject: sub.name, dept: sub.dept, avg, sessions: sub.sessionIds.size, below75 }
-      }).sort((a, b) => b.avg - a.avg)
+    const sessionSubject: Record<string, string> = {}
+    const subjectMeta: Record<string, { name: string; dept: string; sessionIds: Set<string> }> = {}
+    for (const s of sessions) {
+      sessionSubject[s.id] = s.subject_id
+      if (!subjectMeta[s.subject_id]) subjectMeta[s.subject_id] = { name: s.subject?.name ?? "Unknown", dept: s.subject?.department?.code ?? "—", sessionIds: new Set() }
+      subjectMeta[s.subject_id].sessionIds.add(s.id)
+    }
 
-      const totalPresent = attendance.filter(a => a.status === "present").length
-      const overallPct = attendance.length > 0 ? Math.round((totalPresent / attendance.length) * 100) : 0
-      const studentPresentOverall: Record<string, number> = {}; const studentTotalOverall: Record<string, number> = {}
-      for (const a of attendance) {
-        studentTotalOverall[a.student_id] = (studentTotalOverall[a.student_id] || 0) + 1
-        if (a.status === "present") studentPresentOverall[a.student_id] = (studentPresentOverall[a.student_id] || 0) + 1
-      }
-      const studentsBelow75 = Object.keys(studentTotalOverall).filter(sid => ((studentPresentOverall[sid] || 0) / studentTotalOverall[sid]) < 0.75).length
-      setOverviewStats({ overallPct, highestSubject: subjectRows[0]?.subject ?? "—", highestPct: subjectRows[0]?.avg ?? 0, lowestSubject: subjectRows[subjectRows.length - 1]?.subject ?? "—", lowestPct: subjectRows[subjectRows.length - 1]?.avg ?? 0, studentsBelow75 })
-      setSubjectAttendance(subjectRows)
-    } catch (e) { console.error("fetchOverview error:", e) }
-    finally { setLoadingOverview(false) }
-  }, [])
+    const subjectStats: Record<string, { present: number; total: number; studentPresent: Record<string, number>; studentTotal: Record<string, number> }> = {}
+    for (const a of attendance.filter((a: any) => a.status === "present" || a.status === "absent")) {
+      const subId = sessionSubject[a.session_id]
+      if (!subId) continue
+      if (!subjectStats[subId]) subjectStats[subId] = { present: 0, total: 0, studentPresent: {}, studentTotal: {} }
+      subjectStats[subId].total++
+      if (a.status === "present") subjectStats[subId].present++
+      if (!subjectStats[subId].studentTotal[a.student_id]) { subjectStats[subId].studentTotal[a.student_id] = 0; subjectStats[subId].studentPresent[a.student_id] = 0 }
+      subjectStats[subId].studentTotal[a.student_id]++
+      if (a.status === "present") subjectStats[subId].studentPresent[a.student_id]++
+    }
 
-  /* ── Fetch System Logs ── */
-  const fetchSystemLogs = useCallback(async () => {
-    setLoadingLogs(true)
-    try {
-      const supabase = createClient()
-      const { data: logs } = await supabase.from("system_logs").select("id, created_at, action_type, description, performed_by").order("created_at", { ascending: false }).limit(100)
-      if (!logs) return
-      const performerIds = [...new Set(logs.map((l: any) => l.performed_by).filter(Boolean))]
-      const nameMap: Record<string, string> = {}
-      if (performerIds.length > 0) {
-        const { data: users } = await supabase.from("users").select("id, full_name").in("id", performerIds)
-        for (const u of users || []) nameMap[u.id] = u.full_name
-      }
-      setSystemLogs(logs.map((l: any) => ({
-        id: l.id, timestamp: formatTimestamp(l.created_at), rawDate: new Date(l.created_at),
-        action: l.action_type === "create" ? "Created" : l.action_type === "update" ? "Updated" : l.action_type === "delete" ? "Deleted" : l.action_type === "reset" ? "Reset" : l.action_type === "assign" ? "Assigned" : l.action_type,
-        actionType: l.action_type,
-        performedBy: nameMap[l.performed_by] ?? "System",
-        details: l.description ?? "—",
-        type: inferLogType(l.action_type),
-      })))
-    } catch (e) { console.error("fetchSystemLogs error:", e) }
-    finally { setLoadingLogs(false) }
-  }, [])
+    const subjectRows = Object.entries(subjectMeta).map(([subId, meta]) => {
+      const stats = subjectStats[subId] ?? { present: 0, total: 0, studentPresent: {}, studentTotal: {} }
+      const avg = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0
+      const below75 = Object.keys(stats.studentTotal).filter(sid => (stats.studentTotal[sid] > 0 ? stats.studentPresent[sid] / stats.studentTotal[sid] : 0) < 0.75).length
+      return { subject: meta.name, dept: meta.dept, avg, sessions: meta.sessionIds.size, below75 }
+    }).sort((a, b) => b.avg - a.avg)
 
-  useEffect(() => { fetchTeacherActivity(); fetchOverview(); fetchSystemLogs() }, [fetchTeacherActivity, fetchOverview, fetchSystemLogs])
+    const filteredAtt = attendance.filter((a: any) => a.status === "present" || a.status === "absent")
+    const totalPresent = filteredAtt.filter((a: any) => a.status === "present").length
+    const overallPct = filteredAtt.length > 0 ? Math.round((totalPresent / filteredAtt.length) * 100) : 0
+    const studentPct: Record<string, { p: number; t: number }> = {}
+    for (const a of filteredAtt) {
+      if (!studentPct[a.student_id]) studentPct[a.student_id] = { p: 0, t: 0 }
+      studentPct[a.student_id].t++
+      if (a.status === "present") studentPct[a.student_id].p++
+    }
+    const studentsBelow75 = Object.values(studentPct).filter(v => v.t > 0 && (v.p / v.t) < 0.75).length
+
+    return {
+      subjectAttendance: subjectRows,
+      overviewStats: { overallPct, highestSubject: subjectRows[0]?.subject ?? "—", highestPct: subjectRows[0]?.avg ?? 0, lowestSubject: subjectRows[subjectRows.length - 1]?.subject ?? "—", lowestPct: subjectRows[subjectRows.length - 1]?.avg ?? 0, studentsBelow75 },
+    }
+  }, [reportsData])
+
+  const systemLogs = useMemo<LogEntry[]>(() => {
+    if (!reportsData?.logs) return []
+    return reportsData.logs.map((l: any) => ({
+      id: l.id, timestamp: formatTimestamp(l.created_at), rawDate: new Date(l.created_at),
+      action: l.action_type === "create" ? "Created" : l.action_type === "update" ? "Updated" : l.action_type === "delete" ? "Deleted" : l.action_type === "reset" ? "Reset" : l.action_type === "assign" ? "Assigned" : l.action_type,
+      actionType: l.action_type, performedBy: l.performedBy, details: l.description ?? "—",
+      type: inferLogType(l.action_type),
+    }))
+  }, [reportsData])
 
   /* ── Derived data ── */
   const uniqueDepts = useMemo(() => Array.from(new Set(teacherActivity.map(t => t.dept))).sort(), [teacherActivity])

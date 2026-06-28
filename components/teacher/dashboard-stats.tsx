@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { Users, UserCheck, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
-
+import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { DashboardStatsSkeleton } from "@/components/ui/skeletons"
 
 interface Stat {
@@ -62,81 +61,20 @@ function StatCard({ stat, index }: { stat: Stat; index: number }) {
 }
 
 export function DashboardStats() {
-  const supabase = createClient()
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<Stat[]>([
-    { label: "Total Students", value: "—", icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
-    { label: "Today Present", value: "—", icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
-    { label: "Active Attendance Windows", value: "—", icon: Radio, iconColor: "text-muted-foreground", iconBg: "bg-muted", borderColor: "#e2e8f0" },
-  ])
+  const { data, isLoading } = useTeacherDashboard()
 
-  useEffect(() => {
-    async function fetch() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
-        const teacherId = session.user.id
-        const today = new Date().toISOString().split("T")[0]
-
-        const { data: assignments } = await supabase
-          .from("teacher_assignments")
-          .select("class_id, subject_id")
-          .eq("teacher_id", teacherId)
-
-        const classIds = [...new Set((assignments ?? []).map((a: any) => a.class_id))]
-
-        let totalStudents = 0
-        if (classIds.length > 0) {
-          const { count } = await supabase
-            .from("students")
-            .select("id", { count: "exact", head: true })
-            .in("class_id", classIds)
-            .eq("is_active", true)
-          totalStudents = count ?? 0
-        }
-
-        const { data: todaySessions } = await supabase
-          .from("attendance_sessions")
-          .select("id")
-          .eq("teacher_id", teacherId)
-          .eq("session_date", today)
-
-        const todaySessionIds = (todaySessions ?? []).map((s: any) => s.id)
-        let todayPresent = 0
-        if (todaySessionIds.length > 0) {
-          const { count } = await supabase
-            .from("period_attendance")
-            .select("id", { count: "exact", head: true })
-            .in("session_id", todaySessionIds)
-            .eq("status", "present")
-          todayPresent = count ?? 0
-        }
-
-
-
-        const { count: activeCount } = await supabase
-          .from("attendance_sessions")
-          .select("id", { count: "exact", head: true })
-          .eq("teacher_id", teacherId)
-          .eq("status", "active")
-
-        setStats([
-          { label: "Total Students", value: totalStudents, icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
-          { label: "Today Present", value: todayPresent, icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
-          { label: "Active Attendance Windows", value: activeCount ?? 0, icon: Radio, iconColor: activeCount ? "text-emerald-600" : "text-muted-foreground", iconBg: activeCount ? "bg-emerald-50" : "bg-muted", borderColor: activeCount ? "#10b981" : "#e2e8f0" },
-        ])
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetch()
-  }, [])
-
-  if (loading) {
+  if (isLoading || !data) {
     return <DashboardStatsSkeleton />
   }
+
+  const { stats } = data
+  const activeCount = stats.activeSessions
+
+  const statCards: Stat[] = [
+    { label: "Total Students", value: stats.totalStudents, icon: Users, iconColor: "text-primary", iconBg: "bg-primary/10", borderColor: "#3b82f6" },
+    { label: "Today Present", value: stats.todayPresent, icon: UserCheck, iconColor: "text-emerald-600", iconBg: "bg-emerald-50", borderColor: "#10b981" },
+    { label: "Active Attendance Windows", value: activeCount, icon: Radio, iconColor: activeCount ? "text-emerald-600" : "text-muted-foreground", iconBg: activeCount ? "bg-emerald-50" : "bg-muted", borderColor: activeCount ? "#10b981" : "#e2e8f0" },
+  ]
 
   return (
     <>
@@ -147,7 +85,7 @@ export function DashboardStats() {
         }
       `}</style>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
-        {stats.map((stat, i) => <StatCard key={stat.label} stat={stat} index={i} />)}
+        {statCards.map((stat, i) => <StatCard key={stat.label} stat={stat} index={i} />)}
       </div>
     </>
   )

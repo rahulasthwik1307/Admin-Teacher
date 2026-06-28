@@ -1,17 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, BarChart2, Users, UserCheck, UserX, Clock } from "lucide-react"
+import { BarChart2, Users, UserCheck, UserX, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
+import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { TodayAttendanceSummarySkeleton } from "@/components/ui/skeletons"
-
-interface SubjectSummary {
-  id: string
-  name: string
-  present: number
-  total: number
-}
 
 function getBarColor(pct: number) {
   if (pct >= 75) return "bg-emerald-500"
@@ -80,74 +73,11 @@ function DonutChart({ pct, color }: { pct: number; color: string }) {
 }
 
 export function TodayAttendanceSummary() {
-  const supabase = createClient()
-  const [subjects, setSubjects] = useState<SubjectSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useTeacherDashboard()
 
-  useEffect(() => {
-    async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
-      const teacherId = session.user.id
-      const today = new Date().toISOString().split("T")[0]
+  if (isLoading || !data) return <TodayAttendanceSummarySkeleton />
 
-      const { data: activeSessions } = await supabase
-        .from("attendance_sessions")
-        .select(`
-          id, subject_id, class_id, status, opened_at,
-          subject:subjects ( name ),
-          class:classes ( name, section )
-        `)
-        .eq("teacher_id", teacherId)
-        .eq("session_date", today)
-
-      if (!activeSessions || activeSessions.length === 0) {
-        setSubjects([])
-        setLoading(false)
-        return
-      }
-
-      const allSummaries = await Promise.all(activeSessions.map(async (sess: any) => {
-        const { count: presentCount } = await supabase
-          .from("period_attendance")
-          .select("id", { count: "exact", head: true })
-          .eq("session_id", sess.id)
-          .eq("status", "present")
-
-        const { count: studentCount } = await supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .eq("class_id", sess.class_id)
-          .eq("is_active", true)
-
-        const sectionName = sess.class ? `${sess.class.name}-${sess.class.section}` : "Unknown"
-        const subjectName = sess.subject?.name ?? "Unknown"
-        return {
-          id: sess.id,
-          name: `${subjectName} (${sectionName})`,
-          present: presentCount ?? 0,
-          total: studentCount ?? 0,
-          openedAt: sess.opened_at,
-          dedupeKey: `${sess.subject_id}__${sess.class_id}`,
-        }
-      }))
-
-      const latestMap = new Map<string, typeof allSummaries[0]>()
-      for (const s of allSummaries) {
-        const existing = latestMap.get(s.dedupeKey)
-        if (!existing || s.openedAt > existing.openedAt) latestMap.set(s.dedupeKey, s)
-      }
-      setSubjects(Array.from(latestMap.values()).map(({ id, name, present, total }) => ({ id, name, present, total })))
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  if (loading) {
-    return <TodayAttendanceSummarySkeleton />
-  }
-
-  // Totals across all subjects for the overview strip
+  const subjects = data.todayAttendance
   const totalPresent = subjects.reduce((a, s) => a + s.present, 0)
   const totalStudents = subjects.reduce((a, s) => a + s.total, 0)
   const totalAbsent = totalStudents - totalPresent
