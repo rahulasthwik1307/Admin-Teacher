@@ -173,6 +173,8 @@ function FormField({ icon: Icon, label, htmlFor, children }: { icon: React.Eleme
 
 
 
+const ROLL_NUMBER_REGEX = /^\d{3}[A-Z]\d[A-Z]\d{4}$/
+
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -317,6 +319,10 @@ export default function AdminStudentsPage() {
       toast.error("Please fill in all fields")
       return
     }
+    if (!ROLL_NUMBER_REGEX.test(formRoll)) {
+      toast.error("Invalid roll number format. Example: 227Z1A6755 (3 digits, letter, digit, letter, 4 digits)")
+      return
+    }
     setIsSubmitting(true)
     try {
       const res = await fetch("/api/admin/create-student", {
@@ -361,6 +367,10 @@ export default function AdminStudentsPage() {
 
   async function handleEditStudent() {
     if (!editTarget || !editName.trim() || !editRoll.trim()) return
+    if (!ROLL_NUMBER_REGEX.test(editRoll.trim())) {
+      toast.error("Invalid roll number format. Example: 227Z1A6755 (3 digits, letter, digit, letter, 4 digits)")
+      return
+    }
     setIsSubmitting(true)
     try {
       const response = await fetch("/api/admin/update-student", {
@@ -666,7 +676,14 @@ export default function AdminStudentsPage() {
                   <Input id="student-name" placeholder="Enter student full name" value={formName} onChange={(e) => setFormName(e.target.value)} />
                 </FormField>
                 <FormField icon={Hash} label="Roll Number" htmlFor="student-roll">
-                  <Input id="student-roll" placeholder="e.g. 21CSE055" value={formRoll} onChange={(e) => setFormRoll(e.target.value)} />
+                  <Input
+                    id="student-roll"
+                    placeholder="e.g. 227Z1A6755"
+                    value={formRoll}
+                    maxLength={10}
+                    onChange={(e) => setFormRoll(e.target.value.toUpperCase())}
+                  />
+                  <p className="text-xs text-muted-foreground">Format: 227Z1A6755 (3 digits, letter, digit, letter, 4 digits)</p>
                 </FormField>
               </div>
             </div>
@@ -724,8 +741,14 @@ export default function AdminStudentsPage() {
               <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Student full name" />
             </FormField>
             <FormField icon={Hash} label="Roll Number" htmlFor="edit-roll">
-              <Input id="edit-roll" value={editRoll} onChange={(e) => setEditRoll(e.target.value)} placeholder="e.g. 21CSE055" />
-              <p className="text-xs text-muted-foreground">Changing roll number will also update the student login email.</p>
+              <Input
+                id="edit-roll"
+                value={editRoll}
+                maxLength={10}
+                onChange={(e) => setEditRoll(e.target.value.toUpperCase())}
+                placeholder="e.g. 227Z1A6755"
+              />
+              <p className="text-xs text-muted-foreground">Format: 227Z1A6755. Changing roll number will also update the student login email.</p>
             </FormField>
             <FormField icon={Building2} label="Department" htmlFor="edit-dept">
               <Select value={editDeptId} onValueChange={(v) => { setEditDeptId(v); setEditClassId("") }}>

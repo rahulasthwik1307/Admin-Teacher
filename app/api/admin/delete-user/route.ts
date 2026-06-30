@@ -64,31 +64,30 @@ export async function POST(request: NextRequest) {
       console.error("Delete user error (storage fetch):", storageErr);
     }
 
-    // Step 2: Delete from public.students
+    // Delete auth FIRST — if this fails, we stop before corrupting data
+    const { error: authDelErr } = await adminClient.auth.admin.deleteUser(userId)
+    if (authDelErr) {
+      console.error("Delete user error (auth):", authDelErr)
+      // Auth deletion failed — do NOT delete students/users rows
+      // Return error so frontend knows deletion failed
+      return NextResponse.json({ error: "Failed to delete user account. Please try again." }, { status: 500 })
+    }
+
+    // Auth deleted successfully — now clean up database rows
     const { error: studentDelErr } = await adminClient
       .from("students")
       .delete()
-      .eq("id", userId);
-
+      .eq("id", userId)
     if (studentDelErr) {
-      console.error("Delete user error (students table):", studentDelErr);
+      console.error("Delete user error (students table):", studentDelErr)
     }
 
-    // Step 3: Delete from public.users
     const { error: userDelErr } = await adminClient
       .from("users")
       .delete()
-      .eq("id", userId);
-
+      .eq("id", userId)
     if (userDelErr) {
-      console.error("Delete user error (users table):", userDelErr);
-    }
-
-    // Step 4: Delete from auth
-    const { error: authDelErr } = await adminClient.auth.admin.deleteUser(userId);
-
-    if (authDelErr) {
-      console.error("Delete user error (auth):", authDelErr);
+      console.error("Delete user error (users table):", userDelErr)
     }
 
     // Always return success so the frontend UI can refresh locally
