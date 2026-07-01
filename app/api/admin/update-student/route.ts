@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     let cleanRoll: string | undefined
     if (roll_number) {
       cleanRoll = roll_number.trim().toUpperCase()
-      if (!ROLL_NUMBER_REGEX.test(cleanRoll)) {
+      if (!ROLL_NUMBER_REGEX.test(cleanRoll as string)) {
         return NextResponse.json({
           error: "Invalid roll number format. Roll number must follow the official college hall-ticket format. Example: 227Z1A6755. Pattern: Digit Digit Digit Letter Digit Letter Digit Digit Digit Digit."
         }, { status: 400 })

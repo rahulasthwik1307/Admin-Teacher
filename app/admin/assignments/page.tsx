@@ -321,9 +321,13 @@ export default function TeacherAssignmentsPage() {
             </SelectContent>
           </Select>
           <Select value={filterDept} onValueChange={setFilterDept}>
-            <SelectTrigger className="w-40 h-9 text-sm">
-              <Building2 className="size-4 mr-1.5 text-muted-foreground" />
-              <SelectValue placeholder="All Departments" />
+            <SelectTrigger className="w-56 h-9 text-sm">
+              <div className="flex items-center w-full min-w-0 overflow-hidden">
+                <Building2 className="size-4 shrink-0 mr-1.5 text-muted-foreground" />
+                <span className="truncate text-left flex-1">
+                  <SelectValue placeholder="All Departments" />
+                </span>
+              </div>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>

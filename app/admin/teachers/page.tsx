@@ -509,10 +509,12 @@ export default function TeacherManagementPage() {
           )}
         </div>
         <Select value={selectedDeptFilter} onValueChange={setSelectedDeptFilter}>
-          <SelectTrigger className="w-full sm:w-56">
-            <div className="flex items-center gap-2">
-              <Building2 className="size-4 text-muted-foreground" />
-              <SelectValue placeholder="All Departments" />
+          <SelectTrigger className="w-full sm:w-72">
+            <div className="flex items-center gap-2 overflow-hidden w-full">
+              <Building2 className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate flex-1 text-left">
+                <SelectValue placeholder="All Departments" />
+              </span>
             </div>
           </SelectTrigger>
           <SelectContent>

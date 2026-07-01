@@ -349,8 +349,12 @@ export default function ReportsPage() {
           <div className="flex flex-wrap items-center gap-2 justify-between">
             <div className="flex gap-2">
               <Select value={teacherDeptFilter} onValueChange={setTeacherDeptFilter}>
-                <SelectTrigger className="h-9 w-40 text-xs">
-                  <SelectValue placeholder="All Departments" />
+                <SelectTrigger className="h-9 w-56 text-xs">
+                  <div className="flex items-center w-full min-w-0 overflow-hidden">
+                    <span className="truncate text-left w-full">
+                      <SelectValue placeholder="All Departments" />
+                    </span>
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
