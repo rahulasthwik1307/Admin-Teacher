@@ -185,7 +185,14 @@ export default function TeacherAssignmentsPage() {
     finally { setIsLoading(false) }
   }, [])
 
-  useEffect(() => { fetchDropdownData(); fetchAssignments() }, [fetchDropdownData, fetchAssignments])
+  useEffect(() => {
+    const init = async () => {
+      await Promise.resolve()
+      fetchDropdownData()
+      fetchAssignments()
+    }
+    init()
+  }, [fetchDropdownData, fetchAssignments])
 
   /* ---------- Filtered & grouped ---------- */
   const filtered = useMemo(() => assignments.filter(a => {
@@ -265,19 +272,39 @@ export default function TeacherAssignmentsPage() {
     finally { setIsSubmitting(false) }
   }
 
+  const [affectedSlots, setAffectedSlots] = useState<{ day: string; period: number; subject: string; classLabel: string }[]>([])
+  const [loadingPreview, setLoadingPreview] = useState(false)
+
+  async function openRemoveDialog(assignment: Assignment) {
+    setRemoveTarget(assignment)
+    setLoadingPreview(true)
+    setAffectedSlots([])
+    try {
+      const res = await fetch(`/api/admin/teacher-assignments/${assignment.id}`)
+      const result = await res.json()
+      if (res.ok) setAffectedSlots(result.slots ?? [])
+    } catch {
+      // Non-fatal — dialog still works without the preview
+    } finally {
+      setLoadingPreview(false)
+    }
+  }
+
   async function handleRemove() {
     if (!removeTarget) return
     setIsSubmitting(true)
     try {
-      const supabase = createClient()
-      const { error } = await supabase.from("teacher_assignments").delete().eq("id", removeTarget.id)
-      if (error) { toast.error(`Failed: ${error.message}`); return }
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "delete", description: `Assignment removed: ${removeTarget.teacher} — ${removeTarget.subject} (${removeTarget.classSection})` })
-      toast.success(`Assignment removed`)
+      const res = await fetch(`/api/admin/teacher-assignments/${removeTarget.id}`, { method: "DELETE" })
+      const result = await res.json()
+      if (!res.ok) { toast.error(result.error || "Failed to remove assignment"); return }
+      if (result.affectedSlots > 0) {
+        toast.success(`Assignment removed. ${result.affectedSlots} timetable slot(s) marked Unassigned.`)
+      } else {
+        toast.success("Assignment removed")
+      }
       fetchAssignments()
     } catch { toast.error("An unexpected error occurred.") }
-    finally { setRemoveTarget(null); setIsSubmitting(false) }
+    finally { setRemoveTarget(null); setAffectedSlots([]); setIsSubmitting(false) }
   }
 
   /* ---------- Preview card ---------- */
@@ -418,7 +445,7 @@ export default function TeacherAssignmentsPage() {
                                 <td className="px-5 py-3"><span className="font-mono text-sm rounded bg-muted px-2 py-0.5 text-muted-foreground">{a.department}</span></td>
                                 <td className="px-5 py-3 text-sm text-muted-foreground">{a.date}</td>
                                 <td className="px-5 py-3 text-right">
-                                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-sm text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setRemoveTarget(a)}>
+                                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-sm text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => openRemoveDialog(a)}>
                                     <Trash2 className="size-3.5" /> Remove
                                   </Button>
                                 </td>
@@ -440,7 +467,7 @@ export default function TeacherAssignmentsPage() {
                                 <div className="text-xs text-muted-foreground">{a.subject}</div>
                               </div>
                             </div>
-                            <Button variant="ghost" size="icon-sm" className="text-destructive hover:bg-destructive/10" onClick={() => setRemoveTarget(a)}>
+                            <Button variant="ghost" size="icon-sm" className="text-destructive hover:bg-destructive/10" onClick={() => openRemoveDialog(a)}>
                               <Trash2 className="size-4" />
                             </Button>
                           </div>
@@ -592,23 +619,46 @@ export default function TeacherAssignmentsPage() {
       </Sheet>
 
       {/* ── Remove Dialog ── */}
-      <AlertDialog open={!!removeTarget} onOpenChange={() => setRemoveTarget(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!removeTarget} onOpenChange={() => { setRemoveTarget(null); setAffectedSlots([]) }}>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove Assignment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This teacher will no longer have access to this subject and class.
-              {removeTarget && (
-                <span className="mt-2 block rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium text-foreground">
-                  {removeTarget.teacher} — {removeTarget.subject} ({removeTarget.classSection})
-                </span>
-              )}
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-3">
+                <span>This teacher will no longer have access to this subject and class.</span>
+                {removeTarget && (
+                  <span className="block rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium text-foreground">
+                    {removeTarget.teacher} — {removeTarget.subject} ({removeTarget.classSection})
+                  </span>
+                )}
+                {loadingPreview ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" /> Checking timetable usage...
+                  </div>
+                ) : affectedSlots.length > 0 ? (
+                  <div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5">
+                    <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      This assignment is used in {affectedSlots.length} timetable slot{affectedSlots.length !== 1 ? "s" : ""}:
+                    </span>
+                    <ul className="flex flex-col gap-1 text-xs text-amber-700 dark:text-amber-400 max-h-40 overflow-y-auto">
+                      {affectedSlots.map((s, i) => (
+                        <li key={i}>• {s.day} — Period {s.period} — {s.subject} — {s.classLabel}</li>
+                      ))}
+                    </ul>
+                    <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                      Deleting this assignment will mark these timetable slots as Unassigned. They will remain visible and automatically re-link if you assign a teacher to this subject and class again.
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">This assignment is not currently used in any timetable slots.</span>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemove} className="bg-destructive text-white hover:bg-destructive/90" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Remove"}
+            <AlertDialogAction onClick={handleRemove} className="bg-destructive text-white hover:bg-destructive/90" disabled={isSubmitting || loadingPreview}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Delete Assignment"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

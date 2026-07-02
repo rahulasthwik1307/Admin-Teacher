@@ -157,33 +157,37 @@ export default function TimetablePage() {
   useEffect(() => {
     if (!timetablePageData) return
 
-    const { assignments, periods, classes, timetable } = timetablePageData
+    const init = async () => {
+      await Promise.resolve()
+      const { assignments, periods, classes, timetable } = timetablePageData
 
-    setAssignmentOptions(assignments.map((a: any) => ({
-      teacherId: a.teacher_id, teacherName: a.teacher?.user?.full_name ?? "Unknown",
-      subjectId: a.subject_id, subjectName: a.subject?.name ?? "—",
-      classId: a.class_id, classLabel: a.class ? `${a.class.name}-${a.class.section}` : "—",
-    })))
+      setAssignmentOptions(assignments.map((a: any) => ({
+        teacherId: a.teacher_id, teacherName: a.teacher?.user?.full_name ?? "Unknown",
+        subjectId: a.subject_id, subjectName: a.subject?.name ?? "—",
+        classId: a.class_id, classLabel: a.class ? `${a.class.name}-${a.class.section}` : "—",
+      })))
 
-    setPeriodOptions(periods.map((p: any) => ({
-      id: p.id, number: p.period_number,
-      start: p.start_time.slice(0, 5), end: p.end_time.slice(0, 5),
-      label: `Period ${p.period_number} (${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)})`,
-    })))
+      setPeriodOptions(periods.map((p: any) => ({
+        id: p.id, number: p.period_number,
+        start: p.start_time.slice(0, 5), end: p.end_time.slice(0, 5),
+        label: `Period ${p.period_number} (${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)})`,
+      })))
 
-    setClassOptions(classes.map((c: any) => ({ id: c.id, label: `${c.name}-${c.section}` })))
+      setClassOptions(classes.map((c: any) => ({ id: c.id, label: `${c.name}-${c.section}` })))
 
-    const mapped: TimetableEntry[] = timetable.map((t: any) => ({
-      id: t.id, day: t.day_of_week, dayLabel: getDayLabel(t.day_of_week),
-      periodNumber: t.period?.period_number ?? 0,
-      periodStart: t.period?.start_time?.slice(0, 5) ?? "",
-      periodEnd: t.period?.end_time?.slice(0, 5) ?? "",
-      period: t.period ? `Period ${t.period.period_number} (${t.period.start_time.slice(0, 5)} - ${t.period.end_time.slice(0, 5)})` : "—",
-      subject: t.subject?.name ?? "—", teacher: t.teacher?.user?.full_name ?? "—",
-      classSection: t.class ? `${t.class.name}-${t.class.section}` : "—",
-    }))
-    mapped.sort((a, b) => a.day - b.day || a.periodNumber - b.periodNumber)
-    setEntries(mapped)
+      const mapped: TimetableEntry[] = timetable.map((t: any) => ({
+        id: t.id, day: t.day_of_week, dayLabel: getDayLabel(t.day_of_week),
+        periodNumber: t.period?.period_number ?? 0,
+        periodStart: t.period?.start_time?.slice(0, 5) ?? "",
+        periodEnd: t.period?.end_time?.slice(0, 5) ?? "",
+        period: t.period ? `Period ${t.period.period_number} (${t.period.start_time.slice(0, 5)} - ${t.period.end_time.slice(0, 5)})` : "—",
+        subject: t.subject?.name ?? "—", teacher: t.teacher?.user?.full_name ?? "Unassigned",
+        classSection: t.class ? `${t.class.name}-${t.class.section}` : "—",
+      }))
+      mapped.sort((a, b) => a.day - b.day || a.periodNumber - b.periodNumber)
+      setEntries(mapped)
+    }
+    init()
   }, [timetablePageData])
 
   /* ---------- Derived data ---------- */
@@ -455,7 +459,7 @@ export default function TimetablePage() {
         <div className="overflow-x-auto">
           <div className="min-w-175">
             {entries.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No timetable entries yet. Click "Add Slot" or "Fill Week" to create one.</CardContent></Card>
+              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No timetable entries yet. Click &quot;Add Slot&quot; or &quot;Fill Week&quot; to create one.</CardContent></Card>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 {/* Header row — days */}
@@ -518,7 +522,7 @@ export default function TimetablePage() {
                                   <div className={`text-xs font-semibold leading-tight ${color.text} line-clamp-2`}>
                                     {entry.subject}
                                   </div>
-                                  <div className="text-[11px] text-muted-foreground truncate">{entry.teacher}</div>
+                                  <div className={`text-[11px] truncate ${entry.teacher === "Unassigned" ? "italic text-muted-foreground/60" : "text-muted-foreground"}`}>{entry.teacher}</div>
                                   {selectedClassForGrid === "all" && (
                                     <div className="mt-auto">
                                       <span className={`text-[9px] font-bold rounded px-1 py-0.5 ${color.bg} ${color.text}`}>{entry.classSection}</span>
@@ -636,7 +640,7 @@ export default function TimetablePage() {
                                               <span className="text-sm font-medium text-foreground">{e.subject}</span>
                                             </div>
                                           </td>
-                                          <td className="px-3 py-2.5 text-sm text-muted-foreground">{e.teacher}</td>
+                                          <td className={`px-3 py-2.5 text-sm ${e.teacher === "Unassigned" ? "italic text-muted-foreground/60" : "text-muted-foreground"}`}>{e.teacher}</td>
                                           <td className="px-5 py-2.5 text-right">
                                             <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-destructive hover:bg-destructive/10" onClick={() => setRemoveTarget(e)}>
                                               <Trash2 className="size-3.5" /> Remove
@@ -661,7 +665,9 @@ export default function TimetablePage() {
                                         <span className={`size-7 shrink-0 flex items-center justify-center rounded-full text-xs font-bold ${color.bg} ${color.text}`}>{e.periodNumber}</span>
                                         <div>
                                           <div className="text-sm font-medium text-foreground">{e.subject}</div>
-                                          <div className="text-xs text-muted-foreground">{e.teacher} · {e.periodStart}–{e.periodEnd}</div>
+                                          <div className="text-xs text-muted-foreground">
+                                             <span className={e.teacher === "Unassigned" ? "italic text-muted-foreground/60" : ""}>{e.teacher}</span> · {e.periodStart}–{e.periodEnd}
+                                           </div>
                                         </div>
                                       </div>
                                       <Button variant="ghost" size="icon-sm" className="text-destructive hover:bg-destructive/10" onClick={() => setRemoveTarget(e)}>
