@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq("is_approved", false)
       .eq("is_rejected", false)
-      .not("embedding_a", "is", null)
+      .not("face_embedding", "is", null)
 
     const { data: approvedStudents } = await supabaseAdmin
       .from("students")
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         user:users ( full_name )
       `)
       .eq("is_approved", true)
-      .not("embedding_a", "is", null)
+      .not("face_embedding", "is", null)
 
     function mapStudent(student: any) {
       const classData = student.class as any

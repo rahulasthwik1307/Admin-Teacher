@@ -226,7 +226,7 @@ export default function AdminStudentsPage() {
       const { data, error } = await supabase
         .from("students")
         .select(`
-          id, roll_number, year, is_active, embedding_a, is_approved, is_rejected,
+          id, roll_number, year, is_active, face_embedding, is_approved, is_rejected,
           registration_photo_url, class_id, department_id,
           class:classes ( name, section, department:departments ( code, id ) ),
           user:users ( full_name )
@@ -238,7 +238,7 @@ export default function AdminStudentsPage() {
       const mapped: Student[] = (data || []).map((s: any) => {
         const classData = s.class
         const className = classData ? `${classData.department?.code ?? ""}-${classData.section}` : "—"
-        const hasEmbedding = !!s.embedding_a
+        const hasEmbedding = !!s.face_embedding
         const isApproved = s.is_approved === true
         const isRejected = s.is_rejected === true
         const faceStatus: Student["faceStatus"] = !hasEmbedding ? "None" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"
