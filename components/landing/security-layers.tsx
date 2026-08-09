@@ -101,7 +101,7 @@ export function SecurityLayers() {
         </div>
 
         {/* 3 Horizontal Cards Container */}
-        <div ref={containerRef} className="relative grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+        <div ref={containerRef} className="relative grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 items-stretch">
           
           {/* Flow Line 1 -> 2 -> 3 (Desktop Animated Dashed Line) */}
           <div className="hidden lg:block pointer-events-none absolute inset-0 z-0 top-1/2 -translate-y-1/2">
@@ -176,9 +176,9 @@ export function SecurityLayers() {
           </motion.div>
 
           {/* Mobile Flow Connector 1 -> 2 */}
-          <div className="lg:hidden flex justify-center py-1 text-[#0EA5E9]">
-            <svg className="w-6 h-8" fill="none">
-              <path d="M 12 0 L 12 32" stroke="#0EA5E9" strokeWidth="2.5" className="animated-dash-flow" />
+          <div className="lg:hidden flex justify-center py-0.5 text-[#0EA5E9]">
+            <svg className="w-6 h-5" fill="none">
+              <path d="M 12 0 L 12 20" stroke="#0EA5E9" strokeWidth="2.5" className="animated-dash-flow" />
             </svg>
           </div>
 
@@ -293,9 +293,9 @@ export function SecurityLayers() {
           </motion.div>
 
           {/* Mobile Flow Connector 2 -> 3 */}
-          <div className="lg:hidden flex justify-center py-1 text-[#0EA5E9]">
-            <svg className="w-6 h-8" fill="none">
-              <path d="M 12 0 L 12 32" stroke="#0EA5E9" strokeWidth="2.5" className="animated-dash-flow" />
+          <div className="lg:hidden flex justify-center py-0.5 text-[#0EA5E9]">
+            <svg className="w-6 h-5" fill="none">
+              <path d="M 12 0 L 12 20" stroke="#0EA5E9" strokeWidth="2.5" className="animated-dash-flow" />
             </svg>
           </div>
 

@@ -82,28 +82,31 @@ export function FinalCtaSection() {
             Built for NNRG College — Secure your campus with smart attendance
           </p>
 
-          {/* Action CTAs */}
-          <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-5">
+          {/* Action CTAs — 65% / 35% Grid Ratio on Mobile */}
+          <div className="mt-7 grid grid-cols-[0.65fr_0.35fr] sm:flex sm:flex-row items-center justify-center gap-2.5 sm:gap-5 w-full sm:w-auto max-w-full">
             <Button
               asChild
               size="lg"
-              className="h-12 w-full sm:w-auto rounded-xl bg-linear-to-r from-[#0EA5E9] to-[#6D28D9] hover:from-[#0284C7] hover:to-[#5B21B6] px-8 text-base font-extrabold text-white shadow-lg shadow-[#0EA5E9]/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-linear-to-r from-[#0EA5E9] to-[#6D28D9] hover:from-[#0284C7] hover:to-[#5B21B6] px-3 sm:px-8 text-xs sm:text-base font-extrabold text-white shadow-lg shadow-[#0EA5E9]/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
             >
-              <Link href="/login" className="flex items-center justify-center gap-2">
-                <span>Sign In</span>
-                <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
+              <Link href="/login" className="flex items-center justify-center gap-1.5 sm:gap-2 w-full">
+                <span className="truncate">Sign In</span>
+                <ArrowRight size={16} className="shrink-0 transition-transform duration-300 group-hover:translate-x-1 hidden sm:inline-block" />
               </Link>
             </Button>
 
             <button
               type="button"
               onClick={handleDemoVideoClick}
-              className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/25 bg-white/10 hover:bg-white/20 px-7 text-base font-bold text-white shadow-md backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2.5 rounded-xl border border-white/25 bg-white/10 hover:bg-white/20 px-2 sm:px-7 text-xs sm:text-base font-bold text-white shadow-md backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap overflow-hidden"
             >
-              <span className="relative flex size-7 items-center justify-center rounded-full bg-white/20 text-white">
-                <Play size={13} className="fill-white translate-x-0.5" />
+              <span className="relative flex size-6 sm:size-7 items-center justify-center rounded-full bg-white/20 text-white shrink-0">
+                <Play size={11} className="fill-white translate-x-0.5 sm:size-3.5" />
               </span>
-              <span>Watch Demo Video ▶</span>
+              <span className="truncate">
+                <span className="hidden sm:inline">Watch Demo Video ▶</span>
+                <span className="sm:hidden">Watch Demo</span>
+              </span>
             </button>
           </div>
         </motion.div>

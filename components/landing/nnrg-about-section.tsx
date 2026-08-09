@@ -69,8 +69,8 @@ export function NNRGAboutSection() {
           </p>
         </div>
 
-        {/* Two Visually Different Cards Side by Side (Equal Height Grid) */}
-        <div className="mx-auto max-w-275 w-full grid grid-cols-1 lg:grid-cols-2 gap-7 sm:gap-8 items-stretch mb-6 sm:mb-8">
+        {/* Two Visually Different Cards Side by Side (Stacked on Mobile, 2 Columns on Desktop) */}
+        <div className="mx-auto max-w-275 w-full grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-7 lg:gap-8 items-stretch mb-6 sm:mb-8">
 
           {/* CARD 1: Web Portal (Next.js) */}
           <motion.div
@@ -182,54 +182,54 @@ export function NNRGAboutSection() {
                 </div>
               </div>
 
-              {/* Compact 2x2 Bento Capability Grid for Web Portal */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-auto">
+              {/* Compact 2x2 Bento Capability Grid for Web Portal (Mobile & Desktop 2x2) */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-2.5 mt-auto">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.05 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-sky-50/80 border border-sky-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-sky-50/80 border border-sky-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-[#0EA5E9]/15 text-[#0EA5E9] flex items-center justify-center shrink-0">
-                    <QrCode size={15} />
+                  <div className="size-6.5 rounded-lg bg-[#0EA5E9]/15 text-[#0EA5E9] flex items-center justify-center shrink-0">
+                    <QrCode size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">Dynamic QR Generator</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Dynamic QR Generator</span>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-[#1E3A8A]/15 text-[#1E3A8A] flex items-center justify-center shrink-0">
-                    <MapPin size={15} />
+                  <div className="size-6.5 rounded-lg bg-[#1E3A8A]/15 text-[#1E3A8A] flex items-center justify-center shrink-0">
+                    <MapPin size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">Classroom Geofence Control</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Classroom Geofence Control</span>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.15 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Activity size={15} />
+                  <div className="size-6.5 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Activity size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">Live Check-in Monitoring</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Live Check-in Monitoring</span>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-[#6D28D9]/15 text-[#6D28D9] flex items-center justify-center shrink-0">
-                    <BarChart3 size={15} />
+                  <div className="size-6.5 rounded-lg bg-[#6D28D9]/15 text-[#6D28D9] flex items-center justify-center shrink-0">
+                    <BarChart3 size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">Automated Reports</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Automated Reports</span>
                 </motion.div>
               </div>
             </div>
@@ -283,7 +283,7 @@ export function NNRGAboutSection() {
                   {/* Student Profile & Attendance Overview */}
                   <div className="space-y-2.5">
 
-                    {/* Student Profile Header (Increased Padding to Align Panel Bottom Horizontally) */}
+                    {/* Student Profile Header */}
                     <div className="flex items-center justify-between p-4 sm:p-4.5 rounded-xl bg-white border border-purple-200/80 shadow-2xs">
                       <div>
                         <div className="text-sm font-extrabold text-[#111827] flex items-center gap-1.5">
@@ -298,7 +298,7 @@ export function NNRGAboutSection() {
                       </div>
                     </div>
 
-                    {/* Overall Attendance Rate Metric (Soft Ash / Light Gray KPI Treatment with Vibrant Cyan-Emerald Progress Bar) */}
+                    {/* Overall Attendance Rate Metric */}
                     <div className="rounded-xl bg-[#F4F5F7] border border-[#D9DEE7] p-3.5 sm:p-4 text-center relative overflow-hidden shadow-2xs">
                       <div className="text-[10px] sm:text-[11px] font-mono font-extrabold text-slate-600 uppercase tracking-wider">Overall Semester Attendance</div>
                       <div className="text-3xl sm:text-[32px] font-black font-mono my-0.5 tracking-tight flex items-center justify-center gap-1">
@@ -349,54 +349,54 @@ export function NNRGAboutSection() {
                 </div>
               </div>
 
-              {/* Compact 2x2 Bento Capability Grid for Flutter Mobile App */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-auto">
+              {/* Compact 2x2 Bento Capability Grid for Flutter Mobile App (Mobile & Desktop 2x2) */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-2.5 mt-auto">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.05 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-[#6D28D9]/15 text-[#6D28D9] flex items-center justify-center shrink-0">
-                    <ScanFace size={15} />
+                  <div className="size-6.5 rounded-lg bg-[#6D28D9]/15 text-[#6D28D9] flex items-center justify-center shrink-0">
+                    <ScanFace size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">AI Biometric Face Verification</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">AI Biometric Face Verification</span>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-cyan-50/80 border border-cyan-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan-50/80 border border-cyan-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-[#0EA5E9]/15 text-[#0EA5E9] flex items-center justify-center shrink-0">
-                    <QrCode size={15} />
+                  <div className="size-6.5 rounded-lg bg-[#0EA5E9]/15 text-[#0EA5E9] flex items-center justify-center shrink-0">
+                    <QrCode size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">Dynamic QR Code Scanning</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Dynamic QR Code Scanning</span>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.15 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
-                    <Compass size={15} />
+                  <div className="size-6.5 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Compass size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">GPS Geofence Verification</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">GPS Geofence Verification</span>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/70 shadow-2xs hover:shadow-xs transition-all duration-200"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
                 >
-                  <div className="size-7 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
-                    <Zap size={15} />
+                  <div className="size-6.5 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                    <Zap size={14} />
                   </div>
-                  <span className="text-xs font-bold text-[#111827] leading-snug">Instant Attendance Marking</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Instant Attendance Marking</span>
                 </motion.div>
               </div>
             </div>
