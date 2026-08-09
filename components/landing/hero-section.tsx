@@ -125,7 +125,7 @@ export function HeroSection() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center my-auto">
+      <div className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center my-auto pt-2 sm:pt-4">
 
         {/* LEFT COLUMN: Text Content (40-50% width) */}
         <motion.div
@@ -152,41 +152,41 @@ export function HeroSection() {
           </h1>
 
           {/* Sub-headline Typing Animation */}
-          <div className="mt-4 min-h-11 flex items-center justify-center lg:justify-start">
+          <div className="mt-3.5 min-h-10.5 flex items-center justify-center lg:justify-start">
             <p className={`text-base sm:text-lg md:text-xl font-extrabold text-[#1E3A8A] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
               <span className="text-cyan-glow">{displayText}</span>
               <span className="cursor-underscore text-[#0EA5E9] font-extrabold ml-0.5">_</span>
             </p>
           </div>
 
-          <p className="mt-4 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
+          <p className="mt-3.5 max-w-lg text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
             Eliminate proxy attendance completely with multi-factor verification — combining dynamic rotating QR codes, facial recognition AI, and continuous GPS geofence boundaries.
           </p>
 
           {/* Action Buttons */}
-          <div className="mt-7 flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
+          <div className="mt-6 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <Button
               asChild
               size="lg"
-              className="h-12 min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-8 text-sm sm:text-base font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group"
+              className="h-11 min-h-11 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-7 text-sm font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group"
             >
               <Link href="/login" className="flex items-center justify-center gap-2">
                 <span>Explore The Demo</span>
-                <ArrowRight size={17} className="transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </Button>
 
             <a
               href="#how-it-works"
-              className="h-12 min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02]"
+              className="h-11 min-h-11 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-5 text-xs font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02]"
             >
-              <Sparkles size={16} className="text-[#0EA5E9]" />
+              <Sparkles size={15} className="text-[#0EA5E9]" />
               See Security Layers
             </a>
           </div>
 
           {/* Trust Badge */}
-          <div className="mt-7 pt-4.5 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-3 text-xs font-semibold text-slate-600">
+          <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-3 text-xs font-semibold text-slate-600">
             <div className="size-8 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold shrink-0">
               <Building2 size={16} />
             </div>
@@ -214,7 +214,7 @@ export function HeroSection() {
               transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
               transition: "transform 0.15s ease-out",
             }}
-            className="relative w-full max-w-[260px] sm:max-w-[275px] aspect-[9/18.5] max-h-[475px] rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto"
+            className="relative w-full max-w-[252px] sm:max-w-[268px] aspect-[9/18.2] max-h-[460px] rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto translate-y-3.5"
           >
             {/* Floating Glass Reflection */}
             <div className="pointer-events-none absolute inset-0 rounded-[32px] bg-linear-to-tr from-white/20 via-transparent to-transparent z-30" />
