@@ -1,10 +1,9 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
-import { motion, useInView, AnimatePresence } from "framer-motion"
-import { Laptop, Smartphone, QrCode, ScanFace, MapPin, CheckCircle2, Building2, ShieldCheck, Activity, BarChart3, Lock, Zap, Wifi, Layers } from "lucide-react"
+import { motion, useInView } from "framer-motion"
+import { Laptop, Smartphone, CheckCircle2, Building2, Activity, Zap } from "lucide-react"
 import Link from "next/link"
-import { RealQRCode } from "./real-qr-code"
 
 const webPortalFeatures = [
   "Dynamic QR Generator",
@@ -24,32 +23,17 @@ export function NNRGAboutSection() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(sectionRef, { once: true, margin: "-100px" })
 
-  /* ── Card 1 Animations: Dashboard Numbers Counting Up & Active Session Timer ── */
+  /* ── Card 1 Animations: Dashboard Numbers Counting Up ── */
   const [checkedInCount, setCheckedInCount] = useState(12)
-  const [sessionTimer, setSessionTimer] = useState(14)
 
   useEffect(() => {
     if (!isInView) return
     const countInterval = setInterval(() => {
       setCheckedInCount((prev) => (prev >= 48 ? 48 : prev + 3))
     }, 150)
-    const timerInterval = setInterval(() => {
-      setSessionTimer((prev) => (prev <= 1 ? 15 : prev - 1))
-    }, 1000)
     return () => {
       clearInterval(countInterval)
-      clearInterval(timerInterval)
     }
-  }, [isInView])
-
-  /* ── Card 2 Animations: Phone Screen Transitions (0: Scan -> 1: Face -> 2: Verified) ── */
-  const [card2Stage, setCard2Stage] = useState(0)
-  useEffect(() => {
-    if (!isInView) return
-    const stageInterval = setInterval(() => {
-      setCard2Stage((prev) => (prev + 1) % 3)
-    }, 2200)
-    return () => clearInterval(stageInterval)
   }, [isInView])
 
   return (
@@ -86,21 +70,21 @@ export function NNRGAboutSection() {
         </div>
 
         {/* Two Visually Different Cards Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch mb-12">
+        <div className="mx-auto max-w-[1060px] w-full grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-7 items-stretch mb-12">
 
-          {/* CARD 1: Web Portal (Next.js) - Square 1:1 Aspect Ratio Animation Area */}
+          {/* CARD 1: Web Portal (Next.js) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6 }}
-            className="glass-card rounded-3xl p-6 sm:p-8 border border-white/80 flex flex-col justify-between hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#1E3A8A]/25 transition-all duration-300 group"
+            className="glass-card rounded-3xl p-5 sm:p-7 border border-white/80 flex flex-col justify-between hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#1E3A8A]/25 transition-all duration-300 group"
           >
             <div>
               {/* Header Badge & Title */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="size-14 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30 group-hover:scale-105 transition-transform">
-                    <Laptop size={28} />
+                  <div className="size-13 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30 group-hover:scale-105 transition-transform">
+                    <Laptop size={26} />
                   </div>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-extrabold text-[#111827]">Web Portal (Next.js)</h3>
@@ -112,90 +96,86 @@ export function NNRGAboutSection() {
                 </span>
               </div>
 
-              {/* Square 1:1 Aspect Ratio Animation Area for Web Portal */}
-              <div className="relative w-full aspect-square rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#1E3A8A] p-4 sm:p-5 mb-6 overflow-hidden border border-blue-900 shadow-xl text-white flex flex-col justify-between">
+              {/* Inner Animation Area for Web Portal (Faculty Live Console - Content Driven Height) */}
+              <div className="relative w-full max-w-[96%] mx-auto rounded-2xl bg-linear-to-br from-[#F0F9FF] via-[#E0F2FE]/50 to-[#F8FAFC] p-3.5 sm:p-4 mb-5 overflow-hidden border border-blue-200/90 shadow-xs text-[#111827] flex flex-col space-y-3">
                 
-                {/* Header bar inside animation area */}
-                <div className="flex items-center justify-between border-b border-blue-800/80 pb-2 text-[11px] font-mono text-[#0EA5E9]">
-                  <span className="flex items-center gap-1.5 font-bold">
-                    <Activity size={13} className="animate-pulse" /> FACULTY LIVE CONSOLE
+                {/* Header bar inside panel */}
+                <div className="flex items-center justify-between border-b border-blue-200/80 pb-2 text-[11px] font-mono text-[#1E3A8A]">
+                  <span className="flex items-center gap-1.5 font-extrabold">
+                    <Activity size={13} className="text-[#0EA5E9] animate-pulse" /> FACULTY LIVE CONSOLE
                   </span>
-                  <span className="text-emerald-400 font-bold flex items-center gap-1">
-                    <Wifi size={12} className="animate-pulse" /> ONLINE ({sessionTimer}s)
+                  <span className="text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
+                    <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> ONLINE
                   </span>
                 </div>
 
-                {/* 3 Mini Cards inside Square Animation Area */}
-                <div className="grid grid-cols-1 gap-3 my-auto">
+                {/* Active Class & Live Attendance Card */}
+                <div className="space-y-2.5">
+                  
+                  {/* Active Class Highlight Box */}
+                  <div className="rounded-xl bg-white border border-blue-200/80 p-3 shadow-2xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-mono font-extrabold text-[#0EA5E9] uppercase tracking-wider">Current Period • Room 304</span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-mono font-extrabold border border-emerald-200 flex items-center gap-1">
+                        <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" /> LIVE SESSION
+                      </span>
+                    </div>
+                    <div className="text-sm font-extrabold text-[#111827]">CSE-A • Data Structures</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-0.5">10:00 AM — 10:50 AM</div>
 
-                  {/* Mini Card 1: QR Broadcast (ONLY THIS HAS SCANNING ANIMATION LINE) */}
-                  <div className="relative rounded-xl bg-slate-900/90 border border-blue-700/70 p-3 overflow-hidden flex items-center justify-between shadow-xs">
-                    {/* Vertical scanning line ONLY inside Mini Card 1 */}
-                    <div className="scan-laser-line z-10" />
-
-                    <div className="flex items-center gap-3 z-10">
-                      <div className="p-1 rounded-lg bg-white shrink-0">
-                        <RealQRCode size={36} seed={sessionTimer} darkColor="#1E3A8A" lightColor="#FFFFFF" />
+                    {/* Attendance Stats Bar */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-mono uppercase font-semibold block">Real-time Present</span>
+                        <span className="text-base font-extrabold font-mono text-emerald-600">{checkedInCount} / 50</span>
                       </div>
-                      <div className="text-left">
-                        <div className="text-xs font-extrabold text-white">QR Broadcast</div>
-                        <div className="text-[10px] text-[#0EA5E9] font-mono font-extrabold animate-pulse">
-                          ROTATING (15s)
-                        </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-500 font-mono uppercase font-semibold block">Attendance Rate</span>
+                        <span className="text-base font-extrabold font-mono text-[#1E3A8A]">{Math.round((checkedInCount / 50) * 100)}%</span>
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-[#0EA5E9]/20 text-[#0EA5E9] text-[9px] font-mono font-extrabold border border-[#0EA5E9]/40 z-10">
-                      BEAM LIVE
-                    </span>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden border border-slate-200/60">
+                      <motion.div
+                        animate={{ width: `${(checkedInCount / 50) * 100}%` }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="h-full bg-linear-to-r from-[#0EA5E9] to-[#1E3A8A] rounded-full"
+                      />
+                    </div>
                   </div>
 
-                  {/* Mini Card 2: Class Geofence (Radar Rings Expanding, NO Scanning Line) */}
-                  <div className="relative rounded-xl bg-slate-900/90 border border-purple-700/70 p-3 overflow-hidden flex items-center justify-between shadow-xs">
-                    <div className="flex items-center gap-3 z-10">
-                      <div className="relative size-9 rounded-lg bg-[#6D28D9]/30 border border-[#6D28D9] flex items-center justify-center shrink-0">
-                        {/* Radar ring expanding */}
-                        <div className="absolute size-7 rounded-full border border-purple-400 animate-ping opacity-60" />
-                        <MapPin size={18} className="text-purple-300 z-10" />
-                      </div>
-                      <div className="text-left">
-                        <div className="text-xs font-extrabold text-white">Class Geofence</div>
-                        <div className="text-[10px] text-emerald-400 font-mono font-bold">100m LOCKED</div>
-                      </div>
+                  {/* Today's Schedule Mini-Table */}
+                  <div className="rounded-xl bg-white/90 border border-blue-100 p-2.5 space-y-1.5 text-xs font-medium shadow-2xs">
+                    <div className="text-[10px] font-mono font-extrabold text-slate-500 uppercase tracking-wider mb-1">Today's Faculty Schedule</div>
+                    
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-200/60 text-[11px]">
+                      <span className="font-mono text-slate-500 font-semibold">09:00 AM</span>
+                      <span className="font-bold text-slate-700">Mathematics IV</span>
+                      <span className="text-emerald-600 font-mono font-extrabold text-[10px]">✓ COMPLETED</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-mono font-bold border border-emerald-500/30 z-10">
-                      BOUNDS OK
-                    </span>
-                  </div>
 
-                  {/* Mini Card 3: Live Check-ins (Numbers Updating, NO Scanning Line) */}
-                  <div className="relative rounded-xl bg-slate-900/90 border border-emerald-700/60 p-3 overflow-hidden flex items-center justify-between shadow-xs">
-                    <div className="flex items-center gap-3 z-10">
-                      <div className="size-9 rounded-lg bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center shrink-0 text-emerald-400">
-                        <BarChart3 size={18} />
-                      </div>
-                      <div className="text-left">
-                        <div className="text-xs font-extrabold text-white">Live Check-ins</div>
-                        <div className="text-[10px] text-slate-300 font-mono font-bold flex items-center gap-1">
-                          <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Students Logging In
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 text-[11px]">
+                      <span className="font-mono text-[#1E3A8A] font-bold">10:00 AM</span>
+                      <span className="font-extrabold text-[#111827]">Data Structures</span>
+                      <span className="text-emerald-600 font-mono font-extrabold text-[10px] flex items-center gap-1">
+                        ● IN PROGRESS
+                      </span>
                     </div>
-                    <div className="text-right z-10">
-                      <span className="text-sm font-mono font-extrabold text-emerald-400 block">{checkedInCount} / 50</span>
-                      <span className="text-[8px] text-slate-400 font-mono">96% PRESENT</span>
+
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-200/60 text-[11px]">
+                      <span className="font-mono text-slate-500 font-semibold">11:00 AM</span>
+                      <span className="font-medium text-slate-600">Computer Networks</span>
+                      <span className="text-slate-500 font-mono text-[10px]">UPCOMING</span>
                     </div>
                   </div>
 
                 </div>
 
-                {/* Animated Data Progress Bar */}
-                <div className="w-full bg-slate-900/80 rounded-full h-2 p-0.5 border border-blue-800/50 mt-1">
-                  <motion.div
-                    animate={{ width: ["20%", "80%", "96%"] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="h-full bg-linear-to-r from-[#0EA5E9] via-[#6D28D9] to-emerald-400 rounded-full"
-                  />
+                {/* Footer Bar inside animation area */}
+                <div className="flex items-center justify-between border-t border-blue-200/80 pt-2 text-[10px] font-mono text-slate-500">
+                  <span>Automated Class Roster</span>
+                  <span className="text-[#1E3A8A] font-bold">NNRG CSE DEPT</span>
                 </div>
 
               </div>
@@ -219,7 +199,7 @@ export function NNRGAboutSection() {
               </div>
             </div>
 
-            <div className="mt-8 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-slate-600">
+            <div className="mt-7 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-slate-600">
               <span>Next.js 16 Web Management</span>
               <Link href="/login" className="text-[#1E3A8A] font-extrabold hover:text-[#6D28D9] underline">
                 Sign In to Admin Portal →
@@ -227,19 +207,19 @@ export function NNRGAboutSection() {
             </div>
           </motion.div>
 
-          {/* CARD 2: Flutter Mobile App - Square 1:1 Aspect Ratio Animation Area */}
+          {/* CARD 2: Flutter Mobile App */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="glass-card rounded-3xl p-6 sm:p-8 border border-white/80 flex flex-col justify-between hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#6D28D9]/25 transition-all duration-300 group"
+            className="glass-card rounded-3xl p-5 sm:p-7 border border-white/80 flex flex-col justify-between hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#6D28D9]/25 transition-all duration-300 group"
           >
             <div>
               {/* Header Badge & Title */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <div className="size-14 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-lg shadow-[#6D28D9]/30 group-hover:scale-105 transition-transform">
-                    <Smartphone size={28} />
+                  <div className="size-13 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-lg shadow-[#6D28D9]/30 group-hover:scale-105 transition-transform">
+                    <Smartphone size={26} />
                   </div>
                   <div>
                     <h3 className="text-xl sm:text-2xl font-extrabold text-[#111827]">Flutter Mobile App</h3>
@@ -251,98 +231,83 @@ export function NNRGAboutSection() {
                 </span>
               </div>
 
-              {/* Square 1:1 Aspect Ratio Animation Area for Flutter Mobile App */}
-              <div className="relative w-full aspect-square rounded-2xl bg-linear-to-br from-[#6D28D9] via-[#1E3A8A] to-[#111827] p-4 sm:p-5 mb-6 overflow-hidden border border-purple-900 shadow-xl text-white flex flex-col justify-between">
+              {/* Inner Animation Area for Flutter Mobile App (Student Mobile Dashboard - LIGHT LAVENDER THEME) */}
+              <div className="relative w-full max-w-[96%] mx-auto rounded-2xl bg-linear-to-br from-[#F5F3FF] via-[#EDE9FE]/50 to-[#F8FAFC] p-3.5 sm:p-4 mb-5 overflow-hidden border border-purple-200/90 shadow-xs text-[#111827] flex flex-col space-y-3">
                 
-                <div className="flex items-center justify-between border-b border-purple-800/80 pb-2 text-[11px] font-mono text-[#0EA5E9]">
-                  <span className="flex items-center gap-1.5 font-bold">
-                    <ScanFace size={13} className="animate-pulse" /> STUDENT MOBILE VERIFICATION
+                {/* Header bar inside animation area */}
+                <div className="flex items-center justify-between border-b border-purple-200/80 pb-2 text-[11px] font-mono text-[#6D28D9]">
+                  <span className="flex items-center gap-1.5 font-extrabold">
+                    <Smartphone size={13} className="text-[#6D28D9]" /> STUDENT DASHBOARD
                   </span>
-                  <span className="text-emerald-300 font-bold">● LIVE SCORE</span>
+                  <span className="text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
+                    <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> NNRG APP ACTIVE
+                  </span>
                 </div>
 
-                {/* Sleek Mini Phone Screen displaying 3 States */}
-                <div className="relative my-auto w-full max-w-[210px] sm:max-w-[220px] mx-auto aspect-[9/16] max-h-[220px] rounded-2xl bg-[#111827] p-1.5 border-2 border-slate-700 shadow-2xl flex flex-col justify-between overflow-hidden">
-                  <AnimatePresence mode="wait">
+                {/* Student Profile & Attendance Overview */}
+                <div className="space-y-2.5">
 
-                    {/* STATE 1: QR Scanning with beam */}
-                    {card2Stage === 0 && (
-                      <motion.div
-                        key="stg-qr"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.3 }}
-                        className="w-full h-full rounded-xl bg-slate-950 p-2.5 flex flex-col items-center justify-between border border-blue-500/30 relative overflow-hidden text-center"
-                      >
-                        {/* Scanning beam line */}
-                        <div className="scan-laser-line" />
-                        <div className="text-[10px] font-extrabold text-[#0EA5E9]">State 1: QR Scanning</div>
-                        <RealQRCode size={65} seed={sessionTimer} darkColor="#0EA5E9" lightColor="#090D16" />
-                        <div className="text-[9px] font-mono text-cyan-300 font-bold bg-slate-900 px-2 py-0.5 rounded-full border border-blue-800">
-                          SCANNING BEAM ACTIVE
-                        </div>
-                      </motion.div>
-                    )}
+                  {/* Student Profile Header */}
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-purple-200/80 shadow-2xs">
+                    <div>
+                      <div className="text-xs font-extrabold text-[#111827] flex items-center gap-1">
+                        Good Morning, Rahul 👋
+                      </div>
+                      <div className="text-[10px] text-[#6D28D9] font-mono font-semibold">217R1A0588 • CSE-A • Semester VI</div>
+                    </div>
+                    <div className="text-right">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-mono font-extrabold border border-emerald-200">
+                        ELIGIBLE
+                      </span>
+                    </div>
+                  </div>
 
-                    {/* STATE 2: Face Verification with scanning grid ONLY on face area */}
-                    {card2Stage === 1 && (
-                      <motion.div
-                        key="stg-face"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.3 }}
-                        className="w-full h-full rounded-xl bg-slate-950 p-2.5 flex flex-col items-center justify-between border border-purple-500/30 relative overflow-hidden text-center"
-                      >
-                        <div className="text-[10px] font-extrabold text-[#6D28D9]">State 2: Face AI Match</div>
-                        
-                        <div className="relative size-20 rounded-xl border border-dashed border-[#0EA5E9] flex items-center justify-center bg-slate-900/60 overflow-hidden">
-                          {/* Scanning Grid Overlay ONLY on Face Area */}
-                          <div className="absolute inset-0 opacity-40 bg-[linear-gradient(to_right,#0EA5E9_1px,transparent_1px),linear-gradient(to_bottom,#0EA5E9_1px,transparent_1px)] bg-[size:8px_8px]" />
-                          <ScanFace size={34} className="text-[#0EA5E9] animate-pulse relative z-10" />
-                        </div>
+                  {/* Overall Attendance Rate Metric (Refined Light Gradient Card) */}
+                  <div className="rounded-xl bg-linear-to-r from-purple-50/90 via-indigo-50/80 to-blue-50/90 border border-purple-300/70 p-3 text-center relative overflow-hidden shadow-2xs">
+                    <div className="text-[10px] font-mono font-extrabold text-[#6D28D9] uppercase tracking-wider">Overall Semester Attendance</div>
+                    <div className="text-2xl font-black font-mono mt-0.5 tracking-tight flex items-center justify-center gap-1">
+                      <span className="bg-linear-to-r from-[#6D28D9] to-[#0EA5E9] bg-clip-text text-transparent">92.4%</span>
+                    </div>
+                    <div className="w-full bg-white rounded-full h-1.5 mt-2 overflow-hidden p-0.5 border border-purple-200/80">
+                      <div className="h-full bg-linear-to-r from-[#6D28D9] to-emerald-500 rounded-full w-[92.4%]" />
+                    </div>
+                  </div>
 
-                        <div className="text-[9px] font-mono text-emerald-400 font-extrabold bg-slate-900 px-2 py-0.5 rounded-full border border-purple-800">
-                          99.8% Live Match Score
-                        </div>
-                      </motion.div>
-                    )}
+                  {/* Today's Attendance Log */}
+                  <div className="rounded-xl bg-white border border-purple-100 p-2.5 space-y-1.5 text-xs font-medium shadow-2xs">
+                    <div className="text-[10px] font-mono font-extrabold text-slate-500 uppercase tracking-wider mb-1">Today's Class Status</div>
+                    
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-50/70 border border-emerald-200/70 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={13} className="text-emerald-600" />
+                        <span className="font-bold text-slate-800">Mathematics IV</span>
+                      </div>
+                      <span className="text-emerald-700 font-mono font-extrabold text-[10px]">PRESENT</span>
+                    </div>
 
-                    {/* STATE 3: GPS Verification with radar pulse */}
-                    {card2Stage === 2 && (
-                      <motion.div
-                        key="stg-gps"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        transition={{ duration: 0.3 }}
-                        className="w-full h-full rounded-xl bg-slate-950 p-2.5 flex flex-col items-center justify-between border border-emerald-500/30 relative overflow-hidden text-center"
-                      >
-                        <div className="text-[10px] font-extrabold text-emerald-400">State 3: GPS Boundary</div>
-                        <div className="relative size-18 rounded-full border border-emerald-500/40 flex items-center justify-center">
-                          <div className="absolute size-14 rounded-full border border-emerald-400 animate-ping opacity-50" />
-                          <MapPin size={26} className="text-emerald-400 z-10" />
-                        </div>
-                        <div className="text-[9px] font-mono text-emerald-300 font-extrabold bg-slate-900 px-2 py-0.5 rounded-full border border-emerald-800">
-                          GPS BOUNDARY LOCKED
-                        </div>
-                      </motion.div>
-                    )}
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-50/70 border border-emerald-200/70 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={13} className="text-emerald-600" />
+                        <span className="font-extrabold text-[#111827]">Data Structures</span>
+                      </div>
+                      <span className="text-emerald-700 font-mono font-extrabold text-[10px]">PRESENT</span>
+                    </div>
 
-                  </AnimatePresence>
+                    <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-200/60 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <div className="size-3 rounded-full border border-slate-400" />
+                        <span className="font-medium text-slate-600">Computer Networks</span>
+                      </div>
+                      <span className="text-slate-500 font-mono text-[10px]">NEXT CLASS</span>
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Bottom Stage Progress Indicator */}
-                <div className="flex items-center justify-center gap-1.5 pt-1 border-t border-purple-800/60">
-                  {[0, 1, 2].map((stg) => (
-                    <div
-                      key={stg}
-                      className={`h-1 rounded-full transition-all duration-300 ${
-                        card2Stage === stg ? "w-4 bg-[#0EA5E9]" : "w-1 bg-purple-900"
-                      }`}
-                    />
-                  ))}
+                {/* Footer Bar inside animation area */}
+                <div className="flex items-center justify-between border-t border-purple-200/80 pt-2 text-[10px] font-mono text-slate-500">
+                  <span>Recent: Present • Present • Present</span>
+                  <span className="text-emerald-700 font-bold">100% VERIFIED</span>
                 </div>
 
               </div>
