@@ -86,33 +86,33 @@ export default function HomePage() {
       </main>
 
       {/* SECTION 7: UNIFIED NNRG FOOTER */}
-      <footer className="relative bg-[#1E3A8A] text-white px-4 sm:px-6 md:px-8 py-10 border-t border-white/10">
-        <div className="mx-auto max-w-7xl flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
+      <footer className="relative bg-[#1E3A8A] text-white px-4 sm:px-6 md:px-8 py-6 sm:py-7 mt-0 sm:-mt-2 border-t border-blue-900/50">
+        <div className="mx-auto max-w-7xl flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
           
           {/* Logo & Slogan */}
           <div className="flex items-center justify-center sm:justify-start gap-3">
             <FALogo size="sm" variant="blue" className="bg-white rounded-xl p-1 shadow-md" />
             <div className="flex flex-col">
               <span className="text-sm font-extrabold tracking-tight text-white">Factor Attendance</span>
-              <span className="text-xs text-[#0EA5E9] font-semibold flex items-center justify-center sm:justify-start gap-1">
-                <ShieldCheck className="size-3 text-[#0EA5E9]" /> NNRG CAMPUS SECURITY
+              <span className="text-xs text-[#38BDF8] font-semibold flex items-center justify-center sm:justify-start gap-1">
+                <ShieldCheck className="size-3 text-[#38BDF8]" /> NNRG CAMPUS SECURITY
               </span>
             </div>
           </div>
           
           {/* Nav Links: Overview · About · Security · Sign In */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-bold text-white/90">
-            <a href="#hero" className="hover:text-[#0EA5E9] transition-colors">Overview</a>
-            <a href="#about" className="hover:text-[#0EA5E9] transition-colors">About</a>
-            <a href="#how-it-works" className="hover:text-[#0EA5E9] transition-colors">Security</a>
-            <Link href="/login" className="text-[#0EA5E9] font-extrabold hover:underline">Sign In</Link>
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm font-extrabold text-white/95">
+            <a href="#hero" className="hover:text-[#38BDF8] transition-colors">Overview</a>
+            <a href="#about" className="hover:text-[#38BDF8] transition-colors">About</a>
+            <a href="#how-it-works" className="hover:text-[#38BDF8] transition-colors">Security</a>
+            <Link href="/login" className="text-[#38BDF8] font-extrabold hover:underline">Sign In</Link>
           </div>
 
           {/* NNRG Branding & Copyright */}
           <div className="flex flex-col text-center sm:text-right text-xs text-white/80 font-medium">
             <span className="font-extrabold text-white">Built for NNRG College</span>
             <span className="text-[11px] text-white/70">Nalla Narasimha Reddy Education Society's Group of Institutions</span>
-            <span className="text-[10px] text-white/50 mt-1">© 2026 NNRG College — All rights reserved</span>
+            <span className="text-[10px] text-white/50 mt-0.5">© 2026 NNRG College — All rights reserved</span>
           </div>
 
         </div>

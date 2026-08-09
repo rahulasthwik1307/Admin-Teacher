@@ -302,7 +302,7 @@ export function HeroSection() {
                     </motion.div>
                   )}
 
-                  {/* PHASE 3 (4-6s): Face Verification (Laser Bar + Confidence) */}
+                  {/* PHASE 3 (4-6s): Face Verification (Student Avatar Face + Laser Bar + Match %) */}
                   {phoneStage === 2 && (
                     <motion.div
                       key="stage-face"
@@ -310,23 +310,69 @@ export function HeroSection() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.92 }}
                       transition={{ duration: 0.3 }}
-                      className="w-full relative flex flex-col items-center justify-center p-2 rounded-xl bg-white/90 border border-blue-200/80 shadow-xs"
+                      className="w-full relative flex flex-col items-center justify-center p-2 rounded-xl bg-white/95 border border-purple-200/80 shadow-xs"
                     >
-                      <div className="relative size-24 border-2 border-dashed border-[#0EA5E9] rounded-xl flex items-center justify-center overflow-hidden bg-slate-900/5">
-                        <div className="absolute top-0 left-0 size-2 border-t-2 border-l-2 border-[#0EA5E9]" />
-                        <div className="absolute top-0 right-0 size-2 border-t-2 border-r-2 border-[#0EA5E9]" />
-                        <div className="absolute bottom-0 left-0 size-2 border-b-2 border-l-2 border-[#0EA5E9]" />
-                        <div className="absolute bottom-0 right-0 size-2 border-b-2 border-r-2 border-[#0EA5E9]" />
+                      {/* Biometric Scanning Frame - Matched to Face AI Security Card */}
+                      <div className="relative size-24 border-2 border-dashed border-[#6D28D9]/70 rounded-xl flex items-center justify-center overflow-hidden bg-linear-to-br from-[#F3E8FF]/60 via-white to-[#EDE9FE]/60 p-1 z-10 shadow-inner">
+                        {/* Bounded Laser Scan Line */}
+                        <div className="scan-laser-line z-20" />
 
-                        {/* Animated Laser Scanning Box */}
-                        <div className="scan-laser-line z-10" />
+                        {/* Corner Scanning Brackets */}
+                        <div className="absolute top-1 left-1 size-2.5 border-t-2 border-l-2 border-[#6D28D9] rounded-tl-xs z-10" />
+                        <div className="absolute top-1 right-1 size-2.5 border-t-2 border-r-2 border-[#6D28D9] rounded-tr-xs z-10" />
+                        <div className="absolute bottom-1 left-1 size-2.5 border-b-2 border-l-2 border-[#6D28D9] rounded-bl-xs z-10" />
+                        <div className="absolute bottom-1 right-1 size-2.5 border-b-2 border-r-2 border-[#6D28D9] rounded-br-xs z-10" />
 
-                        <ScanFace size={38} className="text-[#1E3A8A]" />
+                        {/* Student Avatar Face (Enlarged & Centered, matching Face AI desktop card) */}
+                        <div className="relative size-20 flex items-center justify-center z-10 my-auto pt-0.5">
+                          <svg viewBox="0 0 120 130" className="w-full h-full drop-shadow-xs">
+                            {/* Neck & T-Shirt Collar */}
+                            <path d="M 46 95 L 46 110 L 74 110 L 74 95 Z" fill="#FCE7F3" stroke="#F43F5E" strokeWidth="0.5" />
+                            <path d="M 28 110 Q 60 128 92 110 L 96 130 L 24 130 Z" fill="#6D28D9" />
+                            <path d="M 44 110 Q 60 120 76 110 Q 60 114 44 110 Z" fill="#581C87" />
+
+                            {/* Ears */}
+                            <ellipse cx="28" cy="65" rx="7" ry="10" fill="#FDE8E8" stroke="#E11D48" strokeWidth="0.5" />
+                            <ellipse cx="28" cy="65" rx="4" ry="6" fill="#FCA5A5" opacity="0.4" />
+                            <ellipse cx="92" cy="65" rx="7" ry="10" fill="#FDE8E8" stroke="#E11D48" strokeWidth="0.5" />
+                            <ellipse cx="92" cy="65" rx="4" ry="6" fill="#FCA5A5" opacity="0.4" />
+
+                            {/* Face Head Outline */}
+                            <path d="M 30 50 C 30 20, 90 20, 90 50 C 90 75, 80 96, 60 96 C 40 96, 30 75, 30 50 Z" fill="#FFF1F2" stroke="#FDA4AF" strokeWidth="0.8" />
+
+                            {/* Hair */}
+                            <path d="M 27 50 C 26 22, 50 10, 93 30 C 94 48, 86 28, 62 25 C 44 23, 34 38, 27 50 Z" fill="#2E1065" />
+
+                            {/* Eyebrows */}
+                            <path d="M 38 48 Q 48 42 56 47" stroke="#2E1065" strokeWidth="3" strokeLinecap="round" fill="none" />
+                            <path d="M 64 47 Q 72 42 82 48" stroke="#2E1065" strokeWidth="3" strokeLinecap="round" fill="none" />
+
+                            {/* Eyes */}
+                            <ellipse cx="47" cy="58" rx="7" ry="8" fill="#111827" />
+                            <ellipse cx="73" cy="58" rx="7" ry="8" fill="#111827" />
+                            <circle cx="49" cy="55" r="2.5" fill="#FFFFFF" />
+                            <circle cx="75" cy="55" r="2.5" fill="#FFFFFF" />
+
+                            {/* Nose & Smile */}
+                            <path d="M 60 62 Q 58 68 62 68" stroke="#E11D48" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                            <path d="M 48 76 Q 60 84 72 76" stroke="#E11D48" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+
+                            {/* Rosy Cheeks */}
+                            <circle cx="38" cy="68" r="4.5" fill="#FDA4AF" opacity="0.5" />
+                            <circle cx="82" cy="68" r="4.5" fill="#FDA4AF" opacity="0.5" />
+                          </svg>
+
+                          {/* Biometric Recognition Nodes */}
+                          <div className="absolute top-5 left-6 size-1.5 rounded-full bg-[#0EA5E9] animate-ping" />
+                          <div className="absolute top-5 right-6 size-1.5 rounded-full bg-[#0EA5E9] animate-ping" />
+                          <div className="absolute bottom-6 left-7 size-1.5 rounded-full bg-[#0EA5E9] animate-ping" />
+                          <div className="absolute bottom-6 right-7 size-1.5 rounded-full bg-[#0EA5E9] animate-ping" />
+                        </div>
                       </div>
 
-                      <div className="mt-1.5 flex flex-col items-center">
+                      <div className="mt-1 flex flex-col items-center">
                         <span className="text-[10px] font-extrabold text-[#111827]">Verifying Biometrics...</span>
-                        <span className="text-[11px] font-mono font-bold text-[#6D28D9]">
+                        <span className="text-[11px] font-mono font-extrabold text-[#6D28D9]">
                           {faceConfidence}% Match
                         </span>
                       </div>
