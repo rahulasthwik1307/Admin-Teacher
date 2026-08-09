@@ -87,7 +87,7 @@ export function FinalCtaSection() {
             <Button
               asChild
               size="lg"
-              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-linear-to-r from-[#0EA5E9] to-[#6D28D9] hover:from-[#0284C7] hover:to-[#5B21B6] px-3 sm:px-8 text-xs sm:text-base font-extrabold text-white shadow-lg shadow-[#0EA5E9]/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-linear-to-r from-[#0EA5E9] to-[#6D28D9] hover:from-[#0284C7] hover:to-[#5B21B6] px-3 sm:px-8 text-sm sm:text-base font-black tracking-wide text-white shadow-lg shadow-[#0EA5E9]/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
             >
               <Link href="/login" className="flex items-center justify-center gap-1.5 sm:gap-2 w-full">
                 <span className="truncate">Sign In</span>
