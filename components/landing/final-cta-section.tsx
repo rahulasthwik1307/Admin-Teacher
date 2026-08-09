@@ -18,18 +18,18 @@ export function FinalCtaSection() {
   }
 
   return (
-    <section id="final-cta" className="relative py-10 sm:py-14 -mt-4 sm:-mt-6 px-4 sm:px-6 md:px-8 overflow-hidden bg-transparent">
+    <section id="final-cta" className="relative py-10 sm:py-14 -mt-4 sm:-mt-6 px-4 sm:px-6 md:px-8 overflow-hidden bg-linear-to-br from-[#0F172A] via-[#1E1B4B] to-[#1E3A8A]">
       
       {/* Floating Parallax Background Elements */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         {/* Soft Ambient Radial Glows */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 size-72 rounded-full bg-[#0EA5E9]/10 blur-3xl" />
-        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 size-72 rounded-full bg-[#6D28D9]/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 size-72 rounded-full bg-[#0EA5E9]/15 blur-3xl" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 size-72 rounded-full bg-[#6D28D9]/20 blur-3xl" />
 
         <motion.div
           animate={{ y: [0, -25, 0], rotate: [0, 12, 0] }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-10 left-12 text-[#1E3A8A]/10"
+          className="absolute top-10 left-12 text-white/10"
         >
           <QrCode size={48} />
         </motion.div>
@@ -37,7 +37,7 @@ export function FinalCtaSection() {
         <motion.div
           animate={{ y: [0, 35, 0], rotate: [0, -15, 0] }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute bottom-12 left-1/4 text-[#6D28D9]/15"
+          className="absolute bottom-12 left-1/4 text-white/15"
         >
           <Shield size={36} />
         </motion.div>
@@ -45,7 +45,7 @@ export function FinalCtaSection() {
         <motion.div
           animate={{ y: [0, -20, 0], scale: [1, 1.1, 1] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute top-1/3 right-16 text-[#0EA5E9]/15"
+          className="absolute top-1/3 right-16 text-white/10"
         >
           <CheckCircle2 size={40} />
         </motion.div>
@@ -53,7 +53,7 @@ export function FinalCtaSection() {
         <motion.div
           animate={{ y: [0, 30, 0] }}
           transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-          className="absolute bottom-16 right-1/3 text-[#1E3A8A]/10"
+          className="absolute bottom-16 right-1/3 text-white/10"
         >
           <Lock size={28} />
         </motion.div>
@@ -66,22 +66,19 @@ export function FinalCtaSection() {
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
           viewport={{ once: true }}
-          className="backdrop-blur-xl bg-linear-to-br from-white/95 via-[#F8FAFC]/95 to-[#F1F5F9]/95 text-[#111827] border border-slate-200/90 shadow-2xl shadow-[#6D28D9]/10 rounded-3xl p-6 sm:p-9 md:p-10 relative overflow-hidden"
+          className="backdrop-blur-xl bg-linear-to-br from-[#1E293B]/90 via-[#0F172A]/95 to-[#1E1B4B]/90 text-white border border-white/20 shadow-2xl shadow-black/40 rounded-3xl p-6 sm:p-9 md:p-10 relative overflow-hidden"
         >
-          {/* Subtle Top Highlight Line */}
-          <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-[#0EA5E9] via-[#6D28D9] to-[#0EA5E9]" />
-
           {/* Badge */}
-          <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-[#6D28D9]/25 bg-[#6D28D9]/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#6D28D9] backdrop-blur-md">
+          <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-white backdrop-blur-md">
             <Sparkles size={13} className="text-[#0EA5E9]" />
             NNRG Campus Security Platform
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl text-[#1E3A8A] leading-tight">
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl text-white leading-tight">
             Ready to Revolutionize Campus Security?
           </h2>
 
-          <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base md:text-lg text-slate-600 font-medium leading-relaxed">
+          <p className="mt-3 max-w-xl mx-auto text-sm sm:text-base md:text-lg text-white/85 font-medium leading-relaxed">
             Built for NNRG College — Secure your campus with smart attendance
           </p>
 
@@ -90,7 +87,7 @@ export function FinalCtaSection() {
             <Button
               asChild
               size="lg"
-              className="h-12 w-full sm:w-auto rounded-xl bg-linear-to-r from-[#0EA5E9] to-[#6D28D9] hover:from-[#0284C7] hover:to-[#5B21B6] px-8 text-base font-extrabold text-white shadow-lg shadow-[#0EA5E9]/25 hover:shadow-xl hover:shadow-[#6D28D9]/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group"
+              className="h-12 w-full sm:w-auto rounded-xl bg-linear-to-r from-[#0EA5E9] to-[#6D28D9] hover:from-[#0284C7] hover:to-[#5B21B6] px-8 text-base font-extrabold text-white shadow-lg shadow-[#0EA5E9]/30 transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] group"
             >
               <Link href="/login" className="flex items-center justify-center gap-2">
                 <span>Sign In</span>
@@ -101,10 +98,10 @@ export function FinalCtaSection() {
             <button
               type="button"
               onClick={handleDemoVideoClick}
-              className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl border border-slate-300/80 bg-white hover:bg-slate-50 px-7 text-base font-bold text-[#1E3A8A] shadow-xs transition-all duration-300 hover:border-[#0EA5E9]/50 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl border border-white/25 bg-white/10 hover:bg-white/20 px-7 text-base font-bold text-white shadow-md backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
-              <span className="relative flex size-7 items-center justify-center rounded-full bg-[#1E3A8A]/10 text-[#1E3A8A]">
-                <Play size={13} className="fill-[#1E3A8A] translate-x-0.5" />
+              <span className="relative flex size-7 items-center justify-center rounded-full bg-white/20 text-white">
+                <Play size={13} className="fill-white translate-x-0.5" />
               </span>
               <span>Watch Demo Video ▶</span>
             </button>
