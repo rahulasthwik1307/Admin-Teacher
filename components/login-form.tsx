@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, UserCheck, ShieldCheck, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
@@ -18,6 +19,8 @@ export function LoginForm() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [isLoading, setIsLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [emailFocused, setEmailFocused] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
 
   const placeholderEmail =
     role === "admin" ? "admin@nnrg.edu.in" : "teacher@nnrg.edu.in"
@@ -130,42 +133,58 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-      {/* Role selector pills */}
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-1">
+    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      {/* Role Switcher Segmented Control */}
+      <div className="relative flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 shadow-inner">
         <button
           type="button"
           onClick={() => setRole("teacher")}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-            role === "teacher"
-              ? "bg-[#2563EB] text-white shadow-sm"
-              : "bg-transparent text-muted-foreground hover:text-foreground"
+          className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            role === "teacher" ? "text-blue-700" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          Teacher
+          {role === "teacher" && (
+            <motion.div
+              layoutId="activeRolePill"
+              className="absolute inset-0 rounded-lg bg-white shadow-sm border border-blue-200/60"
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            />
+          )}
+          <UserCheck className="relative z-10 size-4 text-blue-600" />
+          <span className="relative z-10">Teacher Access</span>
         </button>
+
         <button
           type="button"
           onClick={() => setRole("admin")}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-            role === "admin"
-              ? "bg-[#2563EB] text-white shadow-sm"
-              : "bg-transparent text-muted-foreground hover:text-foreground"
+          className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            role === "admin" ? "text-purple-700" : "text-slate-500 hover:text-slate-800"
           }`}
         >
-          Admin
+          {role === "admin" && (
+            <motion.div
+              layoutId="activeRolePill"
+              className="absolute inset-0 rounded-lg bg-white shadow-sm border border-purple-200/60"
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            />
+          )}
+          <ShieldCheck className="relative z-10 size-4 text-purple-600" />
+          <span className="relative z-10">Admin Access</span>
         </button>
       </div>
 
-      {/* Email */}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email" className="text-foreground">
+      {/* Email Input */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
           Email address
         </Label>
-        <div className="relative">
+        <div className="relative group">
           <Mail
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            size={18}
+            className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors size-4.5 ${
+              emailFocused
+                ? role === "admin" ? "text-purple-600" : "text-blue-600"
+                : "text-slate-400"
+            }`}
             aria-hidden="true"
           />
           <input
@@ -173,31 +192,40 @@ export function LoginForm() {
             type="email"
             placeholder={placeholderEmail}
             value={email}
+            onFocus={() => setEmailFocused(true)}
+            onBlur={() => setEmailFocused(false)}
             onChange={(e) => {
               setEmail(e.target.value)
               if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }))
             }}
             aria-invalid={!!errors.email}
             aria-describedby={errors.email ? "email-error" : undefined}
-            className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none dark:bg-muted/50"
+            className={`h-11 w-full rounded-xl border bg-slate-50/90 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 transition-all duration-200 outline-none ${
+              errors.email
+                ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
+                : "border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
+            }`}
           />
         </div>
         {errors.email && (
-          <p id="email-error" className="text-sm text-destructive" role="alert">
+          <p id="email-error" className="text-xs text-red-500 font-medium mt-0.5" role="alert">
             {errors.email}
           </p>
         )}
       </div>
 
-      {/* Password */}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password" className="text-foreground">
+      {/* Password Input */}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
           Password
         </Label>
-        <div className="relative">
+        <div className="relative group">
           <Lock
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            size={18}
+            className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors size-4.5 ${
+              passwordFocused
+                ? role === "admin" ? "text-purple-600" : "text-blue-600"
+                : "text-slate-400"
+            }`}
             aria-hidden="true"
           />
           <input
@@ -205,59 +233,79 @@ export function LoginForm() {
             type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
             value={password}
+            onFocus={() => setPasswordFocused(true)}
+            onBlur={() => setPasswordFocused(false)}
             onChange={(e) => {
               setPassword(e.target.value)
               if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }))
             }}
             aria-invalid={!!errors.password}
             aria-describedby={errors.password ? "password-error" : undefined}
-            className="h-11 w-full rounded-lg border border-input bg-background pl-10 pr-11 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none dark:bg-muted/50"
+            className={`h-11 w-full rounded-xl border bg-slate-50/90 pl-10 pr-11 text-sm text-slate-900 placeholder:text-slate-400 transition-all duration-200 outline-none ${
+              errors.password
+                ? "border-red-500 focus:ring-2 focus:ring-red-500/20"
+                : "border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10"
+            }`}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer"
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            {showPassword ? <EyeOff className="size-4.5" /> : <Eye className="size-4.5" />}
           </button>
         </div>
         {errors.password && (
-          <p id="password-error" className="text-sm text-destructive" role="alert">
+          <p id="password-error" className="text-xs text-red-500 font-medium mt-0.5" role="alert">
             {errors.password}
           </p>
         )}
       </div>
 
-      {/* Submit */}
+      {/* Submit Button */}
       <Button
         type="submit"
         disabled={isLoading}
-        className="h-11 w-full rounded-lg bg-[#2563EB] text-white font-medium text-sm hover:bg-[#1d4ed8] transition-colors cursor-pointer"
         size="lg"
+        className="group relative h-11.5 w-full rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md shadow-blue-500/20 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-200 cursor-pointer overflow-hidden active:scale-[0.99]"
       >
-        {isLoading ? (
-          <>
-            <Loader2 className="animate-spin" size={18} />
-            Signing in...
-          </>
-        ) : (
-          <>
-            Sign In
-            <ArrowRight size={18} />
-          </>
-        )}
+        <span className="relative z-10 flex items-center justify-center gap-2">
+          {isLoading ? (
+            <>
+              <Loader2 className="animate-spin size-4.5" />
+              <span>Authenticating...</span>
+            </>
+          ) : (
+            <>
+              <span>Sign In to Portal</span>
+              <ArrowRight className="size-4.5 group-hover:translate-x-1 transition-transform duration-200" />
+            </>
+          )}
+        </span>
       </Button>
 
-      {authError && (
-        <p className="text-center text-sm text-red-500 font-medium" role="alert">
-          {authError}
-        </p>
-      )}
+      {/* Error Alert Box */}
+      <AnimatePresence>
+        {authError && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-medium"
+            role="alert"
+          >
+            <ShieldAlert className="size-4 shrink-0 text-red-500" />
+            <span>{authError}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <p className="text-center text-xs text-muted-foreground">
-        Access is restricted to authorized staff only.
-      </p>
+      {/* Security Footer Badge */}
+      <div className="flex items-center justify-center gap-1.5 text-center text-[11px] text-slate-500 pt-1 font-medium">
+        <ShieldCheck className="size-3.5 text-emerald-600" />
+        <span>Secure Staff Access • Factor Attendance Security</span>
+      </div>
     </form>
   )
 }
