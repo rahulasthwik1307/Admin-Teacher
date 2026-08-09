@@ -70,7 +70,7 @@ export function NNRGAboutSection() {
         </div>
 
         {/* Two Visually Different Cards Side by Side (Equal Height Grid) */}
-        <div className="mx-auto max-w-[1100px] w-full grid grid-cols-1 lg:grid-cols-2 gap-7 sm:gap-8 items-stretch mb-6 sm:mb-8">
+        <div className="mx-auto max-w-275 w-full grid grid-cols-1 lg:grid-cols-2 gap-7 sm:gap-8 items-stretch mb-6 sm:mb-8">
 
           {/* CARD 1: Web Portal (Next.js) */}
           <motion.div
@@ -412,7 +412,7 @@ export function NNRGAboutSection() {
         </div>
 
         {/* Section Footer */}
-        <div className="mx-auto max-w-[1100px] w-full p-5 sm:p-6 rounded-3xl backdrop-blur-md bg-white/80 border border-white/90 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <div className="mx-auto max-w-275 w-full p-5 sm:p-6 rounded-3xl backdrop-blur-md bg-white/80 border border-white/90 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
               <Zap size={22} />

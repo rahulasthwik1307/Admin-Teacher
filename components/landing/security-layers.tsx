@@ -155,7 +155,7 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Cyan / Ice-Blue Tinted Background */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#E0F2FE] via-[#F0F9FF] to-[#DBEAFE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#38BDF8]/60 shadow-md shadow-sky-400/10">
+              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#E0F2FE] via-[#F0F9FF] to-[#DBEAFE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#38BDF8]/60 shadow-md shadow-sky-400/10">
                 {/* QR Subject Box - Laser scan line is BOUNDED ONLY INSIDE THIS QR SUBJECT */}
                 <div className="relative rounded-2xl p-2 bg-white border border-sky-300/60 overflow-hidden shadow-lg z-10 my-auto">
                   {/* Laser scan line moving ONLY across the QR code */}
@@ -221,9 +221,9 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Lavender / Violet Tinted Background */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
+              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
                 {/* Face Scanner Frame - Matched Height (195px x 195px) to Horizontally Align with Card 1's QR Box */}
-                <div className="relative w-[195px] h-[195px] border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/90 p-2 overflow-hidden z-10 my-auto shadow-md">
+                <div className="relative w-48.75 h-48.75 border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/90 p-2 overflow-hidden z-10 my-auto shadow-md">
                   {/* Laser scan line moving ONLY inside face scanner frame */}
                   <div className="scan-laser-line z-20" />
 
@@ -338,7 +338,7 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Mint / Teal-White Tinted Background */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
+              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
                 {/* Styled 3D Grid Map Background */}
                 <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-size-[16px_16px]" />
 

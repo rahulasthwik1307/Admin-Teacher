@@ -214,10 +214,10 @@ export function HeroSection() {
               transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
               transition: "transform 0.15s ease-out",
             }}
-            className="relative w-full max-w-[236px] sm:max-w-[250px] aspect-[9/18.2] max-h-[460px] rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto translate-y-3.5"
+            className="relative w-full max-w-59 sm:max-w-62.5 aspect-[9/18.2] max-h-115 rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto translate-y-3.5"
           >
             {/* Floating Glass Reflection */}
-            <div className="pointer-events-none absolute inset-0 rounded-[32px] bg-linear-to-tr from-white/20 via-transparent to-transparent z-30" />
+            <div className="pointer-events-none absolute inset-0 rounded-4xl bg-linear-to-tr from-white/20 via-transparent to-transparent z-30" />
 
             {/* Screen Glow */}
             <div className="pointer-events-none absolute -inset-3 rounded-[40px] bg-linear-to-tr from-[#6D28D9]/30 via-[#0EA5E9]/35 to-[#1E3A8A]/30 blur-lg opacity-70 -z-10 animate-pulse" />
@@ -236,7 +236,7 @@ export function HeroSection() {
               </div>
 
               {/* Dynamic Screen Stage Switcher */}
-              <div className="relative my-auto flex flex-col items-center justify-center min-h-[210px]">
+              <div className="relative my-auto flex flex-col items-center justify-center min-h-52.5">
                 <AnimatePresence mode="wait">
 
                   {/* PHASE 1 (0-2s): Flutter App Home Screen */}
