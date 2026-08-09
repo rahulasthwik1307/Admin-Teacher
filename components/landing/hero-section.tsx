@@ -164,23 +164,23 @@ export function HeroSection() {
           </p>
 
           {/* Action Buttons */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="mt-6.5 flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
             <Button
               asChild
               size="lg"
-              className="h-11 min-h-11 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-7 text-sm font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group"
+              className="h-12 min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-7.5 text-sm sm:text-[15px] font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group"
             >
               <Link href="/login" className="flex items-center justify-center gap-2">
                 <span>Explore The Demo</span>
-                <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight size={17} className="transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </Button>
 
             <a
               href="#how-it-works"
-              className="h-11 min-h-11 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-5 text-xs font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02]"
+              className="h-12 min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02]"
             >
-              <Sparkles size={15} className="text-[#0EA5E9]" />
+              <Sparkles size={16} className="text-[#0EA5E9]" />
               See Security Layers
             </a>
           </div>
