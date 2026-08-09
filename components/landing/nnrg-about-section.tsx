@@ -57,7 +57,7 @@ export function NNRGAboutSection() {
             🏛️ NNRG College Ecosystem
           </div>
           
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] sm:text-4xl md:text-5xl">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-wider text-[#1E3A8A]">
             Built Exclusively for NNRG College
           </h2>
           <p className="mt-2 text-xs sm:text-sm font-bold text-[#6D28D9]">
@@ -88,7 +88,7 @@ export function NNRGAboutSection() {
                       <Laptop size={26} />
                     </div>
                     <div>
-                      <h3 className="text-xl sm:text-2xl font-extrabold text-[#111827]">Web Portal (Next.js)</h3>
+                      <h3 className="text-xl sm:text-2xl font-bold text-[#1E3A8A]">Web Portal (Next.js)</h3>
                       <p className="text-xs font-bold text-[#0EA5E9]">For Teachers & Administrators</p>
                     </div>
                   </div>
@@ -258,7 +258,7 @@ export function NNRGAboutSection() {
                       <Smartphone size={26} />
                     </div>
                     <div>
-                      <h3 className="text-xl sm:text-2xl font-extrabold text-[#111827]">Flutter Mobile App</h3>
+                      <h3 className="text-xl sm:text-2xl font-bold text-[#1E3A8A]">Flutter Mobile App</h3>
                       <p className="text-xs font-bold text-[#6D28D9]">For Students</p>
                     </div>
                   </div>

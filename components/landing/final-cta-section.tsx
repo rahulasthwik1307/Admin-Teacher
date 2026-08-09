@@ -74,7 +74,7 @@ export function FinalCtaSection() {
             NNRG Campus Security Platform
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl text-white leading-tight">
+          <h2 className="text-4xl sm:text-5xl font-bold tracking-wider text-white leading-tight">
             Ready to Revolutionize Campus Security?
           </h2>
 

@@ -146,20 +146,20 @@ export function HeroSection() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#111827] sm:text-4xl md:text-5xl lg:text-5xl leading-[1.12]">
-            Smart Attendance for{" "}
-            <span className="gradient-text-navy block sm:inline">Modern Campus</span>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.12]">
+            <span className="text-[#1E3A8A]">Smart Attendance for</span>{" "}
+            <span className="text-[#0EA5E9]">Modern Campus</span>
           </h1>
 
           {/* Sub-headline Typing Animation */}
           <div className="mt-3.5 min-h-10.5 flex items-center justify-center lg:justify-start">
-            <p className={`text-base sm:text-lg md:text-xl font-extrabold text-[#1E3A8A] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
-              <span className="font-extrabold text-[#0EA5E9]">{displayText}</span>
-              <span className="cursor-underscore text-[#0EA5E9] font-extrabold ml-0.5">_</span>
+            <p className={`text-xl sm:text-2xl font-medium italic text-[#6D28D9] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
+              <span>{displayText}</span>
+              <span className="cursor-underscore ml-0.5 text-[#0EA5E9]">_</span>
             </p>
           </div>
 
-          <p className="mt-3.5 max-w-lg text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
+          <p className="mt-3.5 max-w-lg text-base sm:text-lg text-slate-700 leading-relaxed font-normal">
             Eliminate proxy attendance completely with multi-factor verification — combining dynamic rotating QR codes, facial recognition AI, and continuous GPS geofence boundaries.
           </p>
 

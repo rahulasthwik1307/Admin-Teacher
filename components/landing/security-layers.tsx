@@ -91,11 +91,9 @@ export function SecurityLayers() {
             Triple Verification Defense
           </div>
           
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#111827] sm:text-4xl md:text-5xl">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#1E3A8A] pb-2">
             Three Layers of Iron-Clad Security
           </h2>
-          
-          <div className="mt-3 mx-auto h-1.5 w-28 rounded-full bg-linear-to-r from-[#1E3A8A] via-[#6D28D9] to-[#0EA5E9]" />
 
           <p className="mt-4 max-w-xl mx-auto text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
             Every attendance check-in must pass dynamic QR validation, facial recognition AI, and physical GPS boundary verification in real time.
