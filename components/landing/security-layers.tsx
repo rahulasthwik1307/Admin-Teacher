@@ -101,7 +101,7 @@ export function SecurityLayers() {
         </div>
 
         {/* 3 Horizontal Cards Container */}
-        <div ref={containerRef} className="relative grid grid-cols-1 lg:grid-cols-3 gap-2.5 sm:gap-6 lg:gap-8 items-stretch">
+        <div ref={containerRef} className="relative grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-6 lg:gap-8 items-stretch">
           
           {/* Flow Line 1 -> 2 -> 3 (Desktop Animated Dashed Line) */}
           <div className="hidden lg:block pointer-events-none absolute inset-0 z-0 top-1/2 -translate-y-1/2">
@@ -174,13 +174,6 @@ export function SecurityLayers() {
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
           </motion.div>
-
-          {/* Mobile Flow Connector 1 -> 2 */}
-          <div className="lg:hidden flex justify-center py-0 my-0.5 h-3 text-[#0EA5E9]">
-            <svg className="w-5 h-3" fill="none">
-              <path d="M 10 0 L 10 12" stroke="#0EA5E9" strokeWidth="2" className="animated-dash-flow" />
-            </svg>
-          </div>
 
           {/* CARD 2: FACE AI VERIFICATION (Scanning Grid ONLY on Image Area) */}
           <motion.div
@@ -291,13 +284,6 @@ export function SecurityLayers() {
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
           </motion.div>
-
-          {/* Mobile Flow Connector 2 -> 3 */}
-          <div className="lg:hidden flex justify-center py-0 my-0.5 h-3 text-[#0EA5E9]">
-            <svg className="w-5 h-3" fill="none">
-              <path d="M 10 0 L 10 12" stroke="#0EA5E9" strokeWidth="2" className="animated-dash-flow" />
-            </svg>
-          </div>
 
           {/* CARD 3: GEOFENCE SECURITY (Vector Location Pin Silhouette in Light Mint-Teal Container) */}
           <motion.div
