@@ -132,14 +132,14 @@ export function SecurityLayers() {
               transform: `perspective(1000px) rotateX(${tilts[1]?.rx || 0}deg) rotateY(${tilts[1]?.ry || 0}deg)`,
               transition: "transform 0.1s ease-out, filter 0.3s ease, opacity 0.3s ease",
             }}
-            className={`glass-card rounded-3xl p-7 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
+            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
               hoveredCard !== null && hoveredCard !== 1 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#1E3A8A]/20"
             }`}
           >
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="size-14 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30">
-                  <QrCode size={28} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="size-13 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30">
+                  <QrCode size={26} />
                 </div>
                 {/* Circular Security Score Indicator */}
                 <div className="flex items-center gap-1.5 rounded-full bg-[#1E3A8A]/10 border border-[#1E3A8A]/20 px-3 py-1 text-xs font-extrabold text-[#1E3A8A]">
@@ -147,29 +147,29 @@ export function SecurityLayers() {
                 </div>
               </div>
 
-              <h3 className="text-xl font-extrabold text-[#111827] mb-2">
+              <h3 className="text-xl font-extrabold text-[#111827] mb-1.5">
                 1. Dynamic QR Codes
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5 font-medium">
                 Teachers broadcast a dynamic QR code that continuously rotates every 15 seconds. Prevents screenshots and static proxy sharing.
               </p>
 
-              {/* Image Container - Square 1:1 Aspect Ratio with Internal Scanning Overlay ONLY */}
-              <div className="relative w-full aspect-square rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#1E3A8A] p-4 flex flex-col items-center justify-center overflow-hidden border border-blue-900 shadow-inner">
+              {/* Image Container - Square-like Aspect Ratio with Significantly Enlarged QR Subject */}
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#1E3A8A] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-blue-900 shadow-inner">
                 {/* Laser scan line moving ONLY inside this image container */}
                 <div className="scan-laser-line z-10" />
 
-                {/* Real SVG QR Pattern */}
-                <RealQRCode size={145} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-lg z-0" />
+                {/* Real SVG QR Pattern - Significantly Enlarged */}
+                <RealQRCode size={185} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-lg z-0 my-auto" />
 
-                <div className="mt-3 z-10 flex items-center gap-1.5 text-xs font-mono text-[#0EA5E9] bg-slate-950/85 px-3 py-1 rounded-full border border-blue-800 shadow-xs">
-                  <Timer size={14} className="animate-spin-slow text-[#0EA5E9]" />
+                <div className="mt-auto z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-950/85 px-3 py-1 rounded-full border border-blue-800 shadow-xs">
+                  <Timer size={13} className="animate-spin-slow text-[#0EA5E9]" />
                   <span>Refresh in: <strong className="text-white text-xs">{countdown}s</strong></span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#1E3A8A]">
+            <div className="mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#1E3A8A]">
               <span>Dynamic Session Token</span>
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
@@ -197,53 +197,53 @@ export function SecurityLayers() {
               transform: `perspective(1000px) rotateX(${tilts[2]?.rx || 0}deg) rotateY(${tilts[2]?.ry || 0}deg)`,
               transition: "transform 0.1s ease-out, filter 0.3s ease, opacity 0.3s ease",
             }}
-            className={`glass-card rounded-3xl p-7 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
+            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
               hoveredCard !== null && hoveredCard !== 2 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#6D28D9]/20"
             }`}
           >
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="size-14 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-lg shadow-[#6D28D9]/30">
-                  <ScanFace size={28} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="size-13 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-lg shadow-[#6D28D9]/30">
+                  <ScanFace size={26} />
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full bg-[#6D28D9]/10 border border-[#6D28D9]/20 px-3 py-1 text-xs font-extrabold text-[#6D28D9]">
                   <ShieldCheck size={14} className="text-[#0EA5E9]" /> Score: 99.8%
                 </div>
               </div>
 
-              <h3 className="text-xl font-extrabold text-[#111827] mb-2">
+              <h3 className="text-xl font-extrabold text-[#111827] mb-1.5">
                 2. Face AI Verification
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5 font-medium">
                 Instant biometric face matching via mobile camera. AI models verify live student identity against enrolled campus records.
               </p>
 
-              {/* Image Container - Square 1:1 Aspect Ratio with Scanning Grid ONLY on Image Container */}
-              <div className="relative w-full aspect-square rounded-2xl bg-linear-to-br from-[#6D28D9] via-[#111827] to-[#1E3A8A] p-4 flex flex-col items-center justify-center overflow-hidden border border-purple-900 shadow-inner">
+              {/* Image Container - Square-like Aspect Ratio with Significantly Enlarged Face Scanner Subject */}
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#6D28D9] via-[#111827] to-[#1E3A8A] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-purple-900 shadow-inner">
                 {/* Laser scan line moving ONLY inside this image container */}
                 <div className="scan-laser-line z-10" />
 
-                <div className="relative size-36 border-2 border-dashed border-[#0EA5E9] rounded-2xl flex flex-col items-center justify-center bg-slate-950/40 p-2 overflow-hidden z-10">
+                <div className="relative size-44 border-2 border-dashed border-[#0EA5E9] rounded-2xl flex flex-col items-center justify-center bg-slate-950/40 p-2 overflow-hidden z-10 my-auto">
                   {/* Scanning Grid Overlay ONLY on Face Area */}
                   <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#0EA5E9_1px,transparent_1px),linear-gradient(to_bottom,#0EA5E9_1px,transparent_1px)] bg-[size:10px_10px]" />
 
-                  <div className="absolute top-0 left-0 size-3 border-t-2 border-l-2 border-[#0EA5E9]" />
-                  <div className="absolute top-0 right-0 size-3 border-t-2 border-r-2 border-[#0EA5E9]" />
-                  <div className="absolute bottom-0 left-0 size-3 border-b-2 border-l-2 border-[#0EA5E9]" />
-                  <div className="absolute bottom-0 right-0 size-3 border-b-2 border-r-2 border-[#0EA5E9]" />
+                  <div className="absolute top-0 left-0 size-3.5 border-t-2 border-l-2 border-[#0EA5E9]" />
+                  <div className="absolute top-0 right-0 size-3.5 border-t-2 border-r-2 border-[#0EA5E9]" />
+                  <div className="absolute bottom-0 left-0 size-3.5 border-b-2 border-l-2 border-[#0EA5E9]" />
+                  <div className="absolute bottom-0 right-0 size-3.5 border-b-2 border-r-2 border-[#0EA5E9]" />
 
-                  {/* Clean Face Contour Icon */}
-                  <ScanFace size={54} className="text-[#0EA5E9] animate-pulse relative z-10" />
+                  {/* Clean Face Contour Icon - Enlarge */}
+                  <ScanFace size={68} className="text-[#0EA5E9] animate-pulse relative z-10" />
                 </div>
 
-                <div className="mt-3 z-10 flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-300 bg-slate-950/85 px-3 py-1 rounded-full border border-purple-800 shadow-xs">
-                  <CheckCircle2 size={14} className="text-emerald-400" />
+                <div className="mt-auto z-10 flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-950/85 px-3 py-1 rounded-full border border-purple-800 shadow-xs">
+                  <CheckCircle2 size={13} className="text-emerald-400" />
                   <span>Confidence: <strong className="text-white">99.8%</strong></span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#6D28D9]">
+            <div className="mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#6D28D9]">
               <span>Biometric Anti-Spoofing</span>
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
@@ -256,7 +256,7 @@ export function SecurityLayers() {
             </svg>
           </div>
 
-          {/* CARD 3: GEOFENCE SECURITY (Radar Rings Expanding in Square Image Container) */}
+          {/* CARD 3: GEOFENCE SECURITY (MapPin Location Marker in Square-like Image Container) */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -271,54 +271,54 @@ export function SecurityLayers() {
               transform: `perspective(1000px) rotateX(${tilts[3]?.rx || 0}deg) rotateY(${tilts[3]?.ry || 0}deg)`,
               transition: "transform 0.1s ease-out, filter 0.3s ease, opacity 0.3s ease",
             }}
-            className={`glass-card rounded-3xl p-7 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
+            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
               hoveredCard !== null && hoveredCard !== 3 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#0EA5E9]/20"
             }`}
           >
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="size-14 rounded-2xl bg-[#0EA5E9] text-white flex items-center justify-center shadow-lg shadow-[#0EA5E9]/30">
-                  <MapPin size={28} />
+              <div className="flex items-center justify-between mb-4">
+                <div className="size-13 rounded-2xl bg-[#0EA5E9] text-white flex items-center justify-center shadow-lg shadow-[#0EA5E9]/30">
+                  <MapPin size={26} />
                 </div>
                 <div className="flex items-center gap-1.5 rounded-full bg-[#0EA5E9]/10 border border-[#0EA5E9]/20 px-3 py-1 text-xs font-extrabold text-[#0EA5E9]">
                   <ShieldCheck size={14} className="text-[#0EA5E9]" /> Score: 99.8%
                 </div>
               </div>
 
-              <h3 className="text-xl font-extrabold text-[#111827] mb-2">
+              <h3 className="text-xl font-extrabold text-[#111827] mb-1.5">
                 3. Geofence Security
               </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5 font-medium">
                 Students must physically reside inside designated classroom GPS boundaries to mark attendance. Remote check-ins are blocked.
               </p>
 
-              {/* Image Container - Square 1:1 Aspect Ratio with Map & Radar Rings */}
-              <div className="relative w-full aspect-square rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#0EA5E9]/30 p-4 flex flex-col items-center justify-center overflow-hidden border border-blue-900 shadow-inner">
+              {/* Image Container - Square-like Aspect Ratio with Map & Radar Rings */}
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#0EA5E9]/30 p-3.5 flex flex-col items-center justify-center overflow-hidden border border-blue-900 shadow-inner">
                 {/* Styled 3D Grid Map Background */}
                 <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_right,#0EA5E9_1px,transparent_1px),linear-gradient(to_bottom,#0EA5E9_1px,transparent_1px)] bg-[size:16px_16px]" />
 
                 {/* Pulsing Outer Radar Boundary Rings */}
-                <div className="absolute size-44 rounded-full border-2 border-[#0EA5E9]/50 animate-ping opacity-75" />
-                <div className="absolute size-32 rounded-full border border-[#6D28D9]/70 bg-emerald-500/10" />
+                <div className="absolute size-48 rounded-full border-2 border-[#0EA5E9]/50 animate-ping opacity-75" />
+                <div className="absolute size-36 rounded-full border border-[#6D28D9]/70 bg-emerald-500/10" />
 
-                {/* Center GPS Pin */}
+                {/* Center MapPin Location Marker (Replaced Send/Navigation Icon) */}
                 <motion.div
-                  animate={{ y: [0, -4, 0] }}
+                  animate={{ y: [0, -5, 0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="relative size-13 rounded-2xl bg-linear-to-tr from-[#0EA5E9] to-[#6D28D9] flex items-center justify-center text-white shadow-xl shadow-[#0EA5E9]/40 z-10"
+                  className="relative size-14 rounded-2xl bg-linear-to-tr from-[#0EA5E9] to-[#6D28D9] flex items-center justify-center text-white shadow-xl shadow-[#0EA5E9]/40 z-10 my-auto"
                 >
-                  <Navigation size={26} className="text-white" />
+                  <MapPin size={28} className="text-white" />
                 </motion.div>
 
                 {/* Live Changing Coordinates */}
-                <div className="mt-4 px-3 py-1.5 rounded-full bg-slate-950/85 border border-blue-800 text-[11px] font-mono text-[#0EA5E9] z-10 flex items-center gap-1.5 font-bold shadow-xs">
+                <div className="mt-auto z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-950/85 px-3 py-1 rounded-full border border-blue-800 shadow-xs font-bold">
                   <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>GPS: {lat}° N, {lng}° E</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#0EA5E9]">
+            <div className="mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#0EA5E9]">
               <span>Real-Time GPS Boundary</span>
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>

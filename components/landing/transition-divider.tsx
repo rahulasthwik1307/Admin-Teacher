@@ -62,48 +62,50 @@ export function TransitionDivider() {
     <div id="stats" ref={ref} className="relative z-20 w-full overflow-hidden bg-transparent -mt-8 mb-3 sm:-mt-12 sm:mb-4">
       
       {/* Floating Glassmorphism Bar */}
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="mx-auto max-w-[1100px] px-4 sm:px-6">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 25 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="backdrop-blur-lg bg-white/80 rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#0EA5E9]/15 border border-white/80 grid grid-cols-1 md:grid-cols-3 gap-6 text-center hover:shadow-2xl hover:shadow-[#0EA5E9]/25 transition-all duration-300"
+          transition={{ duration: 0.5 }}
+          className="backdrop-blur-md bg-white/90 rounded-3xl p-3.5 sm:p-4.5 shadow-xl shadow-slate-200/50 border border-white/90 grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200/60 text-center hover:shadow-2xl hover:shadow-[#0EA5E9]/15 transition-all duration-300"
         >
-          {/* Stat 1: 99.9% System Accuracy */}
-          <div className="flex flex-col items-center p-4 rounded-2xl transition-all duration-300 hover:bg-white/60">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#0EA5E9]/10 text-[#0EA5E9] shadow-sm">
-              <Target size={26} />
+          {/* Stat 1: 99.9% System Accuracy (Cyan/Blue Accent) */}
+          <div className="flex flex-col items-center py-3 px-4 sm:py-3.5 sm:px-6 transition-all duration-300 hover:bg-sky-50/50 rounded-2xl group">
+            <div className="mb-2 relative flex size-10 items-center justify-center rounded-2xl bg-[#0EA5E9]/10 text-[#0EA5E9] border border-[#0EA5E9]/20 shadow-2xs group-hover:scale-105 transition-transform">
+              <Target size={20} />
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-[#0EA5E9] animate-ping" />
             </div>
-            <span className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight">
-              🎯 {accuracy}%
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#111827] font-mono tracking-tight flex items-center gap-1.5">
+              <span>🎯</span> {accuracy}%
             </span>
-            <span className="mt-1 text-xs font-extrabold uppercase tracking-wider text-[#1E3A8A]">
+            <span className="mt-0.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#0EA5E9]">
               System Accuracy
             </span>
           </div>
 
-          {/* Stat 2: 15s Dynamic QR Refresh */}
-          <div className="flex flex-col items-center p-4 rounded-2xl border-y md:border-y-0 md:border-x border-slate-200/70 transition-all duration-300 hover:bg-white/60">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#6D28D9]/10 text-[#6D28D9] shadow-sm">
-              <RefreshCw size={24} className="animate-spin-slow" />
+          {/* Stat 2: 15s Dynamic QR Refresh (Purple Accent) */}
+          <div className="flex flex-col items-center py-3 px-4 sm:py-3.5 sm:px-6 transition-all duration-300 hover:bg-purple-50/50 rounded-2xl group">
+            <div className="mb-2 flex size-10 items-center justify-center rounded-2xl bg-[#6D28D9]/10 text-[#6D28D9] border border-[#6D28D9]/20 shadow-2xs group-hover:scale-105 transition-transform">
+              <RefreshCw size={19} className="animate-spin-slow" />
             </div>
-            <span className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight">
-              🔄 {refreshTimer}s
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#111827] font-mono tracking-tight flex items-center gap-1.5">
+              <span>🔄</span> {refreshTimer}s
             </span>
-            <span className="mt-1 text-xs font-extrabold uppercase tracking-wider text-[#6D28D9]">
+            <span className="mt-0.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#6D28D9]">
               Dynamic QR Refresh
             </span>
           </div>
 
-          {/* Stat 3: 0 Proxy Incidents */}
-          <div className="flex flex-col items-center p-4 rounded-2xl transition-all duration-300 hover:bg-white/60">
-            <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 shadow-sm">
-              <ShieldCheck size={26} />
+          {/* Stat 3: 0 Proxy Incidents (Emerald Accent) */}
+          <div className="flex flex-col items-center py-3 px-4 sm:py-3.5 sm:px-6 transition-all duration-300 hover:bg-emerald-50/50 rounded-2xl group">
+            <div className="mb-2 relative flex size-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-2xs group-hover:scale-105 transition-transform">
+              <ShieldCheck size={20} />
+              <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
-            <span className="text-3xl sm:text-4xl font-extrabold text-[#111827] tracking-tight">
-              🚫 {proxyIncidents}
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#111827] font-mono tracking-tight flex items-center gap-1.5">
+              <span>🛡️</span> {proxyIncidents}
             </span>
-            <span className="mt-1 text-xs font-extrabold uppercase tracking-wider text-emerald-600">
+            <span className="mt-0.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-emerald-600">
               Proxy Incidents
             </span>
           </div>

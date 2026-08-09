@@ -154,7 +154,7 @@ export function HeroSection() {
           {/* Sub-headline Typing Animation */}
           <div className="mt-3.5 min-h-10.5 flex items-center justify-center lg:justify-start">
             <p className={`text-base sm:text-lg md:text-xl font-extrabold text-[#1E3A8A] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
-              <span className="text-cyan-glow">{displayText}</span>
+              <span className="font-extrabold text-[#0EA5E9]">{displayText}</span>
               <span className="cursor-underscore text-[#0EA5E9] font-extrabold ml-0.5">_</span>
             </p>
           </div>
