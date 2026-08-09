@@ -27,7 +27,19 @@ export function LandingHeader() {
   }, [])
 
   const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+    setMobileMenuOpen(false)
+    setTimeout(() => {
+      const el = document.getElementById(id)
+      if (el) {
+        const headerOffset = 80
+        const elementPosition = el.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.scrollY - headerOffset
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth"
+        })
+      }
+    }, 50)
   }
 
   return (

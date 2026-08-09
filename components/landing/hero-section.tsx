@@ -109,7 +109,7 @@ export function HeroSection() {
   }
 
   return (
-    <section id="hero" className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 pt-20 pb-10 sm:pt-24 sm:pb-14 md:py-16 gradient-mesh-bg">
+    <section id="hero" className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 pt-20 pb-10 sm:pt-24 sm:pb-14 md:py-16 gradient-mesh-bg scroll-mt-24">
 
       {/* Floating Ambient Geometric Blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -163,26 +163,34 @@ export function HeroSection() {
             Eliminate proxy attendance completely with multi-factor verification — combining dynamic rotating QR codes, facial recognition AI, and continuous GPS geofence boundaries.
           </p>
 
-          {/* Action Buttons — Strictly Controlled 38% / 62% Grid Ratio on Mobile */}
+          {/* Action Buttons — Primary: Sign In →, Secondary: Explore Security → */}
           <div className="mt-6 grid grid-cols-[0.38fr_0.62fr] sm:flex sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3.5 w-full sm:w-auto max-w-full">
             <Button
               asChild
               size="lg"
-              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-2 sm:px-7.5 text-xs sm:text-[15px] font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-2 sm:px-7.5 text-xs sm:text-[15px] font-extrabold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
             >
               <Link href="/login" className="flex items-center justify-center gap-1 sm:gap-2 w-full">
-                <span className="truncate">Explore The Demo</span>
-                <ArrowRight size={15} className="shrink-0 transition-transform duration-300 group-hover:translate-x-1 hidden sm:inline-block" />
+                <span className="truncate">Sign In</span>
+                <ArrowRight size={15} className="shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </Button>
 
             <button
               type="button"
-              onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-2 sm:px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02] cursor-pointer whitespace-nowrap overflow-hidden"
+              onClick={() => {
+                const el = document.getElementById("how-it-works")
+                if (el) {
+                  const headerOffset = 80
+                  const elementPosition = el.getBoundingClientRect().top
+                  const offsetPosition = elementPosition + window.scrollY - headerOffset
+                  window.scrollTo({ top: offsetPosition, behavior: "smooth" })
+                }
+              }}
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-2 sm:px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02] cursor-pointer whitespace-nowrap overflow-hidden group"
             >
-              <Sparkles size={15} className="text-[#0EA5E9] shrink-0" />
-              <span className="truncate">See Security Layers</span>
+              <span className="truncate">Explore Security</span>
+              <ArrowRight size={15} className="text-[#0EA5E9] shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </div>
 

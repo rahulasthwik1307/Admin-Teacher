@@ -40,7 +40,7 @@ export function NNRGAboutSection() {
     <section
       id="about"
       ref={sectionRef}
-      className="relative pt-4 sm:pt-5 pb-6 sm:pb-8 px-4 sm:px-6 md:px-8 bg-linear-to-b from-[#F9FAFB] via-[#F3F0FF]/40 to-[#F9FAFB] overflow-hidden"
+      className="relative pt-4 sm:pt-5 pb-6 sm:pb-8 px-4 sm:px-6 md:px-8 bg-linear-to-b from-[#F9FAFB] via-[#F3F0FF]/40 to-[#F9FAFB] overflow-hidden scroll-mt-24"
     >
       {/* Background Overlapping Blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">

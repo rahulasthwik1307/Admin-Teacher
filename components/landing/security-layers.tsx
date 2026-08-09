@@ -77,7 +77,7 @@ export function SecurityLayers() {
   }
 
   return (
-    <section id="how-it-works" className="relative pt-4 sm:pt-5 pb-10 sm:pb-12 px-4 sm:px-6 md:px-8 bg-transparent">
+    <section id="how-it-works" className="relative pt-4 sm:pt-5 pb-10 sm:pb-12 px-4 sm:px-6 md:px-8 bg-transparent scroll-mt-24">
       
       {/* Background Subtle Glow */}
       <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-150 rounded-full bg-[#0EA5E9]/5 blur-3xl -z-10" />
