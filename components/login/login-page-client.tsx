@@ -22,7 +22,7 @@ export function LoginPageClient() {
         {/* Ambient Sky & Cyan Radial Light Glows */}
         <div className="absolute -top-24 -left-24 size-110 rounded-full bg-blue-300/40 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 size-130 rounded-full bg-cyan-300/40 blur-3xl pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(#0284c7_1px,transparent_1px)] [background-size:32px_32px] opacity-15 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(#0284c7_1px,transparent_1px)] bg-size-[32px_32px] opacity-15 pointer-events-none" />
 
         {/* Security Visualization Component */}
         <SecurityVisualization />
@@ -62,7 +62,7 @@ export function LoginPageClient() {
           initial={{ opacity: 0, y: 12, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
-          className="relative w-full max-w-[390px] sm:max-w-[395px] z-10"
+          className="relative w-full max-w-97.5 sm:max-w-98.75 z-10"
         >
           {/* Enhanced Physical 3D Secondary Offset Backdrop Layer */}
           <div

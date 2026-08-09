@@ -65,7 +65,7 @@ export function SecurityVisualization() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-        className="relative my-4 sm:my-6 w-full max-w-[310px] aspect-square flex items-center justify-center z-10"
+        className="relative my-4 sm:my-6 w-full max-w-77.5 aspect-square flex items-center justify-center z-10"
       >
         {/* Soft Background Radial Light */}
         <div className="absolute inset-0 rounded-full bg-radial from-blue-400/25 via-cyan-300/15 to-transparent blur-2xl pointer-events-none" />
