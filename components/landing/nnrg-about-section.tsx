@@ -40,7 +40,7 @@ export function NNRGAboutSection() {
     <section
       id="about"
       ref={sectionRef}
-      className="relative pt-6 sm:pt-8 pb-12 sm:pb-16 px-4 sm:px-6 md:px-8 bg-linear-to-b from-[#F9FAFB] via-[#F3F0FF]/40 to-[#F9FAFB] overflow-hidden"
+      className="relative pt-4 sm:pt-5 pb-6 sm:pb-8 px-4 sm:px-6 md:px-8 bg-linear-to-b from-[#F9FAFB] via-[#F3F0FF]/40 to-[#F9FAFB] overflow-hidden"
     >
       {/* Background Overlapping Blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -51,7 +51,7 @@ export function NNRGAboutSection() {
       <div className="relative z-10 mx-auto max-w-7xl">
 
         {/* Section Header */}
-        <div className="text-center mb-12 sm:mb-16">
+        <div className="text-center mb-7 sm:mb-9">
           <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-[#1E3A8A]/20 bg-[#1E3A8A]/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#1E3A8A]">
             <Building2 size={14} className="text-[#1E3A8A]" />
             🏛️ NNRG College Ecosystem
@@ -70,7 +70,7 @@ export function NNRGAboutSection() {
         </div>
 
         {/* Two Visually Different Cards Side by Side (Equal Height Grid) */}
-        <div className="mx-auto max-w-[1100px] w-full grid grid-cols-1 lg:grid-cols-2 gap-7 sm:gap-8 items-stretch mb-12">
+        <div className="mx-auto max-w-[1100px] w-full grid grid-cols-1 lg:grid-cols-2 gap-7 sm:gap-8 items-stretch mb-6 sm:mb-8">
 
           {/* CARD 1: Web Portal (Next.js) */}
           <motion.div
@@ -412,7 +412,7 @@ export function NNRGAboutSection() {
         </div>
 
         {/* Section Footer */}
-        <div className="p-6 rounded-3xl backdrop-blur-md bg-white/80 border border-white/90 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <div className="mx-auto max-w-[1100px] w-full p-5 sm:p-6 rounded-3xl backdrop-blur-md bg-white/80 border border-white/90 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-3">
             <div className="size-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
               <Zap size={22} />

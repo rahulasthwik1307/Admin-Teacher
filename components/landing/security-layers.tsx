@@ -77,7 +77,7 @@ export function SecurityLayers() {
   }
 
   return (
-    <section id="how-it-works" className="relative py-12 sm:py-16 px-4 sm:px-6 md:px-8 bg-transparent">
+    <section id="how-it-works" className="relative pt-4 sm:pt-5 pb-10 sm:pb-12 px-4 sm:px-6 md:px-8 bg-transparent">
       
       {/* Background Subtle Glow */}
       <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-150 rounded-full bg-[#0EA5E9]/5 blur-3xl -z-10" />
@@ -85,7 +85,7 @@ export function SecurityLayers() {
       <div className="mx-auto max-w-7xl">
         
         {/* Section Header */}
-        <div className="text-center mb-12 sm:mb-16">
+        <div className="text-center mb-8 sm:mb-10">
           <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-[#6D28D9]/20 bg-[#6D28D9]/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#6D28D9]">
             <Layers size={13} />
             Triple Verification Defense
