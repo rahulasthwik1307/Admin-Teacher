@@ -20,19 +20,11 @@ export function LandingHeader() {
       setScrollProgress(progress)
 
       setIsScrolled(currentY > 20)
-
-      if (currentY > 80 && currentY > prevScrollY) {
-        setIsVisible(false)
-      } else {
-        setIsVisible(true)
-      }
-
-      setPrevScrollY(currentY)
     }
 
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [prevScrollY])
+  }, [])
 
   return (
     <>
@@ -47,9 +39,7 @@ export function LandingHeader() {
 
       {/* Sticky Full-Width Header */}
       <header
-        className={`fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 ${
-          isVisible ? "translate-y-0" : "-translate-y-full"
-        }`}
+        className="fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 translate-y-0"
       >
         <div
           className={`w-full transition-all duration-300 ${

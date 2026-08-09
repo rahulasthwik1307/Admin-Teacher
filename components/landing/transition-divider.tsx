@@ -59,7 +59,7 @@ export function TransitionDivider() {
   }, [isInView])
 
   return (
-    <div id="stats" ref={ref} className="relative z-20 w-full overflow-hidden bg-transparent -mt-8 mb-12 sm:-mt-12 sm:mb-16">
+    <div id="stats" ref={ref} className="relative z-20 w-full overflow-hidden bg-transparent -mt-8 mb-3 sm:-mt-12 sm:mb-4">
       
       {/* Floating Glassmorphism Bar */}
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
