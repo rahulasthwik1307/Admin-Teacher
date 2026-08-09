@@ -154,15 +154,17 @@ export function SecurityLayers() {
                 Teachers broadcast a dynamic QR code that continuously rotates every 15 seconds. Prevents screenshots and static proxy sharing.
               </p>
 
-              {/* Image Container - Square-like Aspect Ratio with Significantly Enlarged QR Subject */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#1E3A8A] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-blue-900 shadow-inner">
-                {/* Laser scan line moving ONLY inside this image container */}
-                <div className="scan-laser-line z-10" />
+              {/* Image Container - Soft Light Cyan / Ice-Blue Tinted Background */}
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#E0F2FE] via-[#F0F9FF] to-[#DBEAFE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#38BDF8]/60 shadow-md shadow-sky-400/10">
+                {/* QR Subject Box - Laser scan line is BOUNDED ONLY INSIDE THIS QR SUBJECT */}
+                <div className="relative rounded-2xl p-2.5 bg-white border border-sky-300/60 overflow-hidden shadow-lg z-10 my-auto">
+                  {/* Laser scan line moving ONLY across the QR code */}
+                  <div className="scan-laser-line z-10" />
+                  <RealQRCode size={175} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-xs z-0" />
+                </div>
 
-                {/* Real SVG QR Pattern - Significantly Enlarged */}
-                <RealQRCode size={185} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-lg z-0 my-auto" />
-
-                <div className="mt-auto z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-950/85 px-3 py-1 rounded-full border border-blue-800 shadow-xs">
+                {/* Refresh Countdown Badge - Positioned Down with Comfortable Breathing Space */}
+                <div className="mt-auto mb-0.5 z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-900/90 px-3.5 py-1 rounded-full border border-sky-400/40 shadow-xs">
                   <Timer size={13} className="animate-spin-slow text-[#0EA5E9]" />
                   <span>Refresh in: <strong className="text-white text-xs">{countdown}s</strong></span>
                 </div>
@@ -218,25 +220,53 @@ export function SecurityLayers() {
                 Instant biometric face matching via mobile camera. AI models verify live student identity against enrolled campus records.
               </p>
 
-              {/* Image Container - Square-like Aspect Ratio with Significantly Enlarged Face Scanner Subject */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#6D28D9] via-[#111827] to-[#1E3A8A] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-purple-900 shadow-inner">
-                {/* Laser scan line moving ONLY inside this image container */}
-                <div className="scan-laser-line z-10" />
+              {/* Image Container - Soft Light Lavender / Violet Tinted Background */}
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
+                {/* Face Scanner Frame - Laser scan line is BOUNDED ONLY INSIDE THIS FRAME */}
+                <div className="relative size-44 border-2 border-dashed border-[#6D28D9] rounded-2xl flex flex-col items-center justify-center bg-white/85 p-2 overflow-hidden z-10 my-auto shadow-md">
+                  {/* Laser scan line moving ONLY inside face scanner frame */}
+                  <div className="scan-laser-line z-10" />
 
-                <div className="relative size-44 border-2 border-dashed border-[#0EA5E9] rounded-2xl flex flex-col items-center justify-center bg-slate-950/40 p-2 overflow-hidden z-10 my-auto">
                   {/* Scanning Grid Overlay ONLY on Face Area */}
-                  <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#0EA5E9_1px,transparent_1px),linear-gradient(to_bottom,#0EA5E9_1px,transparent_1px)] bg-[size:10px_10px]" />
+                  <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-[size:10px_10px]" />
 
-                  <div className="absolute top-0 left-0 size-3.5 border-t-2 border-l-2 border-[#0EA5E9]" />
-                  <div className="absolute top-0 right-0 size-3.5 border-t-2 border-r-2 border-[#0EA5E9]" />
-                  <div className="absolute bottom-0 left-0 size-3.5 border-b-2 border-l-2 border-[#0EA5E9]" />
-                  <div className="absolute bottom-0 right-0 size-3.5 border-b-2 border-r-2 border-[#0EA5E9]" />
+                  <div className="absolute top-0 left-0 size-3.5 border-t-2 border-l-2 border-[#6D28D9]" />
+                  <div className="absolute top-0 right-0 size-3.5 border-t-2 border-r-2 border-[#6D28D9]" />
+                  <div className="absolute bottom-0 left-0 size-3.5 border-b-2 border-l-2 border-[#6D28D9]" />
+                  <div className="absolute bottom-0 right-0 size-3.5 border-b-2 border-r-2 border-[#6D28D9]" />
 
-                  {/* Clean Face Contour Icon - Enlarge */}
-                  <ScanFace size={68} className="text-[#0EA5E9] animate-pulse relative z-10" />
+                  {/* Cartoon Student Avatar Face with AI Biometric Facial Nodes */}
+                  <div className="relative size-28 flex items-center justify-center z-10 my-auto">
+                    {/* Vector Avatar SVG */}
+                    <svg viewBox="0 0 100 100" className="size-full drop-shadow-md">
+                      {/* Head Outline */}
+                      <path d="M 25 38 C 25 15, 75 15, 75 38 C 75 42, 78 50, 75 62 C 70 78, 30 78, 25 62 Z" fill="#F3E8FF" stroke="#6D28D9" strokeWidth="3" />
+                      {/* Hair Style */}
+                      <path d="M 23 35 C 25 18, 50 12, 77 24 C 75 35, 68 25, 55 25 C 40 25, 30 35, 23 35 Z" fill="#6D28D9" />
+                      {/* Ears */}
+                      <circle cx="23" cy="48" r="5" fill="#E9D5FF" stroke="#6D28D9" strokeWidth="2.5" />
+                      <circle cx="77" cy="48" r="5" fill="#E9D5FF" stroke="#6D28D9" strokeWidth="2.5" />
+                      {/* Eyes */}
+                      <circle cx="40" cy="46" r="3.5" fill="#1E3A8A" />
+                      <circle cx="60" cy="46" r="3.5" fill="#1E3A8A" />
+                      <circle cx="41.5" cy="44.5" r="1" fill="#FFFFFF" />
+                      <circle cx="61.5" cy="44.5" r="1" fill="#FFFFFF" />
+                      {/* Eyebrows */}
+                      <path d="M 35 39 Q 40 37 45 40" stroke="#6D28D9" strokeWidth="2" strokeLinecap="round" fill="none" />
+                      <path d="M 55 40 Q 60 37 65 39" stroke="#6D28D9" strokeWidth="2" strokeLinecap="round" fill="none" />
+                      {/* Smile */}
+                      <path d="M 42 60 Q 50 66 58 60" stroke="#6D28D9" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                    </svg>
+
+                    {/* Biometric AI Facial Recognition Nodes (Pulsing Cyan Points) */}
+                    <div className="absolute top-8 left-9 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
+                    <div className="absolute top-8 right-9 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
+                    <div className="absolute bottom-9 left-10 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
+                    <div className="absolute bottom-9 right-10 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
+                  </div>
                 </div>
 
-                <div className="mt-auto z-10 flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-950/85 px-3 py-1 rounded-full border border-purple-800 shadow-xs">
+                <div className="mt-auto mb-0.5 z-10 flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-900/90 px-3.5 py-1 rounded-full border border-purple-400/40 shadow-xs">
                   <CheckCircle2 size={13} className="text-emerald-400" />
                   <span>Confidence: <strong className="text-white">99.8%</strong></span>
                 </div>
@@ -256,7 +286,7 @@ export function SecurityLayers() {
             </svg>
           </div>
 
-          {/* CARD 3: GEOFENCE SECURITY (MapPin Location Marker in Square-like Image Container) */}
+          {/* CARD 3: GEOFENCE SECURITY (Vector Location Pin Silhouette in Light Mint-Teal Container) */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -292,27 +322,48 @@ export function SecurityLayers() {
                 Students must physically reside inside designated classroom GPS boundaries to mark attendance. Remote check-ins are blocked.
               </p>
 
-              {/* Image Container - Square-like Aspect Ratio with Map & Radar Rings */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#1E3A8A] via-[#111827] to-[#0EA5E9]/30 p-3.5 flex flex-col items-center justify-center overflow-hidden border border-blue-900 shadow-inner">
+              {/* Image Container - Soft Light Mint / Teal-White Tinted Background */}
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
                 {/* Styled 3D Grid Map Background */}
-                <div className="absolute inset-0 opacity-25 bg-[linear-gradient(to_right,#0EA5E9_1px,transparent_1px),linear-gradient(to_bottom,#0EA5E9_1px,transparent_1px)] bg-[size:16px_16px]" />
+                <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-[size:16px_16px]" />
 
-                {/* Pulsing Outer Radar Boundary Rings */}
-                <div className="absolute size-48 rounded-full border-2 border-[#0EA5E9]/50 animate-ping opacity-75" />
-                <div className="absolute size-36 rounded-full border border-[#6D28D9]/70 bg-emerald-500/10" />
+                {/* Pulsing Concentric Radar Rings & Sweep Line */}
+                <div className="absolute size-48 rounded-full border-2 border-[#059669]/40 animate-ping opacity-60" />
+                <div className="absolute size-36 rounded-full border-2 border-[#0EA5E9]/50 bg-emerald-500/10 animate-pulse" />
+                <div className="absolute size-24 rounded-full border border-[#059669]/30 bg-emerald-400/10" />
 
-                {/* Center MapPin Location Marker (Replaced Send/Navigation Icon) */}
+                {/* Vector Map-Pin Silhouette with Integrated Security Shield */}
                 <motion.div
-                  animate={{ y: [0, -5, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  className="relative size-14 rounded-2xl bg-linear-to-tr from-[#0EA5E9] to-[#6D28D9] flex items-center justify-center text-white shadow-xl shadow-[#0EA5E9]/40 z-10 my-auto"
+                  animate={{ y: [0, -6, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                  className="relative size-16 flex flex-col items-center justify-center z-10 my-auto drop-shadow-md"
                 >
-                  <MapPin size={28} className="text-white" />
+                  <svg viewBox="0 0 64 80" className="size-full">
+                    <defs>
+                      <linearGradient id="pinGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#0EA5E9" />
+                        <stop offset="50%" stopColor="#10B981" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                    </defs>
+                    {/* Location Pin Outer Silhouette */}
+                    <path
+                      d="M 32 4 C 17 4, 5 16, 5 31 C 5 48, 28 72, 32 76 C 36 72, 59 48, 59 31 C 59 16, 47 4, 32 4 Z"
+                      fill="url(#pinGradient)"
+                      stroke="#FFFFFF"
+                      strokeWidth="2.5"
+                    />
+                    {/* Inner White Security Circle */}
+                    <circle cx="32" cy="30" r="13" fill="#FFFFFF" />
+                  </svg>
+
+                  {/* Security Shield Icon inside Map Pin Center */}
+                  <ShieldCheck size={17} className="absolute top-4 text-[#059669] drop-shadow-xs" />
                 </motion.div>
 
-                {/* Live Changing Coordinates */}
-                <div className="mt-auto z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-950/85 px-3 py-1 rounded-full border border-blue-800 shadow-xs font-bold">
-                  <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                {/* Live Synchronized Changing GPS Coordinates */}
+                <div className="mt-auto mb-0.5 z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#34D399] bg-slate-900/90 px-3.5 py-1.5 rounded-full border border-emerald-500/40 shadow-xs font-bold">
+                  <span className="size-2.5 rounded-full bg-emerald-400 animate-ping" />
                   <span>GPS: {lat}° N, {lng}° E</span>
                 </div>
               </div>
