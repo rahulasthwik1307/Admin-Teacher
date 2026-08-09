@@ -4,6 +4,13 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Strict NNRG Factor Attendance Theme Palette */
+  --navy: #1E3A8A;
+  --purple: #6D28D9;
+  --cyan: #0EA5E9;
+  --soft-white: #F9FAFB;
+  --charcoal: #111827;
+
   --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -100,19 +107,15 @@
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  --color-[#1E3A8A]: #1E3A8A;
+  --color-[#6D28D9]: #6D28D9;
+  --color-[#0EA5E9]: #0EA5E9;
+  --color-[#F9FAFB]: #F9FAFB;
+  --color-[#111827]: #111827;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
@@ -123,18 +126,166 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: #F9FAFB;
+    color: #111827;
+    font-family: var(--font-sans);
   }
 }
 
-/* Homepage scroll fade-in animations */
-.fade-section {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+/* Factor Landing Custom Utility Classes */
+.bg-navy { background-color: #1E3A8A; }
+.text-navy { color: #1E3A8A; }
+.border-navy { border-color: #1E3A8A; }
+
+.bg-purple { background-color: #6D28D9; }
+.text-purple { color: #6D28D9; }
+.border-purple { border-color: #6D28D9; }
+
+.bg-cyan { background-color: #0EA5E9; }
+.text-cyan { color: #0EA5E9; }
+.border-cyan { border-color: #0EA5E9; }
+
+.bg-soft-white { background-color: #F9FAFB; }
+.text-charcoal { color: #111827; }
+
+/* Gradient Text Effect */
+.gradient-text-navy {
+  background: linear-gradient(135deg, #1E3A8A 0%, #6D28D9 50%, #0EA5E9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.fade-section.animate-in {
-  opacity: 1;
-  transform: translateY(0);
+.gradient-text-light {
+  background: linear-gradient(135deg, #FFFFFF 0%, #E0F2FE 50%, #C084FC 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Glassmorphism Styles */
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 30px -10px rgba(30, 58, 138, 0.08);
+}
+
+.glass-card-dark {
+  background: rgba(30, 58, 138, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px -15px rgba(109, 40, 217, 0.25);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* GPU Acceleration */
+.gpu-accelerated {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Cyan Glow Utilities */
+.cyan-glow {
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.4), 0 0 40px rgba(14, 165, 233, 0.2);
+}
+
+.cyan-glow-hover:hover {
+  box-shadow: 0 0 25px rgba(14, 165, 233, 0.6), 0 0 50px rgba(109, 40, 217, 0.3);
+}
+
+.text-cyan-glow {
+  text-shadow: 0 0 12px rgba(14, 165, 233, 0.6);
+}
+
+/* Animated Mesh Background Cycle (14s) */
+@keyframes gradientMeshShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.gradient-mesh-bg {
+  background: linear-gradient(-45deg, rgba(109,40,217,0.14), rgba(14,165,233,0.14), rgba(30,58,138,0.12), rgba(249,250,251,1));
+  background-size: 400% 400%;
+  animation: gradientMeshShift 14s ease infinite;
+}
+
+/* Blinking Underscore Cursor with Cyan Glow */
+@keyframes blinkUnderscore {
+  0%, 100% { opacity: 1; text-shadow: 0 0 12px #0EA5E9; }
+  50% { opacity: 0; text-shadow: none; }
+}
+
+.cursor-underscore {
+  display: inline-block;
+  animation: blinkUnderscore 600ms infinite;
+}
+
+/* Dashed Line Flow Animation */
+@keyframes dashFlow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.animated-dash-flow {
+  stroke-dasharray: 8 4;
+  animation: dashFlow 1.2s linear infinite;
+}
+
+/* Laser Scanner Beam */
+@keyframes scanLaser {
+  0% { top: 0%; opacity: 0.8; }
+  50% { top: 95%; opacity: 1; }
+  100% { top: 0%; opacity: 0.8; }
+}
+
+.scan-laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent, #0EA5E9, #6D28D9, #0EA5E9, transparent);
+  box-shadow: 0 0 14px #0EA5E9, 0 0 28px #6D28D9;
+  animation: scanLaser 2.2s ease-in-out infinite;
+}
+
+/* Shimmer Loading Skeleton Effect */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-effect {
+  position: relative;
+  overflow: hidden;
+  background-color: #E2E8F0;
+}
+
+.shimmer-effect::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.4) 20%,
+    rgba(255, 255, 255, 0.7) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 2s infinite;
+  content: '';
 }
