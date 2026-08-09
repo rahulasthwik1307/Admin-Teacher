@@ -61,8 +61,8 @@ export function TransitionDivider() {
   return (
     <div id="stats" ref={ref} className="relative z-20 w-full overflow-hidden bg-transparent -mt-8 mb-3 sm:-mt-12 sm:mb-4">
       
-      {/* Floating Glassmorphism Bar - Compact Centered Container (max-w-4xl) */}
-      <div className="mx-auto max-w-4xl px-4 sm:px-6">
+      {/* Floating Glassmorphism Bar */}
+      <div className="mx-auto max-w-[1100px] px-4 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 25 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}

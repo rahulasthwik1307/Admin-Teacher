@@ -228,7 +228,7 @@ export function SecurityLayers() {
                   <div className="scan-laser-line z-20" />
 
                   {/* Scanning Grid Overlay ONLY on Face Area */}
-                  <div className="absolute inset-0 opacity-15 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-[size:10px_10px]" />
+                  <div className="absolute inset-0 opacity-15 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-size-[10px_10px]" />
 
                   {/* Corner Scanning Brackets */}
                   <div className="absolute top-1.5 left-1.5 size-4 border-t-3 border-l-3 border-[#6D28D9] rounded-tl-sm z-10" />
@@ -340,7 +340,7 @@ export function SecurityLayers() {
               {/* Image Container - Soft Light Mint / Teal-White Tinted Background */}
               <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
                 {/* Styled 3D Grid Map Background */}
-                <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-[size:16px_16px]" />
+                <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-size-[16px_16px]" />
 
                 {/* Rotating Cyan Radar Sweep Beam */}
                 <div className="absolute size-48 rounded-full bg-[conic-gradient(from_0deg_at_50%_50%,rgba(14,165,233,0.35)_0deg,transparent_60deg,transparent_360deg)] animate-spin-slow pointer-events-none" style={{ animationDuration: '6s' }} />
