@@ -223,46 +223,60 @@ export function SecurityLayers() {
               {/* Image Container - Soft Light Lavender / Violet Tinted Background */}
               <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
                 {/* Face Scanner Frame - Laser scan line is BOUNDED ONLY INSIDE THIS FRAME */}
-                <div className="relative size-44 border-2 border-dashed border-[#6D28D9] rounded-2xl flex flex-col items-center justify-center bg-white/85 p-2 overflow-hidden z-10 my-auto shadow-md">
+                <div className="relative size-44 border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/90 p-2 overflow-hidden z-10 my-auto shadow-md">
                   {/* Laser scan line moving ONLY inside face scanner frame */}
-                  <div className="scan-laser-line z-10" />
+                  <div className="scan-laser-line z-20" />
 
                   {/* Scanning Grid Overlay ONLY on Face Area */}
-                  <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-[size:10px_10px]" />
+                  <div className="absolute inset-0 opacity-15 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-[size:10px_10px]" />
 
-                  <div className="absolute top-0 left-0 size-3.5 border-t-2 border-l-2 border-[#6D28D9]" />
-                  <div className="absolute top-0 right-0 size-3.5 border-t-2 border-r-2 border-[#6D28D9]" />
-                  <div className="absolute bottom-0 left-0 size-3.5 border-b-2 border-l-2 border-[#6D28D9]" />
-                  <div className="absolute bottom-0 right-0 size-3.5 border-b-2 border-r-2 border-[#6D28D9]" />
+                  {/* Corner Scanning Brackets */}
+                  <div className="absolute top-1.5 left-1.5 size-4 border-t-3 border-l-3 border-[#6D28D9] rounded-tl-sm z-10" />
+                  <div className="absolute top-1.5 right-1.5 size-4 border-t-3 border-r-3 border-[#6D28D9] rounded-tr-sm z-10" />
+                  <div className="absolute bottom-1.5 left-1.5 size-4 border-b-3 border-l-3 border-[#6D28D9] rounded-bl-sm z-10" />
+                  <div className="absolute bottom-1.5 right-1.5 size-4 border-b-3 border-r-3 border-[#6D28D9] rounded-br-sm z-10" />
 
-                  {/* Cartoon Student Avatar Face with AI Biometric Facial Nodes */}
-                  <div className="relative size-28 flex items-center justify-center z-10 my-auto">
-                    {/* Vector Avatar SVG */}
-                    <svg viewBox="0 0 100 100" className="size-full drop-shadow-md">
-                      {/* Head Outline */}
-                      <path d="M 25 38 C 25 15, 75 15, 75 38 C 75 42, 78 50, 75 62 C 70 78, 30 78, 25 62 Z" fill="#F3E8FF" stroke="#6D28D9" strokeWidth="3" />
-                      {/* Hair Style */}
-                      <path d="M 23 35 C 25 18, 50 12, 77 24 C 75 35, 68 25, 55 25 C 40 25, 30 35, 23 35 Z" fill="#6D28D9" />
+                  {/* Detailed Friendly Vector Student Avatar Face */}
+                  <div className="relative w-32 h-36 flex items-center justify-center z-10 my-auto pt-1">
+                    <svg viewBox="0 0 120 130" className="w-full h-full drop-shadow-md">
+                      {/* Neck & Purple T-Shirt Collar */}
+                      <path d="M 46 95 L 46 110 L 74 110 L 74 95 Z" fill="#FCE7F3" stroke="#F43F5E" strokeWidth="0.5" />
+                      <path d="M 28 110 Q 60 128 92 110 L 96 130 L 24 130 Z" fill="#6D28D9" />
+                      <path d="M 44 110 Q 60 120 76 110 Q 60 114 44 110 Z" fill="#581C87" />
+
                       {/* Ears */}
-                      <circle cx="23" cy="48" r="5" fill="#E9D5FF" stroke="#6D28D9" strokeWidth="2.5" />
-                      <circle cx="77" cy="48" r="5" fill="#E9D5FF" stroke="#6D28D9" strokeWidth="2.5" />
-                      {/* Eyes */}
-                      <circle cx="40" cy="46" r="3.5" fill="#1E3A8A" />
-                      <circle cx="60" cy="46" r="3.5" fill="#1E3A8A" />
-                      <circle cx="41.5" cy="44.5" r="1" fill="#FFFFFF" />
-                      <circle cx="61.5" cy="44.5" r="1" fill="#FFFFFF" />
-                      {/* Eyebrows */}
-                      <path d="M 35 39 Q 40 37 45 40" stroke="#6D28D9" strokeWidth="2" strokeLinecap="round" fill="none" />
-                      <path d="M 55 40 Q 60 37 65 39" stroke="#6D28D9" strokeWidth="2" strokeLinecap="round" fill="none" />
-                      {/* Smile */}
-                      <path d="M 42 60 Q 50 66 58 60" stroke="#6D28D9" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                    </svg>
+                      <ellipse cx="28" cy="65" rx="7" ry="10" fill="#FDE8E8" stroke="#E11D48" strokeWidth="0.5" />
+                      <ellipse cx="28" cy="65" rx="4" ry="6" fill="#FCA5A5" opacity="0.4" />
+                      <ellipse cx="92" cy="65" rx="7" ry="10" fill="#FDE8E8" stroke="#E11D48" strokeWidth="0.5" />
+                      <ellipse cx="92" cy="65" rx="4" ry="6" fill="#FCA5A5" opacity="0.4" />
 
-                    {/* Biometric AI Facial Recognition Nodes (Pulsing Cyan Points) */}
-                    <div className="absolute top-8 left-9 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
-                    <div className="absolute top-8 right-9 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
-                    <div className="absolute bottom-9 left-10 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
-                    <div className="absolute bottom-9 right-10 size-2 rounded-full bg-[#0EA5E9] shadow-xs animate-ping" />
+                      {/* Face Head Outline */}
+                      <path d="M 30 50 C 30 20, 90 20, 90 50 C 90 75, 80 96, 60 96 C 40 96, 30 75, 30 50 Z" fill="#FFF1F2" stroke="#FDA4AF" strokeWidth="0.8" />
+
+                      {/* Hair (Parted Side Bangs) */}
+                      <path d="M 27 50 C 26 22, 50 10, 93 30 C 94 48, 86 28, 62 25 C 44 23, 34 38, 27 50 Z" fill="#2E1065" />
+
+                      {/* Eyebrows */}
+                      <path d="M 38 48 Q 48 42 56 47" stroke="#2E1065" strokeWidth="3" strokeLinecap="round" fill="none" />
+                      <path d="M 64 47 Q 72 42 82 48" stroke="#2E1065" strokeWidth="3" strokeLinecap="round" fill="none" />
+
+                      {/* Large Expressive Eyes */}
+                      <ellipse cx="47" cy="58" rx="7" ry="8" fill="#111827" />
+                      <ellipse cx="73" cy="58" rx="7" ry="8" fill="#111827" />
+                      {/* Pupil Light Reflections */}
+                      <circle cx="49" cy="55" r="2.5" fill="#FFFFFF" />
+                      <circle cx="75" cy="55" r="2.5" fill="#FFFFFF" />
+                      <circle cx="45" cy="60" r="1" fill="#FFFFFF" />
+                      <circle cx="71" cy="60" r="1" fill="#FFFFFF" />
+
+                      {/* Nose & Smile */}
+                      <path d="M 60 62 Q 58 68 62 68" stroke="#E11D48" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                      <path d="M 48 76 Q 60 84 72 76" stroke="#E11D48" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+
+                      {/* Rosy Cheeks */}
+                      <circle cx="38" cy="68" r="4.5" fill="#FDA4AF" opacity="0.5" />
+                      <circle cx="82" cy="68" r="4.5" fill="#FDA4AF" opacity="0.5" />
+                    </svg>
                   </div>
                 </div>
 
@@ -327,16 +341,27 @@ export function SecurityLayers() {
                 {/* Styled 3D Grid Map Background */}
                 <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-[size:16px_16px]" />
 
-                {/* Pulsing Concentric Radar Rings & Sweep Line */}
+                {/* Rotating Cyan Radar Sweep Beam */}
+                <div className="absolute size-48 rounded-full bg-[conic-gradient(from_0deg_at_50%_50%,rgba(14,165,233,0.35)_0deg,transparent_60deg,transparent_360deg)] animate-spin-slow pointer-events-none" style={{ animationDuration: '6s' }} />
+
+                {/* Pulsing Concentric Radar Rings */}
                 <div className="absolute size-48 rounded-full border-2 border-[#059669]/40 animate-ping opacity-60" />
                 <div className="absolute size-36 rounded-full border-2 border-[#0EA5E9]/50 bg-emerald-500/10 animate-pulse" />
                 <div className="absolute size-24 rounded-full border border-[#059669]/30 bg-emerald-400/10" />
 
-                {/* Vector Map-Pin Silhouette with Integrated Security Shield */}
+                {/* Outer Orbital Ring with Glowing Nodes */}
+                <div className="absolute size-48 rounded-full border border-emerald-400/30">
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 size-2.5 rounded-full bg-cyan-300 shadow-md shadow-cyan-400 animate-ping" />
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-2.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400 animate-ping" />
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 size-2.5 rounded-full bg-cyan-300 shadow-md shadow-cyan-400 animate-ping" />
+                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 size-2.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400 animate-ping" />
+                </div>
+
+                {/* Sleek Vector Map-Pin Teardrop Silhouette with Integrated Security Shield */}
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                  className="relative size-16 flex flex-col items-center justify-center z-10 my-auto drop-shadow-md"
+                  className="relative size-16 flex flex-col items-center justify-center z-10 my-auto drop-shadow-lg"
                 >
                   <svg viewBox="0 0 64 80" className="size-full">
                     <defs>
@@ -346,7 +371,7 @@ export function SecurityLayers() {
                         <stop offset="100%" stopColor="#059669" />
                       </linearGradient>
                     </defs>
-                    {/* Location Pin Outer Silhouette */}
+                    {/* Location Pin Outer Teardrop Silhouette */}
                     <path
                       d="M 32 4 C 17 4, 5 16, 5 31 C 5 48, 28 72, 32 76 C 36 72, 59 48, 59 31 C 59 16, 47 4, 32 4 Z"
                       fill="url(#pinGradient)"
@@ -358,7 +383,7 @@ export function SecurityLayers() {
                   </svg>
 
                   {/* Security Shield Icon inside Map Pin Center */}
-                  <ShieldCheck size={17} className="absolute top-4 text-[#059669] drop-shadow-xs" />
+                  <ShieldCheck size={18} className="absolute top-4 text-[#059669] drop-shadow-xs" />
                 </motion.div>
 
                 {/* Live Synchronized Changing GPS Coordinates */}
