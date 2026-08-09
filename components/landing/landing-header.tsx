@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowRight, ShieldCheck, Menu, X } from "lucide-react"
+import { ArrowRight, ShieldCheck, Menu, X, LayoutDashboard, Building2, ChevronRight, Compass } from "lucide-react"
 import { FALogo } from "@/components/fa-logo"
 import { Button } from "@/components/ui/button"
 
@@ -132,79 +132,123 @@ export function LandingHeader() {
           <AnimatePresence>
             {mobileMenuOpen && (
               <motion.div
-                initial={{ opacity: 0, y: -8, height: 0 }}
+                initial={{ opacity: 0, y: -10, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: "auto" }}
-                exit={{ opacity: 0, y: -8, height: 0 }}
-                transition={{ duration: 0.28, ease: "easeInOut" }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                 className="md:hidden overflow-hidden bg-white/95 backdrop-blur-xl border-t border-slate-200/80 shadow-2xl"
               >
-                <div className="flex flex-col gap-2 p-3.5 text-sm font-bold text-[#111827]">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      scrollTo("hero")
-                      setMobileMenuOpen(false)
+                <div className="flex flex-col gap-2.5 p-3.5 sm:p-4">
+                  {/* Subtle Header/Divider Bar */}
+                  <div className="flex items-center justify-between px-1 pb-1 text-[11px] font-mono tracking-wider text-slate-500 uppercase font-extrabold border-b border-slate-100">
+                    <span className="flex items-center gap-1.5 text-[#1E3A8A]">
+                      <Compass size={13} className="text-[#0EA5E9]" /> NAVIGATION
+                    </span>
+                    <span className="text-[10px] text-[#0EA5E9] font-sans font-bold bg-[#0EA5E9]/10 px-2 py-0.5 rounded-full border border-[#0EA5E9]/20">
+                      NNRG CAMPUS
+                    </span>
+                  </div>
+
+                  <motion.div
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                    variants={{
+                      show: { transition: { staggerChildren: 0.06 } },
+                      exit: { transition: { staggerChildren: 0.04, staggerDirection: -1 } }
                     }}
-                    className="group flex items-center justify-between p-3.5 rounded-2xl bg-linear-to-r from-blue-50/80 via-white to-sky-50/50 border border-blue-100/90 text-[#1E3A8A] hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer"
+                    className="flex flex-col gap-2 pt-1"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold">
-                        <span className="size-2 rounded-full bg-[#1E3A8A]" />
+                    {/* Item 1: Overview */}
+                    <motion.button
+                      type="button"
+                      variants={{
+                        hidden: { opacity: 0, y: -6 },
+                        show: { opacity: 1, y: 0 },
+                        exit: { opacity: 0, y: -4 }
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => scrollTo("hero")}
+                      className="group flex items-center justify-between p-3 rounded-2xl bg-linear-to-r from-sky-50/90 via-white to-blue-50/60 border border-sky-200/80 shadow-2xs hover:border-sky-300 hover:shadow-xs transition-all duration-200 cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 rounded-xl bg-[#0EA5E9]/10 text-[#0EA5E9] border border-[#0EA5E9]/20 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <LayoutDashboard size={18} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-sm text-[#111827] group-hover:text-[#1E3A8A] transition-colors leading-tight">
+                            Overview
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            System Dashboard & Live Metrics
+                          </span>
+                        </div>
                       </div>
-                      <span className="font-extrabold text-sm tracking-tight text-[#111827] group-hover:text-[#1E3A8A] transition-colors">
-                        Overview
-                      </span>
-                    </div>
-                    <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#1E3A8A] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#1E3A8A] group-hover:text-white transition-all">
-                      <ArrowRight size={14} />
-                    </div>
-                  </button>
-
-                  <div className="h-px bg-slate-100 mx-2" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      scrollTo("about")
-                      setMobileMenuOpen(false)
-                    }}
-                    className="group flex items-center justify-between p-3.5 rounded-2xl bg-linear-to-r from-purple-50/80 via-white to-fuchsia-50/50 border border-purple-100/90 text-[#6D28D9] hover:border-purple-300 hover:shadow-xs transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] flex items-center justify-center font-bold">
-                        <span className="size-2 rounded-full bg-[#6D28D9]" />
+                      <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#0EA5E9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#1E3A8A] group-hover:text-white transition-all shrink-0">
+                        <ChevronRight size={15} />
                       </div>
-                      <span className="font-extrabold text-sm tracking-tight text-[#111827] group-hover:text-[#6D28D9] transition-colors">
-                        About
-                      </span>
-                    </div>
-                    <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#6D28D9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#6D28D9] group-hover:text-white transition-all">
-                      <ArrowRight size={14} />
-                    </div>
-                  </button>
+                    </motion.button>
 
-                  <div className="h-px bg-slate-100 mx-2" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      scrollTo("how-it-works")
-                      setMobileMenuOpen(false)
-                    }}
-                    className="group flex items-center justify-between p-3.5 rounded-2xl bg-linear-to-r from-cyan-50/80 via-white to-sky-50/50 border border-cyan-100/90 text-[#0EA5E9] hover:border-cyan-300 hover:shadow-xs transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 rounded-xl bg-[#0EA5E9]/10 text-[#0EA5E9] flex items-center justify-center font-bold">
-                        <span className="size-2 rounded-full bg-[#0EA5E9]" />
+                    {/* Item 2: About */}
+                    <motion.button
+                      type="button"
+                      variants={{
+                        hidden: { opacity: 0, y: -6 },
+                        show: { opacity: 1, y: 0 },
+                        exit: { opacity: 0, y: -4 }
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => scrollTo("about")}
+                      className="group flex items-center justify-between p-3 rounded-2xl bg-linear-to-r from-purple-50/90 via-white to-indigo-50/60 border border-purple-200/80 shadow-2xs hover:border-purple-300 hover:shadow-xs transition-all duration-200 cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] border border-[#6D28D9]/20 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Building2 size={18} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-sm text-[#111827] group-hover:text-[#6D28D9] transition-colors leading-tight">
+                            About
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            NNRG College Ecosystem & Features
+                          </span>
+                        </div>
                       </div>
-                      <span className="font-extrabold text-sm tracking-tight text-[#111827] group-hover:text-[#0EA5E9] transition-colors">
-                        Security
-                      </span>
-                    </div>
-                    <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#0EA5E9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#0EA5E9] group-hover:text-white transition-all">
-                      <ArrowRight size={14} />
-                    </div>
-                  </button>
+                      <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#6D28D9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#6D28D9] group-hover:text-white transition-all shrink-0">
+                        <ChevronRight size={15} />
+                      </div>
+                    </motion.button>
+
+                    {/* Item 3: Security */}
+                    <motion.button
+                      type="button"
+                      variants={{
+                        hidden: { opacity: 0, y: -6 },
+                        show: { opacity: 1, y: 0 },
+                        exit: { opacity: 0, y: -4 }
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => scrollTo("how-it-works")}
+                      className="group flex items-center justify-between p-3 rounded-2xl bg-linear-to-r from-emerald-50/90 via-white to-teal-50/60 border border-emerald-200/80 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition-all duration-200 cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <ShieldCheck size={18} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-extrabold text-sm text-[#111827] group-hover:text-emerald-700 transition-colors leading-tight">
+                            Security
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-500">
+                            3-Factor Anti-Proxy Protection
+                          </span>
+                        </div>
+                      </div>
+                      <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-emerald-600 flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+                        <ChevronRight size={15} />
+                      </div>
+                    </motion.button>
+                  </motion.div>
                 </div>
               </motion.div>
             )}

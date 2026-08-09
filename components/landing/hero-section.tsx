@@ -152,19 +152,19 @@ export function HeroSection() {
           </h1>
 
           {/* Sub-headline Typing Animation */}
-          <div className="mt-3.5 min-h-10.5 flex items-center justify-center lg:justify-start">
+          <div className="mt-2 sm:mt-2.5 min-h-9 sm:min-h-10 flex items-center justify-center lg:justify-start">
             <p className={`text-xl sm:text-2xl font-medium italic text-[#6D28D9] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
               <span>{displayText}</span>
               <span className="cursor-underscore ml-0.5 text-[#0EA5E9]">_</span>
             </p>
           </div>
 
-          <p className="mt-3.5 max-w-lg text-base sm:text-lg text-slate-700 leading-relaxed font-normal">
+          <p className="mt-2.5 sm:mt-3 max-w-lg text-base sm:text-lg text-slate-700 leading-relaxed font-normal">
             Eliminate proxy attendance completely with multi-factor verification — combining dynamic rotating QR codes, facial recognition AI, and continuous GPS geofence boundaries.
           </p>
 
           {/* Action Buttons — Primary: Sign In →, Secondary: Explore Security → */}
-          <div className="mt-6 grid grid-cols-[0.38fr_0.62fr] sm:flex sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3.5 w-full sm:w-auto max-w-full">
+          <div className="mt-4.5 sm:mt-5.5 grid grid-cols-[0.38fr_0.62fr] sm:flex sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3.5 w-full sm:w-auto max-w-full">
             <Button
               asChild
               size="lg"
@@ -195,13 +195,13 @@ export function HeroSection() {
           </div>
 
           {/* Trust Badge */}
-          <div className="mt-5 sm:mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 text-xs font-semibold text-slate-600 w-full">
-            <div className="size-8 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold shrink-0">
-              <Building2 size={16} />
+          <div className="mt-4 sm:mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-3 sm:gap-3.5 text-xs font-semibold text-slate-600 w-full">
+            <div className="size-9.5 sm:size-10 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold shrink-0">
+              <Building2 size={20} />
             </div>
             <div className="flex flex-col text-left">
-              <span className="font-extrabold text-[#111827] text-xs sm:text-sm">Built for NNRG College</span>
-              <span className="text-[10px] text-slate-500 font-medium leading-tight">Campus Protection System • 100% Anti-Proxy Guarantee</span>
+              <span className="font-extrabold text-[#111827] text-sm sm:text-base leading-snug">Built for NNRG College</span>
+              <span className="text-[11px] sm:text-xs text-slate-500 font-medium leading-tight mt-0.5">Campus Protection System • 100% Anti-Proxy Guarantee</span>
             </div>
           </div>
         </motion.div>
