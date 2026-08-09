@@ -155,16 +155,16 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Cyan / Ice-Blue Tinted Background */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#E0F2FE] via-[#F0F9FF] to-[#DBEAFE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#38BDF8]/60 shadow-md shadow-sky-400/10">
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#E0F2FE] via-[#F0F9FF] to-[#DBEAFE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#38BDF8]/60 shadow-md shadow-sky-400/10">
                 {/* QR Subject Box - Laser scan line is BOUNDED ONLY INSIDE THIS QR SUBJECT */}
-                <div className="relative rounded-2xl p-2.5 bg-white border border-sky-300/60 overflow-hidden shadow-lg z-10 my-auto">
+                <div className="relative rounded-2xl p-2 bg-white border border-sky-300/60 overflow-hidden shadow-lg z-10 my-auto">
                   {/* Laser scan line moving ONLY across the QR code */}
                   <div className="scan-laser-line z-10" />
-                  <RealQRCode size={175} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-xs z-0" />
+                  <RealQRCode size={168} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-xs z-0" />
                 </div>
 
-                {/* Refresh Countdown Badge - Positioned Down with Comfortable Breathing Space */}
-                <div className="mt-auto mb-0.5 z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-900/90 px-3.5 py-1 rounded-full border border-sky-400/40 shadow-xs">
+                {/* Refresh Countdown Badge - Identical Height (h-7.5), Bottom Alignment & Breathing Room */}
+                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-900/90 rounded-full border border-sky-400/40 shadow-xs z-10 shrink-0">
                   <Timer size={13} className="animate-spin-slow text-[#0EA5E9]" />
                   <span>Refresh in: <strong className="text-white text-xs">{countdown}s</strong></span>
                 </div>
@@ -221,9 +221,9 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Lavender / Violet Tinted Background */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
-                {/* Face Scanner Frame - Laser scan line is BOUNDED ONLY INSIDE THIS FRAME */}
-                <div className="relative size-44 border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/90 p-2 overflow-hidden z-10 my-auto shadow-md">
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
+                {/* Face Scanner Frame - Matched Height (195px x 195px) to Horizontally Align with Card 1's QR Box */}
+                <div className="relative w-[195px] h-[195px] border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/90 p-2 overflow-hidden z-10 my-auto shadow-md">
                   {/* Laser scan line moving ONLY inside face scanner frame */}
                   <div className="scan-laser-line z-20" />
 
@@ -236,8 +236,8 @@ export function SecurityLayers() {
                   <div className="absolute bottom-1.5 left-1.5 size-4 border-b-3 border-l-3 border-[#6D28D9] rounded-bl-sm z-10" />
                   <div className="absolute bottom-1.5 right-1.5 size-4 border-b-3 border-r-3 border-[#6D28D9] rounded-br-sm z-10" />
 
-                  {/* Detailed Friendly Vector Student Avatar Face */}
-                  <div className="relative w-32 h-36 flex items-center justify-center z-10 my-auto pt-1">
+                  {/* Detailed Friendly Vector Student Avatar Face - Enlarged & Centered */}
+                  <div className="relative w-38 h-42 flex items-center justify-center z-10 my-auto pt-1">
                     <svg viewBox="0 0 120 130" className="w-full h-full drop-shadow-md">
                       {/* Neck & Purple T-Shirt Collar */}
                       <path d="M 46 95 L 46 110 L 74 110 L 74 95 Z" fill="#FCE7F3" stroke="#F43F5E" strokeWidth="0.5" />
@@ -280,7 +280,8 @@ export function SecurityLayers() {
                   </div>
                 </div>
 
-                <div className="mt-auto mb-0.5 z-10 flex items-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-900/90 px-3.5 py-1 rounded-full border border-purple-400/40 shadow-xs">
+                {/* Confidence Badge - Identical Height (h-7.5), Bottom Alignment & Breathing Room */}
+                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-900/90 rounded-full border border-purple-400/40 shadow-xs z-10 shrink-0">
                   <CheckCircle2 size={13} className="text-emerald-400" />
                   <span>Confidence: <strong className="text-white">99.8%</strong></span>
                 </div>
@@ -337,7 +338,7 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Mint / Teal-White Tinted Background */}
-              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] p-3.5 flex flex-col items-center justify-center overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
+              <div className="relative w-full max-w-[260px] sm:max-w-[270px] aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
                 {/* Styled 3D Grid Map Background */}
                 <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-[size:16px_16px]" />
 
@@ -386,8 +387,8 @@ export function SecurityLayers() {
                   <ShieldCheck size={18} className="absolute top-4 text-[#059669] drop-shadow-xs" />
                 </motion.div>
 
-                {/* Live Synchronized Changing GPS Coordinates */}
-                <div className="mt-auto mb-0.5 z-10 flex items-center gap-1.5 text-[11px] font-mono text-[#34D399] bg-slate-900/90 px-3.5 py-1.5 rounded-full border border-emerald-500/40 shadow-xs font-bold">
+                {/* Live Synchronized Changing GPS Coordinates - Identical Height (h-7.5), Bottom Alignment & Breathing Room */}
+                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#34D399] bg-slate-900/90 rounded-full border border-emerald-500/40 shadow-xs font-bold z-10 shrink-0">
                   <span className="size-2.5 rounded-full bg-emerald-400 animate-ping" />
                   <span>GPS: {lat}° N, {lng}° E</span>
                 </div>
