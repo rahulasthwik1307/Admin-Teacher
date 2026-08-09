@@ -225,7 +225,7 @@ export function HeroSection() {
                 transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
                 transition: "transform 0.15s ease-out",
               }}
-              className="relative w-full max-w-54 sm:max-w-62.5 aspect-[8.6/18.2] max-h-115 rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto"
+              className="relative w-full max-w-49 sm:max-w-62.5 aspect-[8.6/18.2] max-h-100 sm:max-h-115 rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto"
             >
             {/* Floating Glass Reflection */}
             <div className="pointer-events-none absolute inset-0 rounded-4xl bg-linear-to-tr from-white/20 via-transparent to-transparent z-30" />
