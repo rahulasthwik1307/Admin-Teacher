@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useMounted } from "@/hooks/use-mounted"
@@ -52,6 +53,13 @@ const FinalCtaSection = dynamic(
 export default function HomePage() {
   const mounted = useMounted()
 
+  // Strip any stale hash from the URL on mount (e.g. browser cache from old hash-based nav)
+  useEffect(() => {
+    if (window.location.hash) {
+      history.replaceState(null, "", window.location.pathname)
+    }
+  }, [])
+
   if (!mounted) {
     return <LandingSkeleton />
   }
@@ -102,9 +110,27 @@ export default function HomePage() {
           
           {/* Nav Links: Overview · About · Security · Sign In */}
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm font-extrabold text-white/95">
-            <a href="#hero" className="hover:text-[#38BDF8] transition-colors">Overview</a>
-            <a href="#about" className="hover:text-[#38BDF8] transition-colors">About</a>
-            <a href="#how-it-works" className="hover:text-[#38BDF8] transition-colors">Security</a>
+            <button
+              type="button"
+              onClick={() => document.getElementById("hero")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="hover:text-[#38BDF8] transition-colors cursor-pointer"
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="hover:text-[#38BDF8] transition-colors cursor-pointer"
+            >
+              About
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="hover:text-[#38BDF8] transition-colors cursor-pointer"
+            >
+              Security
+            </button>
             <Link href="/login" className="text-[#38BDF8] font-extrabold hover:underline">Sign In</Link>
           </div>
 

@@ -26,6 +26,10 @@ export function LandingHeader() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
   return (
     <>
       {/* 3px Fixed Scroll Progress Bar at very top */}
@@ -64,24 +68,27 @@ export function LandingHeader() {
 
             {/* Center Navigation: Overview · About · Security */}
             <div className="hidden md:flex items-center gap-8 text-sm sm:text-base font-bold text-[#111827]">
-              <a
-                href="#hero"
-                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full"
+              <button
+                type="button"
+                onClick={() => scrollTo("hero")}
+                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full cursor-pointer"
               >
                 Overview
-              </a>
-              <a
-                href="#about"
-                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo("about")}
+                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full cursor-pointer"
               >
                 About
-              </a>
-              <a
-                href="#how-it-works"
-                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo("how-it-works")}
+                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full cursor-pointer"
               >
                 Security
-              </a>
+              </button>
             </div>
 
             {/* Far Right: Single Sign In Button with Cyan Glow */}

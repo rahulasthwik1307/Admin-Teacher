@@ -176,13 +176,14 @@ export function HeroSection() {
               </Link>
             </Button>
 
-            <a
-              href="#how-it-works"
-              className="h-12 min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02]"
+            <button
+              type="button"
+              onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="h-12 min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02] cursor-pointer"
             >
               <Sparkles size={16} className="text-[#0EA5E9]" />
               See Security Layers
-            </a>
+            </button>
           </div>
 
           {/* Trust Badge */}
