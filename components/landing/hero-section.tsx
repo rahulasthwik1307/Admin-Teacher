@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { ScanFace, MapPin, ArrowRight, CheckCircle2, Building2, Lock, Sparkles, Camera, ShieldCheck } from "lucide-react"
+import { ScanFace, MapPin, ArrowRight, CheckCircle2, Building2, Lock, Sparkles, Camera, ShieldCheck, Target, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RealQRCode } from "./real-qr-code"
 
@@ -109,7 +109,7 @@ export function HeroSection() {
   }
 
   return (
-    <section id="hero" className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 py-10 sm:py-14 md:py-16 gradient-mesh-bg">
+    <section id="hero" className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 pt-20 pb-10 sm:pt-24 sm:pb-14 md:py-16 gradient-mesh-bg">
 
       {/* Floating Ambient Geometric Blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -163,60 +163,62 @@ export function HeroSection() {
             Eliminate proxy attendance completely with multi-factor verification — combining dynamic rotating QR codes, facial recognition AI, and continuous GPS geofence boundaries.
           </p>
 
-          {/* Action Buttons */}
-          <div className="mt-6.5 flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
+          {/* Action Buttons — Strictly Controlled 38% / 62% Grid Ratio on Mobile */}
+          <div className="mt-6 grid grid-cols-[0.38fr_0.62fr] sm:flex sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3.5 w-full sm:w-auto max-w-full">
             <Button
               asChild
               size="lg"
-              className="h-12 min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-7.5 text-sm sm:text-[15px] font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-2 sm:px-7.5 text-xs sm:text-[15px] font-bold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
             >
-              <Link href="/login" className="flex items-center justify-center gap-2">
-                <span>Explore The Demo</span>
-                <ArrowRight size={17} className="transition-transform duration-300 group-hover:translate-x-1" />
+              <Link href="/login" className="flex items-center justify-center gap-1 sm:gap-2 w-full">
+                <span className="truncate">Explore The Demo</span>
+                <ArrowRight size={15} className="shrink-0 transition-transform duration-300 group-hover:translate-x-1 hidden sm:inline-block" />
               </Link>
             </Button>
 
             <button
               type="button"
               onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="h-12 min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02] cursor-pointer"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-2 sm:px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02] cursor-pointer whitespace-nowrap overflow-hidden"
             >
-              <Sparkles size={16} className="text-[#0EA5E9]" />
-              See Security Layers
+              <Sparkles size={15} className="text-[#0EA5E9] shrink-0" />
+              <span className="truncate">See Security Layers</span>
             </button>
           </div>
 
           {/* Trust Badge */}
-          <div className="mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-3 text-xs font-semibold text-slate-600">
+          <div className="mt-5 sm:mt-6 pt-4 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-2.5 sm:gap-3 text-xs font-semibold text-slate-600 w-full">
             <div className="size-8 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold shrink-0">
               <Building2 size={16} />
             </div>
             <div className="flex flex-col text-left">
-              <span className="font-extrabold text-[#111827]">Built for NNRG College</span>
-              <span className="text-[10px] text-slate-500 font-medium">Campus Protection System • 100% Anti-Proxy Guarantee</span>
+              <span className="font-extrabold text-[#111827] text-xs sm:text-sm">Built for NNRG College</span>
+              <span className="text-[10px] text-slate-500 font-medium leading-tight">Campus Protection System • 100% Anti-Proxy Guarantee</span>
             </div>
           </div>
         </motion.div>
 
-        {/* RIGHT COLUMN: Compact Vertically Reduced Phone Mockup (25% Height Reduction) */}
+        {/* RIGHT COLUMN: Phone Mockup & Responsive Mobile/Tablet Statistics Stack */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="lg:col-span-5 flex justify-center items-center my-auto py-2"
+          className="lg:col-span-5 flex flex-col min-[480px]:flex-row lg:flex-col items-center justify-center gap-5 sm:gap-6 my-auto pt-3 sm:pt-4 pb-2"
         >
-          <motion.div
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            ref={phoneRef}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
-            style={{
-              transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
-              transition: "transform 0.15s ease-out",
-            }}
-            className="relative w-full max-w-59 sm:max-w-62.5 aspect-[8.6/18.2] max-h-115 rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto translate-y-3.5"
-          >
+          {/* Phone Mockup Container */}
+          <div className="w-full min-[480px]:w-1/2 lg:w-full flex justify-center shrink-0">
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              ref={phoneRef}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              style={{
+                transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
+                transition: "transform 0.15s ease-out",
+              }}
+              className="relative w-full max-w-54 sm:max-w-62.5 aspect-[8.6/18.2] max-h-115 rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto"
+            >
             {/* Floating Glass Reflection */}
             <div className="pointer-events-none absolute inset-0 rounded-4xl bg-linear-to-tr from-white/20 via-transparent to-transparent z-30" />
 
@@ -426,9 +428,43 @@ export function HeroSection() {
 
             </div>
           </motion.div>
-        </motion.div>
+        </div>
 
-      </div>
-    </section>
-  )
+        {/* Mobile/Tablet Compact Statistics Stack (< lg: viewports) */}
+        <div className="w-full min-[480px]:w-1/2 lg:hidden flex flex-col gap-2.5 max-w-64 min-[480px]:max-w-none">
+          <div className="p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs flex items-center gap-3 transition-all hover:border-[#0EA5E9]/40">
+            <div className="size-9 rounded-xl bg-[#0EA5E9]/10 text-[#0EA5E9] flex items-center justify-center shrink-0 border border-[#0EA5E9]/20">
+              <Target size={18} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-base font-extrabold text-[#111827] font-mono tracking-tight">🎯 99.9%</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5E9]">System Accuracy</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs flex items-center gap-3 transition-all hover:border-[#6D28D9]/40">
+            <div className="size-9 rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] flex items-center justify-center shrink-0 border border-[#6D28D9]/20">
+              <RefreshCw size={17} className="animate-spin-slow" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-base font-extrabold text-[#111827] font-mono tracking-tight">🔄 15s</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6D28D9]">Dynamic QR Refresh</span>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs flex items-center gap-3 transition-all hover:border-emerald-500/40">
+            <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-500/20">
+              <ShieldCheck size={18} />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-base font-extrabold text-[#111827] font-mono tracking-tight">🛡️ 0</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">Proxy Incidents</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+    </div>
+  </section>
+)
 }

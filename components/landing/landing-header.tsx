@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowRight, ShieldCheck } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ArrowRight, ShieldCheck, Menu, X } from "lucide-react"
 import { FALogo } from "@/components/fa-logo"
 import { Button } from "@/components/ui/button"
 
 export function LandingHeader() {
   const [scrollProgress, setScrollProgress] = useState(0)
-  const [isVisible, setIsVisible] = useState(true)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [prevScrollY, setPrevScrollY] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -47,9 +47,9 @@ export function LandingHeader() {
       >
         <div
           className={`w-full transition-all duration-300 ${
-            isScrolled
-              ? "bg-white/80 backdrop-blur-xl border-b border-white/30 shadow-lg shadow-[#1E3A8A]/10"
-              : "bg-white/60 backdrop-blur-md border-b border-slate-200/60 shadow-xs"
+            isScrolled || mobileMenuOpen
+              ? "bg-white/90 backdrop-blur-xl border-b border-slate-200/80 shadow-md shadow-[#1E3A8A]/5"
+              : "bg-white/70 backdrop-blur-md border-b border-slate-200/60 shadow-xs"
           }`}
         >
           <nav className="max-w-7xl mx-auto flex h-16 sm:h-18 items-center justify-between px-4 sm:px-6 md:px-8 w-full">
@@ -66,7 +66,7 @@ export function LandingHeader() {
               </div>
             </Link>
 
-            {/* Center Navigation: Overview · About · Security */}
+            {/* Center Navigation: Overview · About · Security (Desktop Only) */}
             <div className="hidden md:flex items-center gap-8 text-sm sm:text-base font-bold text-[#111827]">
               <button
                 type="button"
@@ -91,20 +91,112 @@ export function LandingHeader() {
               </button>
             </div>
 
-            {/* Far Right: Single Sign In Button with Cyan Glow */}
-            <div className="flex items-center gap-3 shrink-0">
+            {/* Far Right: Sign In Button & Mobile Menu Toggle */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <Button
                 asChild
                 size="sm"
-                className="h-10 sm:h-11 rounded-xl bg-linear-to-r from-[#1E3A8A] via-[#6D28D9] to-[#0EA5E9] px-6 text-sm font-bold text-white shadow-md shadow-[#1E3A8A]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#0EA5E9]/50 hover:scale-[1.04] active:scale-[0.98] group"
+                className="h-9 sm:h-11 rounded-xl bg-linear-to-r from-[#1E3A8A] via-[#6D28D9] to-[#0EA5E9] px-4 sm:px-6 text-xs sm:text-sm font-bold text-white shadow-md shadow-[#1E3A8A]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#0EA5E9]/50 hover:scale-[1.04] active:scale-[0.98] group"
               >
-                <Link href="/login" className="flex items-center gap-2">
+                <Link href="/login" className="flex items-center gap-1.5 sm:gap-2">
                   <span>Sign In</span>
-                  <ArrowRight size={16} className="transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight size={15} className="transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               </Button>
+
+              {/* Mobile Menu Hamburger Button (Below md:) */}
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 rounded-xl text-slate-700 hover:text-[#1E3A8A] hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Toggle navigation menu"
+              >
+                {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              </button>
             </div>
           </nav>
+
+          {/* Animated Mobile Navigation Dropdown */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                transition={{ duration: 0.28, ease: "easeInOut" }}
+                className="md:hidden overflow-hidden bg-white/95 backdrop-blur-xl border-t border-slate-200/80 shadow-2xl"
+              >
+                <div className="flex flex-col gap-2 p-3.5 text-sm font-bold text-[#111827]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scrollTo("hero")
+                      setMobileMenuOpen(false)
+                    }}
+                    className="group flex items-center justify-between p-3.5 rounded-2xl bg-linear-to-r from-blue-50/80 via-white to-sky-50/50 border border-blue-100/90 text-[#1E3A8A] hover:border-blue-300 hover:shadow-xs transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold">
+                        <span className="size-2 rounded-full bg-[#1E3A8A]" />
+                      </div>
+                      <span className="font-extrabold text-sm tracking-tight text-[#111827] group-hover:text-[#1E3A8A] transition-colors">
+                        Overview
+                      </span>
+                    </div>
+                    <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#1E3A8A] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#1E3A8A] group-hover:text-white transition-all">
+                      <ArrowRight size={14} />
+                    </div>
+                  </button>
+
+                  <div className="h-px bg-slate-100 mx-2" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scrollTo("about")
+                      setMobileMenuOpen(false)
+                    }}
+                    className="group flex items-center justify-between p-3.5 rounded-2xl bg-linear-to-r from-purple-50/80 via-white to-fuchsia-50/50 border border-purple-100/90 text-[#6D28D9] hover:border-purple-300 hover:shadow-xs transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] flex items-center justify-center font-bold">
+                        <span className="size-2 rounded-full bg-[#6D28D9]" />
+                      </div>
+                      <span className="font-extrabold text-sm tracking-tight text-[#111827] group-hover:text-[#6D28D9] transition-colors">
+                        About
+                      </span>
+                    </div>
+                    <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#6D28D9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#6D28D9] group-hover:text-white transition-all">
+                      <ArrowRight size={14} />
+                    </div>
+                  </button>
+
+                  <div className="h-px bg-slate-100 mx-2" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scrollTo("how-it-works")
+                      setMobileMenuOpen(false)
+                    }}
+                    className="group flex items-center justify-between p-3.5 rounded-2xl bg-linear-to-r from-cyan-50/80 via-white to-sky-50/50 border border-cyan-100/90 text-[#0EA5E9] hover:border-cyan-300 hover:shadow-xs transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-xl bg-[#0EA5E9]/10 text-[#0EA5E9] flex items-center justify-center font-bold">
+                        <span className="size-2 rounded-full bg-[#0EA5E9]" />
+                      </div>
+                      <span className="font-extrabold text-sm tracking-tight text-[#111827] group-hover:text-[#0EA5E9] transition-colors">
+                        Security
+                      </span>
+                    </div>
+                    <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#0EA5E9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#0EA5E9] group-hover:text-white transition-all">
+                      <ArrowRight size={14} />
+                    </div>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Curved Wave / Gradient Transition below Header */}
