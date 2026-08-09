@@ -109,7 +109,7 @@ export function HeroSection() {
   }
 
   return (
-    <section id="hero" className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 pt-20 pb-10 sm:pt-24 sm:pb-14 md:py-16 gradient-mesh-bg scroll-mt-24">
+    <section id="hero" className="relative min-h-0 sm:min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 pt-21 pb-4 sm:pt-24 sm:pb-10 md:py-16 gradient-mesh-bg scroll-mt-24">
 
       {/* Floating Ambient Geometric Blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -125,7 +125,7 @@ export function HeroSection() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 items-center my-auto pt-2 sm:pt-4">
+      <div className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-6 items-center my-auto pt-1 sm:pt-4">
 
         {/* LEFT COLUMN: Text Content (40-50% width) */}
         <motion.div
@@ -211,7 +211,7 @@ export function HeroSection() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="lg:col-span-5 flex flex-col min-[480px]:flex-row lg:flex-col items-center justify-center gap-5 sm:gap-6 my-auto pt-3 sm:pt-4 pb-2"
+          className="lg:col-span-5 flex flex-col min-[480px]:flex-row lg:flex-col items-center justify-center gap-4 sm:gap-6 my-auto pt-2 sm:pt-4 pb-1"
         >
           {/* Phone Mockup Container */}
           <div className="w-full min-[480px]:w-1/2 lg:w-full flex justify-center shrink-0">
