@@ -37,10 +37,14 @@ export async function POST(request: NextRequest) {
         embedding_a: null,
         embedding_b: null,
         embedding_c: null,
+        embedding_up: null,
+        embedding_down: null,
         face_embedding: null,
         registration_photo_url: null,
         face_registered: false,
         verification_threshold: null,
+        face_template_updated_at: null,
+        face_template_version: 1,
       })
       .eq("id", studentId);
 
