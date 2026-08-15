@@ -78,15 +78,11 @@ export function SecurityLayers() {
 
   return (
     <section id="how-it-works" className="relative pt-4 sm:pt-5 pb-10 sm:pb-12 px-4 sm:px-6 md:px-8 bg-transparent scroll-mt-24">
-      
-      {/* Background Subtle Glow */}
-      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-150 rounded-full bg-[#0EA5E9]/5 blur-3xl -z-10" />
-
       <div className="mx-auto max-w-7xl">
         
         {/* Section Header */}
         <div className="text-center mb-8 sm:mb-10">
-          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-[#6D28D9]/20 bg-[#6D28D9]/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#6D28D9]">
+          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-purple-200/80 bg-purple-50/80 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#6D28D9] shadow-2xs">
             <Layers size={13} />
             Triple Verification Defense
           </div>
@@ -130,18 +126,18 @@ export function SecurityLayers() {
               transform: `perspective(1000px) rotateX(${tilts[1]?.rx || 0}deg) rotateY(${tilts[1]?.ry || 0}deg)`,
               transition: "transform 0.1s ease-out, filter 0.3s ease, opacity 0.3s ease",
             }}
-            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
-              hoveredCard !== null && hoveredCard !== 1 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#1E3A8A]/20"
+            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-slate-200 shadow-xs transition-all duration-300 relative z-10 ${
+              hoveredCard !== null && hoveredCard !== 1 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-1 hover:shadow-md hover:border-slate-300"
             }`}
           >
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="size-13 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30">
+                <div className="size-13 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-md shadow-[#1E3A8A]/20">
                   <QrCode size={26} />
                 </div>
                 {/* Circular Security Score Indicator */}
-                <div className="flex items-center gap-1.5 rounded-full bg-[#1E3A8A]/10 border border-[#1E3A8A]/20 px-3 py-1 text-xs font-extrabold text-[#1E3A8A]">
-                  <ShieldCheck size={14} className="text-[#0EA5E9]" /> Score: 99.9%
+                <div className="flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-200/80 px-3 py-1 text-xs font-extrabold text-[#1E3A8A]">
+                  <ShieldCheck size={14} className="text-[#0284C7]" /> Score: 99.9%
                 </div>
               </div>
 
@@ -153,16 +149,16 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Cyan / Ice-Blue Tinted Background */}
-              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#E0F2FE] via-[#F0F9FF] to-[#DBEAFE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#38BDF8]/60 shadow-md shadow-sky-400/10">
+              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-sky-50/60 pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-sky-200/80 shadow-2xs">
                 {/* QR Subject Box - Laser scan line is BOUNDED ONLY INSIDE THIS QR SUBJECT */}
-                <div className="relative rounded-2xl p-2 bg-white border border-sky-300/60 overflow-hidden shadow-lg z-10 my-auto">
+                <div className="relative rounded-2xl p-2 bg-white border border-sky-200/80 overflow-hidden shadow-sm z-10 my-auto">
                   {/* Laser scan line moving ONLY across the QR code */}
                   <div className="scan-laser-line z-10" />
                   <RealQRCode size={168} seed={qrSeed} darkColor="#1E3A8A" lightColor="#FFFFFF" className="shadow-xs z-0" />
                 </div>
 
                 {/* Refresh Countdown Badge - Identical Height (h-7.5), Bottom Alignment & Breathing Room */}
-                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#0EA5E9] bg-slate-900/90 rounded-full border border-sky-400/40 shadow-xs z-10 shrink-0">
+                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#0284C7] bg-slate-900 rounded-full border border-slate-700/80 shadow-xs z-10 shrink-0">
                   <Timer size={13} className="animate-spin-slow text-[#0EA5E9]" />
                   <span>Refresh in: <strong className="text-white text-xs">{countdown}s</strong></span>
                 </div>
@@ -190,17 +186,17 @@ export function SecurityLayers() {
               transform: `perspective(1000px) rotateX(${tilts[2]?.rx || 0}deg) rotateY(${tilts[2]?.ry || 0}deg)`,
               transition: "transform 0.1s ease-out, filter 0.3s ease, opacity 0.3s ease",
             }}
-            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
-              hoveredCard !== null && hoveredCard !== 2 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#6D28D9]/20"
+            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-slate-200 shadow-xs transition-all duration-300 relative z-10 ${
+              hoveredCard !== null && hoveredCard !== 2 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-1 hover:shadow-md hover:border-slate-300"
             }`}
           >
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="size-13 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-lg shadow-[#6D28D9]/30">
+                <div className="size-13 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-md shadow-[#6D28D9]/20">
                   <ScanFace size={26} />
                 </div>
-                <div className="flex items-center gap-1.5 rounded-full bg-[#6D28D9]/10 border border-[#6D28D9]/20 px-3 py-1 text-xs font-extrabold text-[#6D28D9]">
-                  <ShieldCheck size={14} className="text-[#0EA5E9]" /> Score: 99.8%
+                <div className="flex items-center gap-1.5 rounded-full bg-purple-50 border border-purple-200/80 px-3 py-1 text-xs font-extrabold text-[#6D28D9]">
+                  <ShieldCheck size={14} className="text-[#0284C7]" /> Score: 99.8%
                 </div>
               </div>
 
@@ -212,14 +208,14 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Lavender / Violet Tinted Background */}
-              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#F3E8FF] via-[#FAF5FF] to-[#EDE9FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#C084FC]/60 shadow-md shadow-purple-400/10">
+              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-purple-50/60 pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-purple-200/80 shadow-2xs">
                 {/* Face Scanner Frame - Matched Height (195px x 195px) to Horizontally Align with Card 1's QR Box */}
-                <div className="relative w-48.75 h-48.75 border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/90 p-2 overflow-hidden z-10 my-auto shadow-md">
+                <div className="relative w-48.75 h-48.75 border-2 border-dashed border-[#6D28D9]/70 rounded-2xl flex flex-col items-center justify-center bg-white/95 p-2 overflow-hidden z-10 my-auto shadow-sm">
                   {/* Laser scan line moving ONLY inside face scanner frame */}
                   <div className="scan-laser-line z-20" />
 
                   {/* Scanning Grid Overlay ONLY on Face Area */}
-                  <div className="absolute inset-0 opacity-15 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-size-[10px_10px]" />
+                  <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#6D28D9_1px,transparent_1px),linear-gradient(to_bottom,#6D28D9_1px,transparent_1px)] bg-size-[10px_10px]" />
 
                   {/* Corner Scanning Brackets */}
                   <div className="absolute top-1.5 left-1.5 size-4 border-t-3 border-l-3 border-[#6D28D9] rounded-tl-sm z-10" />
@@ -229,7 +225,7 @@ export function SecurityLayers() {
 
                   {/* Detailed Friendly Vector Student Avatar Face - Enlarged & Centered */}
                   <div className="relative w-38 h-42 flex items-center justify-center z-10 my-auto pt-1">
-                    <svg viewBox="0 0 120 130" className="w-full h-full drop-shadow-md">
+                    <svg viewBox="0 0 120 130" className="w-full h-full drop-shadow-sm">
                       {/* Neck & Purple T-Shirt Collar */}
                       <path d="M 46 95 L 46 110 L 74 110 L 74 95 Z" fill="#FCE7F3" stroke="#F43F5E" strokeWidth="0.5" />
                       <path d="M 28 110 Q 60 128 92 110 L 96 130 L 24 130 Z" fill="#6D28D9" />
@@ -272,7 +268,7 @@ export function SecurityLayers() {
                 </div>
 
                 {/* Confidence Badge - Identical Height (h-7.5), Bottom Alignment & Breathing Room */}
-                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-900/90 rounded-full border border-purple-400/40 shadow-xs z-10 shrink-0">
+                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono font-bold text-emerald-300 bg-slate-900 rounded-full border border-slate-700/80 shadow-xs z-10 shrink-0">
                   <CheckCircle2 size={13} className="text-emerald-400" />
                   <span>Confidence: <strong className="text-white">99.8%</strong></span>
                 </div>
@@ -300,17 +296,17 @@ export function SecurityLayers() {
               transform: `perspective(1000px) rotateX(${tilts[3]?.rx || 0}deg) rotateY(${tilts[3]?.ry || 0}deg)`,
               transition: "transform 0.1s ease-out, filter 0.3s ease, opacity 0.3s ease",
             }}
-            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/80 transition-all duration-300 relative z-10 ${
-              hoveredCard !== null && hoveredCard !== 3 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#0EA5E9]/20"
+            className={`glass-card rounded-3xl p-6 flex flex-col justify-between border border-slate-200 shadow-xs transition-all duration-300 relative z-10 ${
+              hoveredCard !== null && hoveredCard !== 3 ? "blur-[2px] opacity-60 scale-[0.98]" : "opacity-100 scale-100 hover:-translate-y-1 hover:shadow-md hover:border-slate-300"
             }`}
           >
             <div>
               <div className="flex items-center justify-between mb-4">
-                <div className="size-13 rounded-2xl bg-[#0EA5E9] text-white flex items-center justify-center shadow-lg shadow-[#0EA5E9]/30">
+                <div className="size-13 rounded-2xl bg-[#0284C7] text-white flex items-center justify-center shadow-md shadow-sky-600/20">
                   <MapPin size={26} />
                 </div>
-                <div className="flex items-center gap-1.5 rounded-full bg-[#0EA5E9]/10 border border-[#0EA5E9]/20 px-3 py-1 text-xs font-extrabold text-[#0EA5E9]">
-                  <ShieldCheck size={14} className="text-[#0EA5E9]" /> Score: 99.8%
+                <div className="flex items-center gap-1.5 rounded-full bg-sky-50 border border-sky-200/80 px-3 py-1 text-xs font-extrabold text-[#0284C7]">
+                  <ShieldCheck size={14} className="text-[#0284C7]" /> Score: 99.8%
                 </div>
               </div>
 
@@ -322,31 +318,31 @@ export function SecurityLayers() {
               </p>
 
               {/* Image Container - Soft Light Mint / Teal-White Tinted Background */}
-              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-linear-to-br from-[#D1FAE5] via-[#F0FDF4] to-[#E0F2FE] pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-[#34D399]/60 shadow-md shadow-emerald-400/10">
+              <div className="relative w-full max-w-65 sm:max-w-67.5 aspect-square mx-auto rounded-2xl bg-emerald-50/60 pt-3.5 pb-2.5 px-3 flex flex-col items-center justify-between overflow-hidden border border-emerald-200/80 shadow-2xs">
                 {/* Styled 3D Grid Map Background */}
-                <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-size-[16px_16px]" />
+                <div className="absolute inset-0 opacity-15 bg-[linear-gradient(to_right,#059669_1px,transparent_1px),linear-gradient(to_bottom,#059669_1px,transparent_1px)] bg-size-[16px_16px]" />
 
                 {/* Rotating Cyan Radar Sweep Beam */}
-                <div className="absolute size-48 rounded-full bg-[conic-gradient(from_0deg_at_50%_50%,rgba(14,165,233,0.35)_0deg,transparent_60deg,transparent_360deg)] animate-spin-slow pointer-events-none" style={{ animationDuration: '6s' }} />
+                <div className="absolute size-48 rounded-full bg-[conic-gradient(from_0deg_at_50%_50%,rgba(14,165,233,0.25)_0deg,transparent_60deg,transparent_360deg)] animate-spin-slow pointer-events-none" style={{ animationDuration: '6s' }} />
 
                 {/* Pulsing Concentric Radar Rings */}
-                <div className="absolute size-48 rounded-full border-2 border-[#059669]/40 animate-ping opacity-60" />
-                <div className="absolute size-36 rounded-full border-2 border-[#0EA5E9]/50 bg-emerald-500/10 animate-pulse" />
-                <div className="absolute size-24 rounded-full border border-[#059669]/30 bg-emerald-400/10" />
+                <div className="absolute size-48 rounded-full border-2 border-[#059669]/30 animate-ping opacity-50" />
+                <div className="absolute size-36 rounded-full border-2 border-[#0EA5E9]/40 bg-emerald-500/5 animate-pulse" />
+                <div className="absolute size-24 rounded-full border border-[#059669]/25 bg-emerald-400/5" />
 
                 {/* Outer Orbital Ring with Glowing Nodes */}
-                <div className="absolute size-48 rounded-full border border-emerald-400/30">
-                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 size-2.5 rounded-full bg-cyan-300 shadow-md shadow-cyan-400 animate-ping" />
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-2.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400 animate-ping" />
-                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 size-2.5 rounded-full bg-cyan-300 shadow-md shadow-cyan-400 animate-ping" />
-                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 size-2.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400 animate-ping" />
+                <div className="absolute size-48 rounded-full border border-emerald-400/25">
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 size-2 rounded-full bg-cyan-400 shadow-xs animate-ping" />
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-2 rounded-full bg-emerald-400 shadow-xs animate-ping" />
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 size-2 rounded-full bg-cyan-400 shadow-xs animate-ping" />
+                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 size-2 rounded-full bg-emerald-400 shadow-xs animate-ping" />
                 </div>
 
                 {/* Sleek Vector Map-Pin Teardrop Silhouette with Integrated Security Shield */}
                 <motion.div
                   animate={{ y: [0, -6, 0] }}
                   transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-                  className="relative size-16 flex flex-col items-center justify-center z-10 my-auto drop-shadow-lg"
+                  className="relative size-16 flex flex-col items-center justify-center z-10 my-auto drop-shadow-md"
                 >
                   <svg viewBox="0 0 64 80" className="size-full">
                     <defs>
@@ -368,18 +364,18 @@ export function SecurityLayers() {
                   </svg>
 
                   {/* Security Shield Icon inside Map Pin Center */}
-                  <ShieldCheck size={18} className="absolute top-4 text-[#059669] drop-shadow-xs" />
+                  <ShieldCheck size={18} className="absolute top-4 text-[#059669]" />
                 </motion.div>
 
                 {/* Live Synchronized Changing GPS Coordinates - Identical Height (h-7.5), Bottom Alignment & Breathing Room */}
-                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#34D399] bg-slate-900/90 rounded-full border border-emerald-500/40 shadow-xs font-bold z-10 shrink-0">
-                  <span className="size-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <div className="h-7.5 px-3.5 flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#34D399] bg-slate-900 rounded-full border border-slate-700/80 shadow-xs font-bold z-10 shrink-0">
+                  <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
                   <span>GPS: {lat}° N, {lng}° E</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#0EA5E9]">
+            <div className="mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#0284C7]">
               <span>Real-Time GPS Boundary</span>
               <CheckCircle2 size={16} className="text-emerald-500" />
             </div>

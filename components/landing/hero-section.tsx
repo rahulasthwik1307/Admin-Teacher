@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { ScanFace, MapPin, ArrowRight, CheckCircle2, Building2, Lock, Sparkles, Camera, ShieldCheck, Target, RefreshCw } from "lucide-react"
@@ -108,34 +108,80 @@ export function HeroSection() {
     setTilt({ rotateX: 0, rotateY: 0 })
   }
 
-  return (
-    <section id="hero" className="relative min-h-0 sm:min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden px-4 pt-21 pb-4 sm:pt-24 sm:pb-10 md:py-16 gradient-mesh-bg scroll-mt-24">
+  /* ── Responsive Two-Zone Background Split Calculation ── */
+  const sectionRef = useRef<HTMLElement>(null)
+  const trustBadgeRef = useRef<HTMLDivElement>(null)
+  const [splitOffset, setSplitOffset] = useState<number | null>(null)
 
-      {/* Floating Ambient Geometric Blobs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <motion.div
-          animate={{ x: [0, 30, -20, 0], y: [0, -30, 20, 0] }}
-          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-24 left-10 size-72 rounded-full bg-[#6D28D9]/15 blur-3xl gpu-accelerated"
+  const updateSplit = useCallback(() => {
+    if (sectionRef.current && trustBadgeRef.current) {
+      const sectionRect = sectionRef.current.getBoundingClientRect()
+      const badgeRect = trustBadgeRef.current.getBoundingClientRect()
+      const offset = Math.round(badgeRect.top - sectionRect.top)
+      setSplitOffset(offset)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Initial rough fallback measurement on mount
+    updateSplit()
+    window.addEventListener("resize", updateSplit, { passive: true })
+
+    let observer: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined" && sectionRef.current) {
+      observer = new ResizeObserver(updateSplit)
+      observer.observe(sectionRef.current)
+      if (trustBadgeRef.current) {
+        observer.observe(trustBadgeRef.current)
+      }
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateSplit)
+      observer?.disconnect()
+    }
+  }, [updateSplit])
+
+  return (
+    <section
+      ref={sectionRef}
+      id="hero"
+      className="relative z-10 min-h-0 sm:min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-x-clip px-4 pt-21 pb-4 sm:pt-24 sm:pb-10 md:py-16 bg-transparent scroll-mt-24"
+    >
+
+      {/* Background Layering: Zone 1 (#E3ECE6), Zone 2 (#F2E4E2), and About Transition (#F5F1E8) */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-visible" aria-hidden="true">
+        {/* Base Layer: About Section Cream Tone (#F5F1E8) seamlessly underlying hero bottom and stats card */}
+        <div className="absolute inset-0 -bottom-32 bg-[#F5F1E8]" />
+
+        {/* Zone 1: Cool Mineral Sage Mist (Navbar bottom → Trust-badge divider line) */}
+        <div
+          className="absolute top-0 left-0 right-0 bg-[#E3ECE6]"
+          style={{
+            height: splitOffset !== null ? `${splitOffset}px` : "70%",
+          }}
         />
-        <motion.div
-          animate={{ x: [0, -30, 25, 0], y: [0, 30, -25, 0] }}
-          transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-1/3 right-10 size-80 rounded-full bg-[#0EA5E9]/15 blur-3xl gpu-accelerated"
+        {/* Zone 2: Muted Dusty Rose / Soft Terracotta Blush (Trust-badge divider line → Stats card boundary) */}
+        <div
+          className="absolute left-0 right-0 bottom-0 lg:-bottom-2.5 bg-[#F2E4E2]"
+          style={{
+            top: splitOffset !== null ? `${splitOffset}px` : "70%",
+          }}
         />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-6 items-center my-auto pt-1 sm:pt-4">
+      <div className="relative z-20 mx-auto max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-6 items-center my-auto pt-3.5 sm:pt-6.5 md:pt-8">
 
         {/* LEFT COLUMN: Text Content (40-50% width) */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          onAnimationComplete={updateSplit}
           className="lg:col-span-7 flex flex-col items-center text-center lg:items-start lg:text-left my-auto"
         >
           {/* Badge */}
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#0EA5E9]/30 bg-[#0EA5E9]/10 px-3.5 py-1 text-xs font-extrabold text-[#1E3A8A] shadow-xs">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-3.5 py-1 text-xs font-extrabold text-[#1E3A8A] shadow-2xs">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#0EA5E9] opacity-75" />
               <span className="relative inline-flex size-2 rounded-full bg-[#0EA5E9]" />
@@ -148,18 +194,18 @@ export function HeroSection() {
           {/* Headline */}
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.12]">
             <span className="text-[#1E3A8A]">Smart Attendance for</span>{" "}
-            <span className="text-[#0EA5E9]">Modern Campus</span>
+            <span className="text-[#0284C7]">Modern Campus</span>
           </h1>
 
           {/* Sub-headline Typing Animation */}
           <div className="mt-2 sm:mt-2.5 min-h-9 sm:min-h-10 flex items-center justify-center lg:justify-start">
-            <p className={`text-xl sm:text-2xl font-medium italic text-[#6D28D9] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
+            <p className={`text-xl sm:text-2xl font-medium italic text-[#1E3A8A] transition-opacity duration-300 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
               <span>{displayText}</span>
-              <span className="cursor-underscore ml-0.5 text-[#0EA5E9]">_</span>
+              <span className="cursor-underscore ml-0.5 text-[#0284C7]">_</span>
             </p>
           </div>
 
-          <p className="mt-2.5 sm:mt-3 max-w-lg text-base sm:text-lg text-slate-700 leading-relaxed font-normal">
+          <p className="mt-2.5 sm:mt-3 max-w-lg text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
             Eliminate proxy attendance completely with multi-factor verification — combining dynamic rotating QR codes, facial recognition AI, and continuous GPS geofence boundaries.
           </p>
 
@@ -168,11 +214,11 @@ export function HeroSection() {
             <Button
               asChild
               size="lg"
-              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] px-2 sm:px-7.5 text-xs sm:text-[15px] font-extrabold text-white shadow-lg shadow-[#1E3A8A]/20 transition-all duration-300 hover:bg-[#6D28D9] hover:shadow-xl hover:shadow-[#6D28D9]/30 hover:scale-[1.03] active:scale-[0.98] group whitespace-nowrap overflow-hidden"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto rounded-xl bg-[#1E3A8A] hover:bg-[#1e40af] px-2 sm:px-7.5 text-xs sm:text-[15px] font-extrabold text-white shadow-xs border border-blue-900/10 transition-all duration-200 active:scale-[0.98] group whitespace-nowrap overflow-hidden"
             >
               <Link href="/login" className="flex items-center justify-center gap-1 sm:gap-2 w-full">
                 <span className="truncate">Sign In</span>
-                <ArrowRight size={15} className="shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
+                <ArrowRight size={15} className="shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
               </Link>
             </Button>
 
@@ -187,19 +233,19 @@ export function HeroSection() {
                   window.scrollTo({ top: offsetPosition, behavior: "smooth" })
                 }
               }}
-              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-slate-300/80 bg-white/80 px-2 sm:px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs backdrop-blur-md transition-all duration-300 hover:border-[#0EA5E9] hover:bg-white hover:text-[#1E3A8A] hover:scale-[1.02] cursor-pointer whitespace-nowrap overflow-hidden group"
+              className="h-11 min-h-11 sm:h-12 sm:min-h-12 w-full sm:w-auto inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-slate-200 bg-white px-2 sm:px-6 text-xs sm:text-sm font-bold text-[#111827] shadow-xs transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-[#1E3A8A] cursor-pointer whitespace-nowrap overflow-hidden group"
             >
               <span className="truncate">Explore Security</span>
-              <ArrowRight size={15} className="text-[#0EA5E9] shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
+              <ArrowRight size={15} className="text-[#0284C7] shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
             </button>
           </div>
 
           {/* Trust Badge */}
-          <div className="mt-4 sm:mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-center lg:justify-start gap-3 sm:gap-3.5 text-xs font-semibold text-slate-600 w-full">
-            <div className="size-9.5 sm:size-10 rounded-xl bg-[#1E3A8A]/10 text-[#1E3A8A] flex items-center justify-center font-bold shrink-0">
+          <div ref={trustBadgeRef} className="mt-5.5 sm:mt-6.5 pt-3.5 sm:pt-4 flex items-center justify-center lg:justify-start gap-3 sm:gap-3.5 text-xs font-semibold text-slate-600 w-full">
+            <div className="size-9.5 sm:size-10 rounded-xl bg-blue-50 text-[#1E3A8A] border border-blue-100 flex items-center justify-center font-bold shrink-0">
               <Building2 size={20} />
             </div>
-            <div className="flex flex-col text-left">
+            <div className="flex flex-col text-left pt-1">
               <span className="font-extrabold text-[#111827] text-sm sm:text-base leading-snug">Built for NNRG College</span>
               <span className="text-[11px] sm:text-xs text-slate-500 font-medium leading-tight mt-0.5">Campus Protection System • 100% Anti-Proxy Guarantee</span>
             </div>
@@ -225,13 +271,10 @@ export function HeroSection() {
                 transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg)`,
                 transition: "transform 0.15s ease-out",
               }}
-              className="relative w-full max-w-49 sm:max-w-62.5 aspect-[8.6/18.2] max-h-100 sm:max-h-115 rounded-[36px] bg-[#111827] p-2 shadow-2xl shadow-[#1E3A8A]/25 border-4 border-slate-700/60 gpu-accelerated my-auto"
+              className="relative w-full max-w-49 sm:max-w-62.5 aspect-[8.6/18.2] max-h-100 sm:max-h-115 rounded-[36px] bg-[#0F172A] p-2 shadow-2xl shadow-slate-900/15 border-4 border-slate-800 gpu-accelerated my-auto"
             >
             {/* Floating Glass Reflection */}
-            <div className="pointer-events-none absolute inset-0 rounded-4xl bg-linear-to-tr from-white/20 via-transparent to-transparent z-30" />
-
-            {/* Screen Glow */}
-            <div className="pointer-events-none absolute -inset-3 rounded-[40px] bg-linear-to-tr from-[#6D28D9]/30 via-[#0EA5E9]/35 to-[#1E3A8A]/30 blur-lg opacity-70 -z-10 animate-pulse" />
+            <div className="pointer-events-none absolute inset-0 rounded-4xl bg-linear-to-tr from-white/10 via-transparent to-transparent z-30" />
 
             {/* Phone Screen Display: SKY BLUE BACKGROUND (#E8F4FD) */}
             <div className="relative size-full rounded-3xl bg-[#E8F4FD] overflow-hidden flex flex-col justify-between p-3 border border-blue-200/80 text-[#111827]">
@@ -440,18 +483,18 @@ export function HeroSection() {
 
         {/* Mobile/Tablet Compact Statistics Stack (< lg: viewports) */}
         <div className="w-full min-[480px]:w-1/2 lg:hidden flex flex-col gap-2.5 max-w-64 min-[480px]:max-w-none">
-          <div className="p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs flex items-center gap-3 transition-all hover:border-[#0EA5E9]/40">
-            <div className="size-9 rounded-xl bg-[#0EA5E9]/10 text-[#0EA5E9] flex items-center justify-center shrink-0 border border-[#0EA5E9]/20">
+          <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center gap-3 transition-all hover:border-sky-300">
+            <div className="size-9 rounded-xl bg-sky-50 text-[#0284C7] flex items-center justify-center shrink-0 border border-sky-200/80">
               <Target size={18} />
             </div>
             <div className="flex flex-col text-left">
               <span className="text-base font-extrabold text-[#111827] font-mono tracking-tight">🎯 99.9%</span>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0EA5E9]">System Accuracy</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#0284C7]">System Accuracy</span>
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs flex items-center gap-3 transition-all hover:border-[#6D28D9]/40">
-            <div className="size-9 rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] flex items-center justify-center shrink-0 border border-[#6D28D9]/20">
+          <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center gap-3 transition-all hover:border-purple-300">
+            <div className="size-9 rounded-xl bg-purple-50 text-[#6D28D9] flex items-center justify-center shrink-0 border border-purple-200/80">
               <RefreshCw size={17} className="animate-spin-slow" />
             </div>
             <div className="flex flex-col text-left">
@@ -460,8 +503,8 @@ export function HeroSection() {
             </div>
           </div>
 
-          <div className="p-3 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-xs flex items-center gap-3 transition-all hover:border-emerald-500/40">
-            <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-500/20">
+          <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center gap-3 transition-all hover:border-emerald-300">
+            <div className="size-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200/80">
               <ShieldCheck size={18} />
             </div>
             <div className="flex flex-col text-left">

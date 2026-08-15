@@ -65,7 +65,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col bg-[#F9FAFB] text-[#111827] overflow-x-hidden relative selection:bg-[#6D28D9] selection:text-white">
+    <div className="flex min-h-svh flex-col bg-[#F8FAFC] text-[#111827] overflow-x-hidden relative selection:bg-[#1E3A8A] selection:text-white">
       
       {/* Interactive Radial Glow Following Cursor */}
       <CursorGlow />
@@ -93,52 +93,52 @@ export default function HomePage() {
 
       </main>
 
-      {/* SECTION 7: UNIFIED NNRG FOOTER */}
-      <footer className="relative bg-[#1E3A8A] text-white px-4 sm:px-6 md:px-8 py-6 sm:py-7 mt-0 sm:-mt-2 border-t border-blue-900/50">
-        <div className="mx-auto max-w-7xl flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
+      {/* SECTION 7: UNIFIED NNRG FOOTER - DISTINCT THIRD LIGHT BLUE/SLATE TONE */}
+      <footer className="relative bg-linear-to-b from-[#DCE8F5] via-[#D3E1F0] to-[#CAD9EB] text-slate-700 px-4 sm:px-6 md:px-8 py-7 sm:py-8 mt-0 border-t border-[#8EB1D6] shadow-[0_-6px_24px_-4px_rgba(15,23,42,0.06),inset_0_1px_0_0_rgba(255,255,255,0.9)]">
+        <div className="mx-auto max-w-7xl flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
           
           {/* Logo & Slogan */}
           <div className="flex items-center justify-center sm:justify-start gap-3">
-            <FALogo size="sm" variant="blue" className="bg-white rounded-xl p-1 shadow-md" />
+            <FALogo size="sm" variant="blue" className="bg-white rounded-xl p-1 border border-slate-200/90 shadow-2xs" />
             <div className="flex flex-col">
-              <span className="text-sm font-extrabold tracking-tight text-white">Factor Attendance</span>
-              <span className="text-xs text-[#38BDF8] font-semibold flex items-center justify-center sm:justify-start gap-1">
-                <ShieldCheck className="size-3 text-[#38BDF8]" /> NNRG CAMPUS SECURITY
+              <span className="text-sm font-extrabold tracking-tight text-slate-900">Factor Attendance</span>
+              <span className="text-xs text-[#0284C7] font-bold flex items-center justify-center sm:justify-start gap-1">
+                <ShieldCheck className="size-3 text-[#0284C7]" /> NNRG CAMPUS SECURITY
               </span>
             </div>
           </div>
           
           {/* Nav Links: Overview · About · Security · Sign In */}
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm font-extrabold text-white/95">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm font-bold text-slate-700">
             <button
               type="button"
               onClick={() => document.getElementById("hero")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="hover:text-[#38BDF8] transition-colors cursor-pointer"
+              className="hover:text-[#1E3A8A] transition-colors cursor-pointer"
             >
               Overview
             </button>
             <button
               type="button"
               onClick={() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="hover:text-[#38BDF8] transition-colors cursor-pointer"
+              className="hover:text-[#1E3A8A] transition-colors cursor-pointer"
             >
               About
             </button>
             <button
               type="button"
               onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="hover:text-[#38BDF8] transition-colors cursor-pointer"
+              className="hover:text-[#1E3A8A] transition-colors cursor-pointer"
             >
               Security
             </button>
-            <Link href="/login" className="text-[#38BDF8] font-extrabold hover:underline">Sign In</Link>
+            <Link href="/login" className="text-[#1E3A8A] font-extrabold hover:text-[#0284C7] hover:underline">Sign In</Link>
           </div>
 
           {/* NNRG Branding & Copyright */}
-          <div className="flex flex-col text-center sm:text-right text-xs text-white/80 font-medium">
-            <span className="font-extrabold text-white">Built for NNRG College</span>
-            <span className="text-[11px] text-white/70">Nalla Narasimha Reddy Education Society's Group of Institutions</span>
-            <span className="text-[10px] text-white/50 mt-0.5">© 2026 NNRG College — All rights reserved</span>
+          <div className="flex flex-col text-center sm:text-right text-xs text-slate-700 font-medium">
+            <span className="font-bold text-slate-900">Built for NNRG College</span>
+            <span className="text-[11px] text-slate-600">Nalla Narasimha Reddy Education Society's Group of Institutions</span>
+            <span className="text-[10px] text-slate-500 mt-0.5">© 2026 NNRG College — All rights reserved</span>
           </div>
 
         </div>

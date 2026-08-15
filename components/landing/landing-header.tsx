@@ -44,12 +44,12 @@ export function LandingHeader() {
 
   return (
     <>
-      {/* 3px Fixed Scroll Progress Bar at very top */}
+      {/* 2.5px Fixed Scroll Progress Bar at top */}
       <div
-        className="fixed top-0 left-0 right-0 h-0.75 z-9999 pointer-events-none transition-[width] duration-150 ease-out"
+        className="fixed top-0 left-0 right-0 h-[2.5px] z-9999 pointer-events-none transition-[width] duration-150 ease-out"
         style={{
           width: `${scrollProgress}%`,
-          background: "linear-gradient(90deg, #1E3A8A 0%, #6D28D9 50%, #0EA5E9 100%)",
+          backgroundColor: "#1E3A8A",
         }}
       />
 
@@ -58,10 +58,10 @@ export function LandingHeader() {
         className="fixed top-0 left-0 right-0 w-full z-50 transition-all duration-300 translate-y-0"
       >
         <div
-          className={`w-full transition-all duration-300 ${
+          className={`w-full transition-all duration-300 bg-white ${
             isScrolled || mobileMenuOpen
-              ? "bg-white/90 backdrop-blur-xl border-b border-slate-200/80 shadow-md shadow-[#1E3A8A]/5"
-              : "bg-white/70 backdrop-blur-md border-b border-slate-200/60 shadow-xs"
+              ? "border-b border-slate-200/90 shadow-[0_4px_14px_-2px_rgba(15,23,42,0.07),0_2px_4px_-2px_rgba(15,23,42,0.04)]"
+              : "border-b border-slate-200/80 shadow-[0_1px_3px_0_rgba(15,23,42,0.05),0_1px_2px_-1px_rgba(15,23,42,0.03)]"
           }`}
         >
           <nav className="max-w-7xl mx-auto flex h-16 sm:h-18 items-center justify-between px-4 sm:px-6 md:px-8 w-full">
@@ -72,8 +72,8 @@ export function LandingHeader() {
                 <span className="text-base sm:text-lg font-extrabold tracking-tight text-[#111827] group-hover:text-[#1E3A8A] transition-colors">
                   Factor Attendance
                 </span>
-                <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-[#0EA5E9] uppercase flex items-center gap-1">
-                  <ShieldCheck className="size-3 text-[#0EA5E9]" /> NNRG Campus Security
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-wider text-[#0284C7] uppercase flex items-center gap-1">
+                  <ShieldCheck className="size-3 text-[#0284C7]" /> NNRG Campus Security
                 </span>
               </div>
             </Link>
@@ -83,21 +83,21 @@ export function LandingHeader() {
               <button
                 type="button"
                 onClick={() => scrollTo("hero")}
-                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full cursor-pointer"
+                className="relative py-1 transition-colors hover:text-[#1E3A8A] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#1E3A8A] after:transition-all hover:after:w-full cursor-pointer"
               >
                 Overview
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo("about")}
-                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full cursor-pointer"
+                className="relative py-1 transition-colors hover:text-[#1E3A8A] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#1E3A8A] after:transition-all hover:after:w-full cursor-pointer"
               >
                 About
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo("how-it-works")}
-                className="relative py-1 transition-colors hover:text-[#6D28D9] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#6D28D9] after:transition-all hover:after:w-full cursor-pointer"
+                className="relative py-1 transition-colors hover:text-[#1E3A8A] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-[#1E3A8A] after:transition-all hover:after:w-full cursor-pointer"
               >
                 Security
               </button>
@@ -108,11 +108,11 @@ export function LandingHeader() {
               <Button
                 asChild
                 size="sm"
-                className="h-9 sm:h-11 rounded-xl bg-linear-to-r from-[#1E3A8A] via-[#6D28D9] to-[#0EA5E9] px-4 sm:px-6 text-xs sm:text-sm font-bold text-white shadow-md shadow-[#1E3A8A]/20 transition-all duration-300 hover:shadow-xl hover:shadow-[#0EA5E9]/50 hover:scale-[1.04] active:scale-[0.98] group"
+                className="h-9 sm:h-10 rounded-xl bg-[#1E3A8A] hover:bg-[#1e40af] px-4 sm:px-5 text-xs sm:text-sm font-bold text-white shadow-xs border border-blue-900/20 transition-all duration-200 active:scale-[0.98] group"
               >
                 <Link href="/login" className="flex items-center gap-1.5 sm:gap-2">
                   <span>Sign In</span>
-                  <ArrowRight size={15} className="transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
               </Button>
 
@@ -136,7 +136,7 @@ export function LandingHeader() {
                 animate={{ opacity: 1, y: 0, height: "auto" }}
                 exit={{ opacity: 0, y: -10, height: 0 }}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                className="md:hidden overflow-hidden bg-white/95 backdrop-blur-xl border-t border-slate-200/80 shadow-2xl"
+                className="md:hidden overflow-hidden bg-white/98 backdrop-blur-md border-t border-slate-200 shadow-lg"
               >
                 <div className="flex flex-col gap-2.5 p-3.5 sm:p-4">
                   {/* Subtle Header/Divider Bar */}
@@ -144,7 +144,7 @@ export function LandingHeader() {
                     <span className="flex items-center gap-1.5 text-[#1E3A8A]">
                       <Compass size={13} className="text-[#0EA5E9]" /> NAVIGATION
                     </span>
-                    <span className="text-[10px] text-[#0EA5E9] font-sans font-bold bg-[#0EA5E9]/10 px-2 py-0.5 rounded-full border border-[#0EA5E9]/20">
+                    <span className="text-[10px] text-[#0284C7] font-sans font-bold bg-[#0EA5E9]/10 px-2 py-0.5 rounded-full border border-[#0EA5E9]/20">
                       NNRG CAMPUS
                     </span>
                   </div>
@@ -169,10 +169,10 @@ export function LandingHeader() {
                       }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => scrollTo("hero")}
-                      className="group flex items-center justify-between p-3 rounded-2xl bg-linear-to-r from-sky-50/90 via-white to-blue-50/60 border border-sky-200/80 shadow-2xs hover:border-sky-300 hover:shadow-xs transition-all duration-200 cursor-pointer text-left"
+                      className="group flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:border-slate-300 transition-all duration-200 cursor-pointer text-left"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-xl bg-[#0EA5E9]/10 text-[#0EA5E9] border border-[#0EA5E9]/20 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                        <div className="size-9 rounded-xl bg-sky-50 text-[#0284C7] border border-sky-200/80 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                           <LayoutDashboard size={18} />
                         </div>
                         <div className="flex flex-col">
@@ -184,7 +184,7 @@ export function LandingHeader() {
                           </span>
                         </div>
                       </div>
-                      <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#0EA5E9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#1E3A8A] group-hover:text-white transition-all shrink-0">
+                      <div className="size-7 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#1E3A8A] group-hover:text-white transition-all shrink-0">
                         <ChevronRight size={15} />
                       </div>
                     </motion.button>
@@ -199,10 +199,10 @@ export function LandingHeader() {
                       }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => scrollTo("about")}
-                      className="group flex items-center justify-between p-3 rounded-2xl bg-linear-to-r from-purple-50/90 via-white to-indigo-50/60 border border-purple-200/80 shadow-2xs hover:border-purple-300 hover:shadow-xs transition-all duration-200 cursor-pointer text-left"
+                      className="group flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:border-slate-300 transition-all duration-200 cursor-pointer text-left"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-xl bg-[#6D28D9]/10 text-[#6D28D9] border border-[#6D28D9]/20 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                        <div className="size-9 rounded-xl bg-purple-50 text-[#6D28D9] border border-purple-200/80 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                           <Building2 size={18} />
                         </div>
                         <div className="flex flex-col">
@@ -214,7 +214,7 @@ export function LandingHeader() {
                           </span>
                         </div>
                       </div>
-                      <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-[#6D28D9] flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#6D28D9] group-hover:text-white transition-all shrink-0">
+                      <div className="size-7 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-[#6D28D9] group-hover:text-white transition-all shrink-0">
                         <ChevronRight size={15} />
                       </div>
                     </motion.button>
@@ -229,10 +229,10 @@ export function LandingHeader() {
                       }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => scrollTo("how-it-works")}
-                      className="group flex items-center justify-between p-3 rounded-2xl bg-linear-to-r from-emerald-50/90 via-white to-teal-50/60 border border-emerald-200/80 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition-all duration-200 cursor-pointer text-left"
+                      className="group flex items-center justify-between p-3 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 shadow-2xs hover:border-slate-300 transition-all duration-200 cursor-pointer text-left"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                        <div className="size-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center font-bold shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                           <ShieldCheck size={18} />
                         </div>
                         <div className="flex flex-col">
@@ -244,7 +244,7 @@ export function LandingHeader() {
                           </span>
                         </div>
                       </div>
-                      <div className="size-7 rounded-xl bg-white border border-slate-200/80 text-emerald-600 flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
+                      <div className="size-7 rounded-xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center shadow-2xs group-hover:translate-x-1 group-hover:bg-emerald-600 group-hover:text-white transition-all shrink-0">
                         <ChevronRight size={15} />
                       </div>
                     </motion.button>
@@ -254,9 +254,6 @@ export function LandingHeader() {
             )}
           </AnimatePresence>
         </div>
-
-        {/* Curved Wave / Gradient Transition below Header */}
-        <div className="w-full h-3 bg-linear-to-b from-white/40 via-white/10 to-transparent pointer-events-none" />
       </header>
     </>
   )

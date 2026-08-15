@@ -40,24 +40,18 @@ export function NNRGAboutSection() {
     <section
       id="about"
       ref={sectionRef}
-      className="relative pt-4 sm:pt-5 pb-6 sm:pb-8 px-4 sm:px-6 md:px-8 bg-linear-to-b from-[#F9FAFB] via-[#F3F0FF]/40 to-[#F9FAFB] overflow-hidden scroll-mt-24"
+      className="relative pt-16 sm:pt-20 lg:pt-22 pb-6 sm:pb-8 px-4 sm:px-6 md:px-8 bg-[#F5F1E8] border-y border-[#E5E0D6] overflow-hidden scroll-mt-24"
     >
-      {/* Background Overlapping Blobs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 -left-20 size-72 rounded-full bg-[#6D28D9]/10 blur-3xl" />
-        <div className="absolute bottom-10 -right-20 size-80 rounded-full bg-[#0EA5E9]/10 blur-3xl" />
-      </div>
-
       <div className="relative z-10 mx-auto max-w-7xl">
 
         {/* Section Header */}
         <div className="text-center mb-7 sm:mb-9">
-          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-[#1E3A8A]/20 bg-[#1E3A8A]/10 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#1E3A8A]">
+          <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-blue-200/80 bg-blue-50/80 px-4 py-1.5 text-xs font-extrabold uppercase tracking-widest text-[#1E3A8A] shadow-2xs">
             <Building2 size={14} className="text-[#1E3A8A]" />
             🏛️ NNRG College Ecosystem
           </div>
           
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-wider text-[#1E3A8A]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-[#1E3A8A]">
             Built Exclusively for NNRG College
           </h2>
           <p className="mt-2 text-xs sm:text-sm font-bold text-[#6D28D9]">
@@ -77,33 +71,33 @@ export function NNRGAboutSection() {
             initial={{ opacity: 0, x: -30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6 }}
-            className="glass-card rounded-3xl p-5 sm:p-7 border border-white/80 flex flex-col justify-between h-full hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#1E3A8A]/25 transition-all duration-300 group"
+            className="glass-card rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs flex flex-col justify-between h-full hover:-translate-y-1 hover:shadow-md hover:border-slate-300 transition-all duration-300 group"
           >
             <div className="flex flex-col justify-between flex-1">
               <div>
                 {/* Header Badge & Title */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="size-13 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30 group-hover:scale-105 transition-transform">
+                    <div className="size-13 rounded-2xl bg-[#1E3A8A] text-white flex items-center justify-center shadow-md shadow-[#1E3A8A]/20 group-hover:scale-105 transition-transform">
                       <Laptop size={26} />
                     </div>
                     <div>
                       <h3 className="text-xl sm:text-2xl font-bold text-[#1E3A8A]">Web Portal (Next.js)</h3>
-                      <p className="text-xs font-bold text-[#0EA5E9]">For Teachers & Administrators</p>
+                      <p className="text-xs font-bold text-[#0284C7]">For Teachers & Administrators</p>
                     </div>
                   </div>
-                  <span className="hidden sm:inline-flex rounded-full bg-[#1E3A8A]/10 px-3 py-1 text-xs font-extrabold text-[#1E3A8A] border border-[#1E3A8A]/20">
+                  <span className="hidden sm:inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-[#1E3A8A] border border-blue-200/80">
                     Faculty Console
                   </span>
                 </div>
 
                 {/* Inner Animation Area for Web Portal (Faculty Live Console - Content Driven Height) */}
-                <div className="relative w-full rounded-2xl bg-linear-to-br from-[#F0F9FF] via-[#E0F2FE]/50 to-[#F8FAFC] p-3.5 sm:p-4 mb-5 overflow-hidden border border-blue-200/90 shadow-xs text-[#111827] flex flex-col justify-between space-y-3 flex-1">
+                <div className="relative w-full rounded-2xl bg-slate-50 p-3.5 sm:p-4 mb-5 overflow-hidden border border-slate-200/80 shadow-2xs text-[#111827] flex flex-col justify-between space-y-3 flex-1">
                   
                   {/* Header bar inside panel */}
-                  <div className="flex items-center justify-between border-b border-blue-200/80 pb-2.5 text-[11px] font-mono text-[#1E3A8A]">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5 text-[11px] font-mono text-[#1E3A8A]">
                     <span className="flex items-center gap-1.5 font-extrabold">
-                      <Activity size={13} className="text-[#0EA5E9] animate-pulse" /> FACULTY LIVE CONSOLE
+                      <Activity size={13} className="text-[#0284C7] animate-pulse" /> FACULTY LIVE CONSOLE
                     </span>
                     <span className="text-emerald-700 font-extrabold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
                       <span className="size-2 rounded-full bg-emerald-500 animate-pulse" /> ONLINE
@@ -114,9 +108,9 @@ export function NNRGAboutSection() {
                   <div className="space-y-2.5">
                     
                     {/* Active Class Highlight Box */}
-                    <div className="rounded-xl bg-white border border-blue-200/80 p-3.5 sm:p-4 shadow-2xs">
+                    <div className="rounded-xl bg-white border border-slate-200/80 p-3.5 sm:p-4 shadow-2xs">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-mono font-extrabold text-[#0EA5E9] uppercase tracking-wider">Current Period • Room 304</span>
+                        <span className="text-[10px] font-mono font-extrabold text-[#0284C7] uppercase tracking-wider">Current Period • Room 304</span>
                         <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-mono font-extrabold border border-emerald-200 flex items-center gap-1">
                           <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" /> LIVE SESSION
                         </span>
@@ -141,13 +135,13 @@ export function NNRGAboutSection() {
                         <motion.div
                           animate={{ width: `${(checkedInCount / 50) * 100}%` }}
                           transition={{ duration: 0.5, ease: "easeOut" }}
-                          className="h-full bg-linear-to-r from-[#0EA5E9] to-[#1E3A8A] rounded-full"
+                          className="h-full bg-[#1E3A8A] rounded-full"
                         />
                       </div>
                     </div>
 
                     {/* Today's Schedule Mini-Table */}
-                    <div className="rounded-xl bg-white/90 border border-blue-100 p-3 space-y-2 text-xs font-medium shadow-2xs">
+                    <div className="rounded-xl bg-white border border-slate-200/70 p-3 space-y-2 text-xs font-medium shadow-2xs">
                       <div className="text-[10px] font-mono font-extrabold text-slate-500 uppercase tracking-wider mb-0.5">Today's Faculty Schedule</div>
                       
                       <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-200/60 text-[11px]">
@@ -156,7 +150,7 @@ export function NNRGAboutSection() {
                         <span className="text-emerald-600 font-mono font-extrabold text-[10px]">✓ COMPLETED</span>
                       </div>
 
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-[#0EA5E9]/10 border border-[#0EA5E9]/30 text-[11px]">
+                      <div className="flex items-center justify-between p-2 rounded-lg bg-sky-50 border border-sky-200/60 text-[11px]">
                         <span className="font-mono text-[#1E3A8A] font-bold">10:00 AM</span>
                         <span className="font-extrabold text-[#111827]">Data Structures</span>
                         <span className="text-emerald-600 font-mono font-extrabold text-[10px] flex items-center gap-1">
@@ -174,7 +168,7 @@ export function NNRGAboutSection() {
                   </div>
 
                   {/* Footer Bar inside animation area */}
-                  <div className="flex items-center justify-between border-t border-blue-200/80 pt-2.5 mt-auto text-[10px] font-mono text-slate-500">
+                  <div className="flex items-center justify-between border-t border-slate-200/80 pt-2.5 mt-auto text-[10px] font-mono text-slate-500">
                     <span>Automated Class Roster</span>
                     <span className="text-[#1E3A8A] font-bold">NNRG CSE DEPT</span>
                   </div>
@@ -188,9 +182,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.05 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-sky-50/80 border border-sky-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-[#0EA5E9]/15 text-[#0EA5E9] flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-sky-50 text-[#0284C7] border border-sky-200/60 flex items-center justify-center shrink-0">
                     <QrCode size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Dynamic QR Generator</span>
@@ -200,9 +194,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-[#1E3A8A]/15 text-[#1E3A8A] flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-blue-50 text-[#1E3A8A] border border-blue-200/60 flex items-center justify-center shrink-0">
                     <MapPin size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Classroom Geofence Control</span>
@@ -212,9 +206,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.15 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center shrink-0">
                     <Activity size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Live Check-in Monitoring</span>
@@ -224,9 +218,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-[#6D28D9]/15 text-[#6D28D9] flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-purple-50 text-[#6D28D9] border border-purple-200/60 flex items-center justify-center shrink-0">
                     <BarChart3 size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Automated Reports</span>
@@ -247,14 +241,14 @@ export function NNRGAboutSection() {
             initial={{ opacity: 0, x: 30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
             transition={{ duration: 0.6, delay: 0.15 }}
-            className="glass-card rounded-3xl p-5 sm:p-7 border border-white/80 flex flex-col justify-between h-full hover:-translate-y-2 hover:shadow-2xl hover:shadow-[#6D28D9]/25 transition-all duration-300 group"
+            className="glass-card rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs flex flex-col justify-between h-full hover:-translate-y-1 hover:shadow-md hover:border-slate-300 transition-all duration-300 group"
           >
             <div className="flex flex-col justify-between flex-1">
               <div>
                 {/* Header Badge & Title */}
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="size-13 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-lg shadow-[#6D28D9]/30 group-hover:scale-105 transition-transform">
+                    <div className="size-13 rounded-2xl bg-[#6D28D9] text-white flex items-center justify-center shadow-md shadow-[#6D28D9]/20 group-hover:scale-105 transition-transform">
                       <Smartphone size={26} />
                     </div>
                     <div>
@@ -262,16 +256,16 @@ export function NNRGAboutSection() {
                       <p className="text-xs font-bold text-[#6D28D9]">For Students</p>
                     </div>
                   </div>
-                  <span className="hidden sm:inline-flex rounded-full bg-[#6D28D9]/10 px-3 py-1 text-xs font-extrabold text-[#6D28D9] border border-[#6D28D9]/20">
+                  <span className="hidden sm:inline-flex rounded-full bg-purple-50 px-3 py-1 text-xs font-extrabold text-[#6D28D9] border border-purple-200/80">
                     Student Mobile
                   </span>
                 </div>
 
-                {/* Inner Animation Area for Flutter Mobile App (Student Mobile Dashboard - LIGHT LAVENDER THEME) */}
-                <div className="relative w-full rounded-2xl bg-linear-to-br from-[#F5F3FF] via-[#EDE9FE]/50 to-[#F8FAFC] p-3 sm:p-3.5 mb-5 overflow-hidden border border-purple-200/90 shadow-xs text-[#111827] flex flex-col justify-between space-y-2.5 flex-1">
+                {/* Inner Animation Area for Flutter Mobile App (Student Mobile Dashboard) */}
+                <div className="relative w-full rounded-2xl bg-slate-50 p-3 sm:p-3.5 mb-5 overflow-hidden border border-slate-200/80 shadow-2xs text-[#111827] flex flex-col justify-between space-y-2.5 flex-1">
                   
                   {/* Header bar inside animation area */}
-                  <div className="flex items-center justify-between border-b border-purple-200/80 pb-2.5 text-[11px] font-mono text-[#6D28D9]">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2.5 text-[11px] font-mono text-[#6D28D9]">
                     <span className="flex items-center gap-1.5 font-extrabold">
                       <Smartphone size={13} className="text-[#6D28D9]" /> STUDENT DASHBOARD
                     </span>
@@ -284,7 +278,7 @@ export function NNRGAboutSection() {
                   <div className="space-y-2.5">
 
                     {/* Student Profile Header */}
-                    <div className="flex items-center justify-between p-4 sm:p-4.5 rounded-xl bg-white border border-purple-200/80 shadow-2xs">
+                    <div className="flex items-center justify-between p-4 sm:p-4.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                       <div>
                         <div className="text-sm font-extrabold text-[#111827] flex items-center gap-1.5">
                           Good Morning, Rahul 👋
@@ -299,18 +293,18 @@ export function NNRGAboutSection() {
                     </div>
 
                     {/* Overall Attendance Rate Metric */}
-                    <div className="rounded-xl bg-[#F4F5F7] border border-[#D9DEE7] p-3.5 sm:p-4 text-center relative overflow-hidden shadow-2xs">
-                      <div className="text-[10px] sm:text-[11px] font-mono font-extrabold text-slate-600 uppercase tracking-wider">Overall Semester Attendance</div>
+                    <div className="rounded-xl bg-white border border-slate-200/80 p-3.5 sm:p-4 text-center relative overflow-hidden shadow-2xs">
+                      <div className="text-[10px] sm:text-[11px] font-mono font-extrabold text-slate-500 uppercase tracking-wider">Overall Semester Attendance</div>
                       <div className="text-3xl sm:text-[32px] font-black font-mono my-0.5 tracking-tight flex items-center justify-center gap-1">
-                        <span className="bg-linear-to-r from-emerald-600 via-teal-600 to-[#0284C7] bg-clip-text text-transparent">92.4%</span>
+                        <span className="text-emerald-600 font-bold">92.4%</span>
                       </div>
-                      <div className="w-full bg-slate-200/80 rounded-full h-2 mt-2.5 overflow-hidden p-0.5 border border-slate-300/70">
-                        <div className="h-full bg-linear-to-r from-[#0EA5E9] via-teal-500 to-emerald-500 rounded-full w-[92.4%]" />
+                      <div className="w-full bg-slate-100 rounded-full h-2 mt-2.5 overflow-hidden p-0.5 border border-slate-200/80">
+                        <div className="h-full bg-emerald-500 rounded-full w-[92.4%]" />
                       </div>
                     </div>
 
                     {/* Today's Attendance Log */}
-                    <div className="rounded-xl bg-white border border-purple-100 p-2.5 space-y-1.5 text-xs font-medium shadow-2xs">
+                    <div className="rounded-xl bg-white border border-slate-200/70 p-2.5 space-y-1.5 text-xs font-medium shadow-2xs">
                       <div className="text-[10px] font-mono font-extrabold text-slate-500 uppercase tracking-wider mb-0.5">Today's Class Status</div>
                       
                       <div className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-50/70 border border-emerald-200/70 text-[11px]">
@@ -341,7 +335,7 @@ export function NNRGAboutSection() {
                   </div>
 
                   {/* Footer Bar inside animation area */}
-                  <div className="flex items-center justify-between border-t border-purple-200/80 pt-2.5 mt-auto text-[10px] font-mono text-slate-500">
+                  <div className="flex items-center justify-between border-t border-slate-200/80 pt-2.5 mt-auto text-[10px] font-mono text-slate-500">
                     <span>Recent: Present • Present • Present</span>
                     <span className="text-emerald-700 font-bold">100% VERIFIED</span>
                   </div>
@@ -355,9 +349,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.05 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50/80 border border-purple-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-[#6D28D9]/15 text-[#6D28D9] flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-purple-50 text-[#6D28D9] border border-purple-200/60 flex items-center justify-center shrink-0">
                     <ScanFace size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">AI Biometric Face Verification</span>
@@ -367,9 +361,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.1 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-cyan-50/80 border border-cyan-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-[#0EA5E9]/15 text-[#0EA5E9] flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-sky-50 text-[#0284C7] border border-sky-200/60 flex items-center justify-center shrink-0">
                     <QrCode size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Dynamic QR Code Scanning</span>
@@ -379,9 +373,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.15 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center shrink-0">
                     <Compass size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">GPS Geofence Verification</span>
@@ -391,9 +385,9 @@ export function NNRGAboutSection() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={isInView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.3, delay: 0.2 }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/70 shadow-2xs hover:shadow-xs transition-all duration-200 min-h-12"
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/90 border border-slate-200/80 shadow-2xs hover:bg-slate-100/90 transition-all duration-200 min-h-12"
                 >
-                  <div className="size-6.5 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                  <div className="size-6.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
                     <Zap size={14} />
                   </div>
                   <span className="text-[11px] sm:text-xs font-bold text-[#111827] leading-tight">Instant Attendance Marking</span>
@@ -412,17 +406,17 @@ export function NNRGAboutSection() {
         </div>
 
         {/* Section Footer */}
-        <div className="mx-auto max-w-275 w-full p-5 sm:p-6 rounded-3xl backdrop-blur-md bg-white/80 border border-white/90 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+        <div className="mx-auto max-w-275 w-full p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
-              <Zap size={22} />
+            <div className="size-10 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center font-bold">
+              <Zap size={20} />
             </div>
             <div>
               <span className="text-sm font-extrabold text-[#111827] block">⚡ Zero Proxy Attendance Guaranteed</span>
               <span className="text-xs font-medium text-slate-500">Multi-factor security ensures 100% genuine check-ins.</span>
             </div>
           </div>
-          <div className="px-4 py-2 rounded-2xl bg-[#1E3A8A]/10 border border-[#1E3A8A]/20 text-xs font-extrabold text-[#1E3A8A]">
+          <div className="px-4 py-2 rounded-xl bg-blue-50 border border-blue-200/80 text-xs font-extrabold text-[#1E3A8A]">
             500+ Students · 50+ Faculty · 100% Accuracy
           </div>
         </div>
