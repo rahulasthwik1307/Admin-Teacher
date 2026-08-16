@@ -352,45 +352,70 @@ export function AdminDashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       {/* 4 Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4 lg:gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="border-l-4 border-l-border overflow-hidden">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Skeleton className="size-10 rounded-xl shrink-0" />
-              <div className="flex flex-col gap-1.5 flex-1">
-                <Skeleton className="h-7 w-12" />
-                <Skeleton className="h-3.5 w-20" />
-              </div>
-            </CardContent>
-          </Card>
+          <div key={i} className="rounded-xl border border-border bg-card p-3.5 lg:p-4 shadow-2xs">
+            <div className="flex items-center justify-between mb-2.5">
+              <Skeleton className="size-8.5 rounded-lg shrink-0" />
+              <Skeleton className="h-4 w-12 rounded-md" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Skeleton className="h-7 w-14 rounded" />
+              <Skeleton className="h-3 w-20 rounded" />
+              <Skeleton className="h-2.5 w-24 rounded mt-0.5" />
+            </div>
+          </div>
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+      {/* Quick summary chips */}
+      <div className="flex flex-wrap gap-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-7 w-24 rounded-lg" />
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column: Teacher Activity Table */}
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-3 flex flex-row items-center gap-2">
-            <Skeleton className="size-8 rounded-lg shrink-0" />
-            <Skeleton className="h-4.5 w-36" />
+        <Card className="lg:col-span-2 overflow-hidden border-border">
+          <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Skeleton className="size-8 rounded-lg shrink-0" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+            </div>
+            <Skeleton className="h-5 w-16 rounded-full" />
           </CardHeader>
           <CardContent className="p-0">
             <div className="hidden sm:block">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-muted/20 text-left">
-                    <th className="px-5 py-2.5"><Skeleton className="h-3.5 w-20" /></th>
-                    <th className="px-5 py-2.5"><Skeleton className="h-3.5 w-28" /></th>
-                    <th className="px-5 py-2.5"><Skeleton className="h-3.5 w-24" /></th>
-                    <th className="px-5 py-2.5"><Skeleton className="h-3.5 w-16" /></th>
+                  <tr className="border-b border-border/60 bg-muted/20 text-left">
+                    <th className="px-5 py-2.5"><Skeleton className="h-3 w-16" /></th>
+                    <th className="px-5 py-2.5"><Skeleton className="h-3 w-20" /></th>
+                    <th className="px-5 py-2.5"><Skeleton className="h-3 w-20" /></th>
+                    <th className="px-5 py-2.5"><Skeleton className="h-3 w-16" /></th>
                   </tr>
                 </thead>
                 <tbody>
                   {[1, 2, 3, 4].map((i) => (
-                    <tr key={i} className="border-b border-border last:border-0">
-                      <td className="px-5 py-3.5"><div className="flex items-center gap-2.5"><Skeleton className="size-8 rounded-full shrink-0" /><Skeleton className="h-4 w-24" /></div></td>
-                      <td className="px-5 py-3.5"><Skeleton className="h-4 w-16" /></td>
-                      <td className="px-5 py-3.5 flex items-center gap-2"><Skeleton className="h-4 w-8" /><Skeleton className="h-1.5 w-20 rounded" /></td>
-                      <td className="px-5 py-3.5"><Skeleton className="h-4 w-24" /></td>
+                    <tr key={i} className="border-b border-border/50 last:border-0">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Skeleton className="size-8 rounded-full shrink-0" />
+                          <Skeleton className="h-3.5 w-24" />
+                        </div>
+                      </td>
+                      <td className="px-5 py-3"><Skeleton className="h-3 w-16" /></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-3 w-6" />
+                          <Skeleton className="h-1.5 w-20 rounded-full" />
+                        </div>
+                      </td>
+                      <td className="px-5 py-3"><Skeleton className="h-3 w-20" /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -400,21 +425,29 @@ export function AdminDashboardSkeleton() {
         </Card>
 
         {/* Right Column: System Status */}
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-4 flex flex-row items-center gap-2">
-            <Skeleton className="size-8 rounded-lg shrink-0" />
-            <Skeleton className="h-4.5 w-24" />
+        <Card className="h-full flex flex-col justify-between border-border">
+          <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-8 rounded-lg shrink-0" />
+              <div className="flex flex-col gap-1">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+            <Skeleton className="h-5 w-16 rounded-full" />
           </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="grid grid-cols-2 gap-3">
+          <CardContent className="p-3.5 flex-1">
+            <div className="grid grid-cols-2 gap-2.5 h-full">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex flex-col gap-2 rounded-xl border border-border p-4 bg-muted/10">
+                <div key={i} className="flex flex-col justify-between rounded-xl border border-border/70 p-3 bg-muted/10">
                   <div className="flex justify-between items-center">
-                    <Skeleton className="size-9 rounded-lg shrink-0" />
-                    <Skeleton className="size-2.5 rounded-full shrink-0" />
+                    <Skeleton className="size-7.5 rounded-lg shrink-0" />
+                    <Skeleton className="size-2 rounded-full shrink-0" />
                   </div>
-                  <Skeleton className="h-8 w-12 mt-2" />
-                  <Skeleton className="h-3.5 w-20" />
+                  <div className="mt-2 flex flex-col gap-1">
+                    <Skeleton className="h-6 w-12" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -423,21 +456,27 @@ export function AdminDashboardSkeleton() {
       </div>
 
       {/* Recent System Activity */}
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-center gap-2">
-          <Skeleton className="size-8 rounded-lg shrink-0" />
-          <Skeleton className="h-4.5 w-40" />
+      <Card className="border-border">
+        <CardHeader className="pb-3 border-b border-border/60 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="size-8 rounded-lg shrink-0" />
+            <div className="flex flex-col gap-1">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-56" />
+            </div>
+          </div>
+          <Skeleton className="h-5 w-16 rounded-full" />
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 relative">
-          <div className="absolute left-8 top-4 bottom-8 w-px bg-border" />
+        <CardContent className="p-4 sm:p-5 flex flex-col gap-4 relative">
+          <div className="absolute left-7.5 top-5 bottom-8 w-px bg-border" />
           {[1, 2, 3].map((i) => (
-            <div key={i} className="relative flex gap-4 pl-1">
-              <Skeleton className="size-8 rounded-full shrink-0 z-10" />
+            <div key={i} className="relative flex gap-3.5 pl-0.5">
+              <Skeleton className="size-7.5 rounded-lg shrink-0 z-10" />
               <div className="flex-1 flex flex-col gap-1.5 pt-0.5">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-4.5 w-1/2" />
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3.5 w-1/2" />
               </div>
-              <Skeleton className="h-3 w-14 shrink-0 self-start mt-1.5" />
+              <Skeleton className="h-3 w-14 shrink-0 self-start mt-1" />
             </div>
           ))}
         </CardContent>

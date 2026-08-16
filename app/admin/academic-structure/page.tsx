@@ -38,6 +38,8 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
+import { motion, AnimatePresence } from "framer-motion"
+
 /* ---------- Interfaces ---------- */
 interface Department { id: string; name: string; code: string; classes: number; subjects: number }
 interface ClassItem { id: string; name: string; section: string; department: string; departmentFull: string; displayName: string }
@@ -52,20 +54,20 @@ function computeDuration(start: string, end: string): string {
 }
 
 const DEPT_COLORS = [
-  { border: "border-l-primary", bg: "bg-primary/10", text: "text-primary", badge: "bg-primary/10 text-primary border-primary/20" },
-  { border: "border-l-emerald-500", bg: "bg-emerald-500/10", text: "text-emerald-700", badge: "bg-emerald-500/10 text-emerald-700 border-emerald-200" },
-  { border: "border-l-amber-500", bg: "bg-amber-500/10", text: "text-amber-700", badge: "bg-amber-500/10 text-amber-700 border-amber-200" },
-  { border: "border-l-violet-500", bg: "bg-violet-500/10", text: "text-violet-700", badge: "bg-violet-500/10 text-violet-700 border-violet-200" },
-  { border: "border-l-rose-500", bg: "bg-rose-500/10", text: "text-rose-700", badge: "bg-rose-500/10 text-rose-700 border-rose-200" },
+  { border: "border-sky-200/80 dark:border-sky-900/50", bg: "bg-sky-500/10", text: "text-sky-700 dark:text-sky-300", badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200/70 dark:border-sky-800/60" },
+  { border: "border-emerald-200/80 dark:border-emerald-900/50", bg: "bg-emerald-500/10", text: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/60" },
+  { border: "border-amber-200/80 dark:border-amber-900/50", bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-300", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200/70 dark:border-amber-800/60" },
+  { border: "border-violet-200/80 dark:border-violet-900/50", bg: "bg-violet-500/10", text: "text-violet-700 dark:text-violet-300", badge: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200/70 dark:border-violet-800/60" },
+  { border: "border-rose-200/80 dark:border-rose-900/50", bg: "bg-rose-500/10", text: "text-rose-700 dark:text-rose-300", badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/60" },
 ]
 
-const PERIOD_COLORS = [
-  "bg-primary/10 border-primary/30 text-primary",
-  "bg-emerald-500/10 border-emerald-300 text-emerald-700",
-  "bg-amber-500/10 border-amber-300 text-amber-700",
-  "bg-violet-500/10 border-violet-300 text-violet-700",
-  "bg-rose-500/10 border-rose-300 text-rose-700",
-  "bg-sky-500/10 border-sky-300 text-sky-700",
+const PERIOD_THEMES = [
+  { border: "border-sky-300/80 dark:border-sky-800/60", bg: "bg-sky-500/8 dark:bg-sky-950/20", chip: "bg-sky-500/15 text-sky-700 dark:text-sky-300", text: "text-sky-700 dark:text-sky-300" },
+  { border: "border-emerald-300/80 dark:border-emerald-800/60", bg: "bg-emerald-500/8 dark:bg-emerald-950/20", chip: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", text: "text-emerald-700 dark:text-emerald-300" },
+  { border: "border-amber-300/80 dark:border-amber-800/60", bg: "bg-amber-500/8 dark:bg-amber-950/20", chip: "bg-amber-500/15 text-amber-700 dark:text-amber-300", text: "text-amber-700 dark:text-amber-300" },
+  { border: "border-violet-300/80 dark:border-violet-800/60", bg: "bg-violet-500/8 dark:bg-violet-950/20", chip: "bg-violet-500/15 text-violet-700 dark:text-violet-300", text: "text-violet-700 dark:text-violet-300" },
+  { border: "border-rose-300/80 dark:border-rose-800/60", bg: "bg-rose-500/8 dark:bg-rose-950/20", chip: "bg-rose-500/15 text-rose-700 dark:text-rose-300", text: "text-rose-700 dark:text-rose-300" },
+  { border: "border-cyan-300/80 dark:border-cyan-800/60", bg: "bg-cyan-500/8 dark:bg-cyan-950/20", chip: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300", text: "text-cyan-700 dark:text-cyan-300" },
 ]
 
 function getDeptColor(index: number) {
@@ -217,17 +219,89 @@ export default function AcademicStructurePage() {
 
   /* ---------- Tab config ---------- */
   const tabConfig = [
-    { id: "departments" as Tab, label: "Departments", icon: Building2, count: departments.length, loading: loadingDepts },
-    { id: "classes" as Tab, label: "Classes", icon: GraduationCap, count: classes.length, loading: loadingClasses },
-    { id: "subjects" as Tab, label: "Subjects", icon: BookOpen, count: subjects.length, loading: loadingSubjects },
-    { id: "periods" as Tab, label: "Periods", icon: Clock, count: periods.length, loading: loadingPeriods },
+    {
+      id: "departments" as Tab,
+      label: "Departments",
+      icon: Building2,
+      count: departments.length,
+      loading: loadingDepts,
+      themeColor: "text-sky-600 dark:text-sky-400",
+      activeBg: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-300/80 dark:border-sky-800",
+      badgeActive: "bg-sky-600 text-white",
+    },
+    {
+      id: "classes" as Tab,
+      label: "Classes",
+      icon: GraduationCap,
+      count: classes.length,
+      loading: loadingClasses,
+      themeColor: "text-emerald-600 dark:text-emerald-400",
+      activeBg: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300/80 dark:border-emerald-800",
+      badgeActive: "bg-emerald-600 text-white",
+    },
+    {
+      id: "subjects" as Tab,
+      label: "Subjects",
+      icon: BookOpen,
+      count: subjects.length,
+      loading: loadingSubjects,
+      themeColor: "text-amber-600 dark:text-amber-400",
+      activeBg: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300/80 dark:border-amber-800",
+      badgeActive: "bg-amber-600 text-white",
+    },
+    {
+      id: "periods" as Tab,
+      label: "Periods",
+      icon: Clock,
+      count: periods.length,
+      loading: loadingPeriods,
+      themeColor: "text-violet-600 dark:text-violet-400",
+      activeBg: "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-300/80 dark:border-violet-800",
+      badgeActive: "bg-violet-600 text-white",
+    },
   ]
 
   const statCards = [
-    { label: "Departments", value: departments.length, icon: Building2, color: "border-l-primary", iconColor: "bg-primary/10 text-primary" },
-    { label: "Classes", value: classes.length, icon: GraduationCap, color: "border-l-emerald-500", iconColor: "bg-emerald-500/10 text-emerald-600" },
-    { label: "Subjects", value: subjects.length, icon: BookOpen, color: "border-l-amber-500", iconColor: "bg-amber-500/10 text-amber-600" },
-    { label: "Periods", value: periods.length, icon: Clock, color: "border-l-violet-500", iconColor: "bg-violet-500/10 text-violet-600" },
+    {
+      label: "Departments",
+      value: departments.length,
+      icon: Building2,
+      accent: "border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card hover:border-sky-300 dark:border-sky-900/50 dark:from-sky-950/20",
+      iconColor: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+      tag: "Academic Units",
+      tagColor: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+      trend: "Faculty departments",
+    },
+    {
+      label: "Classes",
+      value: classes.length,
+      icon: GraduationCap,
+      accent: "border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/20",
+      iconColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      tag: "Sections",
+      tagColor: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      trend: "Active student cohorts",
+    },
+    {
+      label: "Subjects",
+      value: subjects.length,
+      icon: BookOpen,
+      accent: "border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/20",
+      iconColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      tag: "Curriculum",
+      tagColor: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      trend: "Course catalogue",
+    },
+    {
+      label: "Periods",
+      value: periods.length,
+      icon: Clock,
+      accent: "border-violet-200/80 bg-linear-to-b from-violet-500/5 via-card to-card hover:border-violet-300 dark:border-violet-900/50 dark:from-violet-950/20",
+      iconColor: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+      tag: "Schedule",
+      tagColor: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+      trend: "Daily timetable slots",
+    },
   ]
 
   const addActions: Record<Tab, () => void> = {
@@ -246,316 +320,466 @@ export default function AcademicStructurePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* ── Stat Cards (Tighter, Differentiated Layout) ── */}
+      <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4 lg:gap-4">
         {statCards.map(s => (
-          <Card key={s.label} className={`border-l-4 ${s.color} transition-shadow hover:shadow-md`}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${s.iconColor}`}>
-                <s.icon className="size-5" />
+          <div
+            key={s.label}
+            className={`group relative overflow-hidden rounded-xl border p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${s.accent}`}
+          >
+            <div className="flex items-center justify-between mb-2.5">
+              <div className={`flex size-8.5 items-center justify-center rounded-lg ${s.iconColor}`}>
+                <s.icon className="size-4.5" />
               </div>
-              <div>
-                <div className="text-3xl font-bold text-foreground leading-tight">{s.value}</div>
-                <div className="text-sm text-muted-foreground">{s.label}</div>
+              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${s.tagColor}`}>
+                {s.tag}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <div className="text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground leading-none">
+                {s.value}
               </div>
-            </CardContent>
-          </Card>
+              <div className="text-xs font-semibold text-foreground/80 mt-1">{s.label}</div>
+              <div className="text-[11px] text-muted-foreground truncate">{s.trend}</div>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* ── Premium Tab Bar ── */}
+      {/* ── Polished Tab Bar & Actions ── */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          {/* Segmented pill tabs */}
-          <div className="inline-flex gap-1 rounded-xl bg-muted/60 p-1">
-            {tabConfig.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-base font-medium transition-all ${
-                  activeTab === tab.id
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <tab.icon className="size-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  activeTab === tab.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                }`}>
-                  {tab.loading ? "—" : tab.count}
-                </span>
-              </button>
-            ))}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Segmented pill tabs with clear active state */}
+          <div className="inline-flex flex-wrap gap-1 rounded-xl bg-muted/60 p-1 border border-border/60">
+            {tabConfig.map(tab => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-150 cursor-pointer select-none ${
+                    isActive
+                      ? "bg-card text-foreground shadow-2xs ring-1 ring-border"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeAcademicTabPill"
+                      className="absolute inset-0 rounded-lg bg-card shadow-xs ring-1 ring-border/80"
+                      transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2">
+                    <tab.icon className={`size-3.5 ${isActive ? tab.themeColor : "text-muted-foreground"}`} />
+                    <span>{tab.label}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold min-w-4.5 text-center transition-colors ${
+                        isActive
+                          ? tab.badgeActive
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {tab.loading ? "—" : tab.count}
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
-          <Button onClick={addActions[activeTab]} size="sm" className="gap-2">
+
+          <Button
+            onClick={addActions[activeTab]}
+            size="sm"
+            className="gap-2 rounded-xl h-9.5 px-4 font-semibold shadow-2xs hover:shadow transition-all self-start sm:self-auto cursor-pointer"
+          >
             <Plus className="size-4" />
             <span className="hidden sm:inline">{addLabels[activeTab]}</span>
             <span className="sm:hidden">Add</span>
           </Button>
         </div>
 
-        {/* ── Departments Tab ── */}
-        {activeTab === "departments" && (
-          <div className="flex flex-col gap-3">
-            {loadingDepts ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map(i => (
-                  <Card key={i}>
-                    <CardContent className="p-5 flex flex-col gap-3">
-                      <Skeleton className="h-5 w-40" />
-                      <Skeleton className="h-3 w-16" />
-                      <div className="h-px bg-border my-2" />
-                      <div className="flex gap-4">
-                        <Skeleton className="h-4 w-12" />
+        {/* ── Tab Content Area with Smooth Animation ── */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+            {/* ── Departments Tab ── */}
+            {activeTab === "departments" && (
+              <div className="flex flex-col gap-3">
+                {loadingDepts ? (
+                  <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map(i => (
+                      <Card key={i} className="border-border">
+                        <CardContent className="p-4.5 flex flex-col gap-3">
+                          <Skeleton className="h-5 w-40" />
+                          <Skeleton className="h-3 w-16" />
+                          <div className="h-px bg-border my-1" />
+                          <div className="flex gap-4">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-4 w-16" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : departments.length === 0 ? (
+                  <Card className="border-border">
+                    <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                      No departments configured yet.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {departments.map((d, i) => {
+                      const color = getDeptColor(i)
+                      return (
+                        <div
+                          key={d.id}
+                          className={`group relative overflow-hidden rounded-xl border ${color.border} bg-card p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-3.5">
+                            <div className="flex flex-col min-w-0">
+                              <div className="text-base font-bold text-foreground leading-snug truncate">
+                                {d.name}
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className={`mt-1.5 w-fit text-xs font-mono font-bold tracking-wide ${color.badge}`}
+                              >
+                                {d.code}
+                              </Badge>
+                            </div>
+                            <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${color.bg} ${color.border}`}>
+                              <Building2 className={`size-4.5 ${color.text}`} />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-border/70">
+                            <div className="flex items-center gap-2 rounded-lg bg-muted/40 p-2 text-xs text-muted-foreground border border-border/40">
+                              <GraduationCap className="size-3.5 text-primary shrink-0" />
+                              <span className="truncate">
+                                <span className="font-bold text-foreground">{d.classes}</span> Classes
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-lg bg-muted/40 p-2 text-xs text-muted-foreground border border-border/40">
+                              <BookOpen className="size-3.5 text-amber-500 shrink-0" />
+                              <span className="truncate">
+                                <span className="font-bold text-foreground">{d.subjects}</span> Subjects
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Classes Tab ── */}
+            {activeTab === "classes" && (
+              <div className="flex flex-col gap-3.5">
+                {loadingClasses ? (
+                  <div className="flex flex-col gap-3">
+                    {[1, 2].map(i => (
+                      <Card key={i} className="border-border">
+                        <CardContent className="p-4.5 flex flex-col gap-3">
+                          <Skeleton className="h-4 w-40" />
+                          <div className="grid grid-cols-3 gap-3 mt-2">
+                            <Skeleton className="h-12 rounded-xl" />
+                            <Skeleton className="h-12 rounded-xl" />
+                            <Skeleton className="h-12 rounded-xl" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : classes.length === 0 ? (
+                  <Card className="border-border">
+                    <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                      No classes configured yet.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col gap-3.5">
+                    {classesByDept.map(([dept, deptClasses], gi) => {
+                      const color = getDeptColor(gi)
+                      const isCollapsed = collapsedGroups.has(dept)
+                      return (
+                        <Card key={dept} className="overflow-hidden border-border shadow-2xs">
+                          {/* Collapsible Department Header */}
+                          <button
+                            onClick={() => toggleGroup(dept)}
+                            className="flex w-full items-center justify-between bg-muted/30 px-5 py-3.5 text-left hover:bg-muted/50 transition-colors border-b border-border/70 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`flex size-7.5 items-center justify-center rounded-lg border ${color.bg} ${color.border}`}>
+                                <Building2 className={`size-3.5 ${color.text}`} />
+                              </div>
+                              <span className="text-sm font-bold text-foreground">{dept}</span>
+                              <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5">
+                                {deptClasses.length} class{deptClasses.length !== 1 ? "es" : ""}
+                              </Badge>
+                            </div>
+                            {isCollapsed ? (
+                              <ChevronRight className="size-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="size-4 text-muted-foreground" />
+                            )}
+                          </button>
+
+                          {/* Distinct Individual Class Cards */}
+                          {!isCollapsed && (
+                            <div className="p-4 bg-muted/10">
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {deptClasses.map((c) => (
+                                  <div
+                                    key={c.id}
+                                    className="group relative flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 shadow-2xs hover:border-emerald-500/40 hover:shadow-sm transition-all duration-150"
+                                  >
+                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl font-black text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                                      {c.section}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="font-bold text-sm text-foreground truncate">
+                                        {c.displayName}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                                        <span>Section {c.section}</span>
+                                        <span className="text-muted-foreground/50">•</span>
+                                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Active Class</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Subjects Tab ── */}
+            {activeTab === "subjects" && (
+              <div className="flex flex-col gap-3.5">
+                {loadingSubjects ? (
+                  <div className="flex flex-col gap-3">
+                    {[1, 2].map(i => (
+                      <Card key={i} className="border-border">
+                        <CardContent className="p-4.5 flex flex-col gap-3">
+                          <Skeleton className="h-4 w-40" />
+                          <div className="grid grid-cols-2 gap-3 mt-2">
+                            <Skeleton className="h-12 rounded-xl" />
+                            <Skeleton className="h-12 rounded-xl" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : subjects.length === 0 ? (
+                  <Card className="border-border">
+                    <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                      No subjects configured yet.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col gap-3.5">
+                    {subjectsByDept.map(([dept, deptSubjects], gi) => {
+                      const color = getDeptColor(gi)
+                      const isCollapsed = collapsedGroups.has(`subj-${dept}`)
+                      return (
+                        <Card key={dept} className="overflow-hidden border-border shadow-2xs">
+                          {/* Collapsible Department Header */}
+                          <button
+                            onClick={() => toggleGroup(`subj-${dept}`)}
+                            className="flex w-full items-center justify-between bg-muted/30 px-5 py-3.5 text-left hover:bg-muted/50 transition-colors border-b border-border/70 cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`flex size-7.5 items-center justify-center rounded-lg border ${color.bg} ${color.border}`}>
+                                <BookOpen className={`size-3.5 ${color.text}`} />
+                              </div>
+                              <span className="text-sm font-bold text-foreground">{dept}</span>
+                              <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5">
+                                {deptSubjects.length} subject{deptSubjects.length !== 1 ? "s" : ""}
+                              </Badge>
+                            </div>
+                            {isCollapsed ? (
+                              <ChevronRight className="size-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="size-4 text-muted-foreground" />
+                            )}
+                          </button>
+
+                          {/* Distinct Individual Subject Cards */}
+                          {!isCollapsed && (
+                            <div className="p-4 bg-muted/10">
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                {deptSubjects.map((s) => (
+                                  <div
+                                    key={s.id}
+                                    className="group relative flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3.5 shadow-2xs hover:border-amber-500/40 hover:shadow-sm transition-all duration-150"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20">
+                                        <BookOpen className="size-4" />
+                                      </div>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="font-bold text-sm text-foreground truncate">
+                                          {s.name}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground truncate">
+                                          {dept}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <Badge
+                                      variant="outline"
+                                      className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-300/70 dark:border-amber-800/60 shrink-0"
+                                    >
+                                      {s.code}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Periods Tab (Elevated Timeline Cards & Clean Reference) ── */}
+            {activeTab === "periods" && (
+              <div className="flex flex-col gap-5">
+                {loadingPeriods ? (
+                  <div className="flex gap-3.5 overflow-x-auto pb-2">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="shrink-0 h-32 w-44 rounded-xl border border-border p-4 flex flex-col justify-between bg-card shadow-2xs">
+                        <div className="flex justify-between items-center">
+                          <Skeleton className="h-3 w-12" />
+                          <Skeleton className="h-4 w-6 rounded-full" />
+                        </div>
+                        <Skeleton className="h-5 w-24" />
                         <Skeleton className="h-4 w-16" />
                       </div>
+                    ))}
+                  </div>
+                ) : periods.length === 0 ? (
+                  <Card className="border-border">
+                    <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                      No periods configured yet.
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            ) : departments.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No departments yet.</CardContent></Card>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {departments.map((d, i) => {
-                  const color = getDeptColor(i)
-                  return (
-                    <Card key={d.id} className={`border-l-4 ${color.border} transition-shadow hover:shadow-md`}>
-                      <CardContent className="p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <div className="text-lg font-semibold text-foreground leading-snug">{d.name}</div>
-                            <Badge variant="outline" className={`mt-1 text-sm font-mono ${color.badge}`}>{d.code}</Badge>
-                          </div>
-                          <div className={`flex size-9 items-center justify-center rounded-xl ${color.bg}`}>
-                            <Building2 className={`size-4 ${color.text}`} />
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border">
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <GraduationCap className="size-3.5" />
-                            <span><span className="text-sm font-semibold text-foreground">{d.classes}</span> Classes</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                            <BookOpen className="size-3.5" />
-                            <span><span className="text-sm font-semibold text-foreground">{d.subjects}</span> Subjects</span>
-                          </div>
-                        </div>
+                ) : (
+                  <>
+                    {/* Elevated Horizontal Timeline Cards */}
+                    <div className="flex flex-col gap-2">
+                      <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1 flex items-center gap-2">
+                        <Clock className="size-3.5 text-violet-600" />
+                        <span>Daily Period Sequence</span>
+                      </div>
+                      <div className="flex gap-3.5 overflow-x-auto pb-3 pt-1">
+                        {periods.map((p, i) => {
+                          const theme = PERIOD_THEMES[i % PERIOD_THEMES.length]
+                          return (
+                            <div
+                              key={p.id}
+                              className={`group shrink-0 rounded-xl border p-4 w-44 flex flex-col justify-between gap-3 transition-all duration-200 hover:-translate-y-1 hover:shadow-md shadow-2xs ${theme.bg} ${theme.border}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className={`text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border shadow-2xs ${theme.chip}`}>
+                                  Slot {p.number}
+                                </span>
+                                <Clock className={`size-4 opacity-70 ${theme.text}`} />
+                              </div>
+
+                              <div className="flex flex-col gap-0.5">
+                                <div className="text-base font-extrabold font-mono text-foreground leading-tight">
+                                  {p.start}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground font-medium">to</div>
+                                <div className="text-base font-extrabold font-mono text-foreground leading-tight">
+                                  {p.end}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs">
+                                <span className="text-[11px] text-muted-foreground">Duration</span>
+                                <span className={`font-bold font-mono ${theme.text}`}>
+                                  {p.duration}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Clean Complementary Reference Schedule */}
+                    <Card className="border-border shadow-2xs overflow-hidden">
+                      <div className="border-b border-border/60 bg-muted/20 px-5 py-3 flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                          Slot Schedule Reference Table
+                        </span>
+                        <Badge variant="outline" className="text-[11px] font-medium text-muted-foreground">
+                          {periods.length} Total Slots
+                        </Badge>
+                      </div>
+                      <CardContent className="p-0">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border/50 text-left bg-muted/10">
+                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Period</th>
+                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Start Time</th>
+                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">End Time</th>
+                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">Duration</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {periods.map((p, i) => {
+                              const theme = PERIOD_THEMES[i % PERIOD_THEMES.length]
+                              return (
+                                <tr key={p.id} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className={`size-6 rounded-full flex items-center justify-center text-[10px] font-bold border shadow-2xs ${theme.chip}`}>
+                                        {p.number}
+                                      </div>
+                                      <span className="text-xs font-bold text-foreground">Period {p.number}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3 font-mono text-xs font-semibold text-foreground">{p.start}</td>
+                                  <td className="px-5 py-3 font-mono text-xs font-semibold text-foreground">{p.end}</td>
+                                  <td className="px-5 py-3 text-right">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md font-mono text-xs font-bold ${theme.chip}`}>
+                                      {p.duration}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
                       </CardContent>
                     </Card>
-                  )
-                })}
+                  </>
+                )}
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── Classes Tab ── */}
-        {activeTab === "classes" && (
-          <div className="flex flex-col gap-3">
-            {loadingClasses ? (
-              <div className="flex flex-col gap-3">
-                {[1, 2].map(i => (
-                  <Card key={i}>
-                    <CardContent className="p-5 flex flex-col gap-3">
-                      <Skeleton className="h-4 w-40" />
-                      <div className="flex items-center gap-4 mt-2">
-                        <Skeleton className="h-3.5 w-12" />
-                        <Skeleton className="h-3.5 w-20" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : classes.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No classes yet.</CardContent></Card>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {classesByDept.map(([dept, deptClasses], gi) => {
-                  const color = getDeptColor(gi)
-                  const isCollapsed = collapsedGroups.has(dept)
-                  return (
-                    <Card key={dept} className="overflow-hidden">
-                      <button
-                        onClick={() => toggleGroup(dept)}
-                        className="flex w-full items-center justify-between bg-muted/40 px-5 py-3 text-left hover:bg-muted/60 transition-colors border-b border-border"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`flex size-7 items-center justify-center rounded-md ${color.bg}`}>
-                            <Building2 className={`size-3.5 ${color.text}`} />
-                          </div>
-                          <span className="text-base font-semibold text-foreground">{dept}</span>
-                          <Badge variant="secondary" className="text-sm">{deptClasses.length} class{deptClasses.length !== 1 ? "es" : ""}</Badge>
-                        </div>
-                        {isCollapsed ? <ChevronRight className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
-                      </button>
-                      {!isCollapsed && (
-                        <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-3">
-                          {deptClasses.map((c, ci) => (
-                            <div key={c.id} className={`flex items-center gap-3 px-5 py-3.5 ${ci !== 0 ? "border-t border-border sm:border-l" : ""} hover:bg-muted/20 transition-colors`}>
-                              <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${color.bg} ${color.text}`}>
-                                {c.section}
-                              </div>
-                              <div>
-                                <div className="font-semibold text-base text-foreground">{c.displayName}</div>
-                                <div className="text-sm text-muted-foreground">Section {c.section}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Subjects Tab ── */}
-        {activeTab === "subjects" && (
-          <div className="flex flex-col gap-3">
-            {loadingSubjects ? (
-              <div className="flex flex-col gap-3">
-                {[1, 2].map(i => (
-                  <Card key={i}>
-                    <CardContent className="p-5 flex flex-col gap-3">
-                      <Skeleton className="h-4 w-40" />
-                      <div className="flex items-center gap-4 mt-2">
-                        <Skeleton className="h-3.5 w-16" />
-                        <Skeleton className="h-3.5 w-12" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : subjects.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No subjects yet.</CardContent></Card>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {subjectsByDept.map(([dept, deptSubjects], gi) => {
-                  const color = getDeptColor(gi)
-                  const isCollapsed = collapsedGroups.has(`subj-${dept}`)
-                  return (
-                    <Card key={dept} className="overflow-hidden">
-                      <button
-                        onClick={() => toggleGroup(`subj-${dept}`)}
-                        className="flex w-full items-center justify-between bg-muted/40 px-5 py-3 text-left hover:bg-muted/60 transition-colors border-b border-border"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`flex size-7 items-center justify-center rounded-md ${color.bg}`}>
-                            <BookOpen className={`size-3.5 ${color.text}`} />
-                          </div>
-                          <span className="text-base font-semibold text-foreground">{dept}</span>
-                          <Badge variant="secondary" className="text-sm">{deptSubjects.length} subject{deptSubjects.length !== 1 ? "s" : ""}</Badge>
-                        </div>
-                        {isCollapsed ? <ChevronRight className="size-4 text-muted-foreground" /> : <ChevronDown className="size-4 text-muted-foreground" />}
-                      </button>
-                      {!isCollapsed && (
-                        <div className="flex flex-col">
-                          {deptSubjects.map((s, si) => (
-                            <div key={s.id} className={`flex items-center justify-between px-5 py-3.5 ${si !== 0 ? "border-t border-border" : ""} hover:bg-muted/20 transition-colors`}>
-                              <div className="flex items-center gap-3">
-                                <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${color.bg}`}>
-                                  <BookOpen className={`size-3.5 ${color.text}`} />
-                                </div>
-                                <span className="font-medium text-base text-foreground">{s.name}</span>
-                              </div>
-                              <Badge variant="outline" className={`font-mono text-sm ${color.badge}`}>{s.code}</Badge>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── Periods Tab ── */}
-        {activeTab === "periods" && (
-          <div className="flex flex-col gap-4">
-            {loadingPeriods ? (
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="shrink-0 h-28 w-36 rounded-xl border border-border p-4 flex flex-col justify-between bg-card">
-                    <div className="flex justify-between items-center">
-                      <Skeleton className="h-3 w-10" />
-                      <Skeleton className="h-4 w-6" />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <Skeleton className="h-3.5 w-12" />
-                      <Skeleton className="h-3.5 w-14" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : periods.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No periods configured yet.</CardContent></Card>
-            ) : (
-              <>
-                {/* Timeline cards */}
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {periods.map((p, i) => {
-                    const colorClass = PERIOD_COLORS[i % PERIOD_COLORS.length]
-                    return (
-                      <div
-                        key={p.id}
-                        className={`shrink-0 rounded-xl border-2 p-4 w-36 flex flex-col gap-2 transition-shadow hover:shadow-md ${colorClass}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-wide opacity-70">Period</span>
-                          <span className="text-lg font-black">{p.number}</span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-sm font-bold">{p.start}</span>
-                          <div className="h-px bg-current opacity-20" />
-                          <span className="text-sm font-semibold">{p.end}</span>
-                        </div>
-                        <div className="text-[11px] font-semibold opacity-60">{p.duration}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-                {/* Also show as clean table for detail */}
-                <Card>
-                  <CardContent className="p-0">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-left">
-                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Period</th>
-                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Start</th>
-                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">End</th>
-                          <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Duration</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {periods.map((p, i) => (
-                          <tr key={p.id} className="border-t border-border hover:bg-muted/20 transition-colors">
-                            <td className="px-5 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className={`size-6 rounded-full flex items-center justify-center text-[10px] font-bold border ${PERIOD_COLORS[i % PERIOD_COLORS.length]}`}>
-                                  {p.number}
-                                </div>
-                                <span className="text-base font-medium text-foreground">Period {p.number}</span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-3 font-mono text-base text-foreground">{p.start}</td>
-                            <td className="px-5 py-3 font-mono text-base text-foreground">{p.end}</td>
-                            <td className="px-5 py-3 text-base text-muted-foreground">{p.duration}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-          </div>
-        )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* ── Add Department Dialog ── */}

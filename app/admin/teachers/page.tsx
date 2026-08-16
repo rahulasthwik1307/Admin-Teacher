@@ -492,24 +492,24 @@ export default function TeacherManagementPage() {
       {/* ── Search & Filter Bar ── */}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by name or teacher ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-9"
+            className="h-10 rounded-xl pl-9.5 pr-9 bg-card border-border shadow-2xs hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-sm"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-0.5 rounded"
             >
               <X className="size-4" />
             </button>
           )}
         </div>
         <Select value={selectedDeptFilter} onValueChange={setSelectedDeptFilter}>
-          <SelectTrigger className="w-full sm:w-72">
+          <SelectTrigger className="w-full sm:w-72 h-10 rounded-xl border-border bg-card shadow-2xs hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-sm font-medium">
             <div className="flex items-center gap-2 overflow-hidden w-full">
               <Building2 className="size-4 shrink-0 text-muted-foreground" />
               <span className="truncate flex-1 text-left">
@@ -824,23 +824,30 @@ export default function TeacherManagementPage() {
 
       {/* ── Add Teacher Sheet ── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Add Teacher</SheetTitle>
-            <SheetDescription>
-              Create a new teacher account. A default password will be assigned automatically.
-            </SheetDescription>
+        <SheetContent className="overflow-y-auto sm:max-w-md p-0 flex flex-col gap-0 border-l border-border bg-background">
+          <SheetHeader className="p-6 border-b border-border/80 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Plus className="size-5" />
+              </div>
+              <div className="flex flex-col">
+                <SheetTitle className="text-base font-bold text-foreground">Add New Teacher</SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
+                  Create a faculty account with automated credentials
+                </SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
 
-          <div className="flex flex-col gap-5 py-6">
+          <div className="flex flex-col gap-4.5 p-6 overflow-y-auto flex-1">
             {/* Title */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="teacher-title" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="teacher-title" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <GraduationCap className="size-3.5 text-muted-foreground" />
-                Title
+                Honorific Title
               </Label>
               <Select value={formTitle} onValueChange={setFormTitle}>
-                <SelectTrigger id="teacher-title">
+                <SelectTrigger id="teacher-title" className="w-full">
                   <SelectValue placeholder="Select title" />
                 </SelectTrigger>
                 <SelectContent>
@@ -852,8 +859,8 @@ export default function TeacherManagementPage() {
             </div>
 
             {/* Full Name */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="teacher-name" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="teacher-name" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Users className="size-3.5 text-muted-foreground" />
                 Full Name
               </Label>
@@ -862,45 +869,49 @@ export default function TeacherManagementPage() {
                 placeholder="e.g. Priya Sharma"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
+                className="h-10 rounded-xl"
               />
             </div>
 
             {/* Teacher ID */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="teacher-id" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="teacher-id" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Hash className="size-3.5 text-muted-foreground" />
-                Teacher ID
+                Teacher ID Code
               </Label>
               <Input
                 id="teacher-id"
                 placeholder="e.g. TCH006"
                 value={formTeacherId}
                 onChange={(e) => setFormTeacherId(e.target.value)}
+                className="h-10 rounded-xl uppercase font-mono text-sm tracking-wide"
               />
               {formTeacherId && (
-                <p className="text-xs text-muted-foreground">
-                  Email will be:{" "}
-                  <span className="font-mono font-medium text-foreground">
+                <div className="flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+                  <Mail className="size-3 text-primary shrink-0" />
+                  <span>Institutional email:</span>
+                  <span className="font-mono font-semibold text-foreground">
                     {formTeacherId.toLowerCase()}@nnrg.edu.in
                   </span>
-                </p>
+                </div>
               )}
             </div>
 
             {/* Department */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="teacher-dept" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="teacher-dept" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Building2 className="size-3.5 text-muted-foreground" />
-                Department
+                Academic Department
               </Label>
               <Select value={formDept} onValueChange={setFormDept}>
-                <SelectTrigger id="teacher-dept">
+                <SelectTrigger id="teacher-dept" className="w-full">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.name}>
-                      {d.name} ({d.code})
+                      <span className="font-medium">{d.name}</span>
+                      <span className="text-xs text-muted-foreground">({d.code})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -908,10 +919,10 @@ export default function TeacherManagementPage() {
             </div>
 
             {/* Email (display only) */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="teacher-email" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="teacher-email" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Mail className="size-3.5 text-muted-foreground" />
-                Email
+                Contact Email <span className="text-[10px] font-normal text-muted-foreground">(Optional)</span>
               </Label>
               <Input
                 id="teacher-email"
@@ -919,30 +930,39 @@ export default function TeacherManagementPage() {
                 placeholder="teacher@nnrg.edu.in"
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
+                className="h-10 rounded-xl"
               />
             </div>
 
             {/* Info note */}
-            <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3.5">
-              <KeyRound className="mt-0.5 size-4 shrink-0 text-amber-600" />
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-semibold text-amber-800">Default Password</span>
-                <span className="text-xs text-amber-700">
-                  Teacher will be assigned a default password and forced to change it on first login.
+            <div className="flex items-start gap-3 rounded-xl border border-amber-300/80 bg-linear-to-r from-amber-500/10 via-amber-500/5 to-transparent p-3.5 dark:border-amber-800/60 dark:from-amber-950/30">
+              <div className="flex size-7.5 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                <KeyRound className="size-4" />
+              </div>
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Initial Authentication Setup
+                </span>
+                <span className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                  Default credentials will be created. The teacher will be prompted to set a new personal password on their initial sign-in.
                 </span>
               </div>
             </div>
 
-            <Button onClick={handleAddTeacher} className="mt-1" disabled={isSubmitting}>
+            <Button
+              onClick={handleAddTeacher}
+              className="mt-2 h-10.5 rounded-xl font-semibold shadow-sm hover:shadow transition-all gap-2 cursor-pointer"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Creating...
+                  Creating Account...
                 </>
               ) : (
                 <>
                   <Plus className="size-4" />
-                  Add Teacher
+                  Create Teacher Account
                 </>
               )}
             </Button>
@@ -1024,22 +1044,29 @@ export default function TeacherManagementPage() {
           if (!open) setEditTarget(null)
         }}
       >
-        <SheetContent className="overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Edit Teacher</SheetTitle>
-            <SheetDescription>
-              Update teacher details. Teacher ID and email cannot be changed.
-            </SheetDescription>
+        <SheetContent className="overflow-y-auto sm:max-w-md p-0 flex flex-col gap-0 border-l border-border bg-background">
+          <SheetHeader className="p-6 border-b border-border/80 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Pencil className="size-4.5" />
+              </div>
+              <div className="flex flex-col">
+                <SheetTitle className="text-base font-bold text-foreground">Edit Teacher Profile</SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
+                  Update faculty title, name, or department assignment
+                </SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <div className="flex flex-col gap-5 py-6">
+          <div className="flex flex-col gap-4.5 p-6 overflow-y-auto flex-1">
             {/* Title */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-teacher-title" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-teacher-title" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <GraduationCap className="size-3.5 text-muted-foreground" />
-                Title
+                Honorific Title
               </Label>
               <Select value={editTitle} onValueChange={setEditTitle}>
-                <SelectTrigger id="edit-teacher-title">
+                <SelectTrigger id="edit-teacher-title" className="w-full">
                   <SelectValue placeholder="Select title" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1051,8 +1078,8 @@ export default function TeacherManagementPage() {
             </div>
 
             {/* Full Name */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-teacher-name" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-teacher-name" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Users className="size-3.5 text-muted-foreground" />
                 Full Name
               </Label>
@@ -1061,34 +1088,48 @@ export default function TeacherManagementPage() {
                 placeholder="Full Name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
+                className="h-10 rounded-xl"
               />
             </div>
 
             {/* Department */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-teacher-dept" className="flex items-center gap-1.5 text-sm font-medium">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-teacher-dept" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Building2 className="size-3.5 text-muted-foreground" />
-                Department
+                Academic Department
               </Label>
               <Select value={editDept} onValueChange={setEditDept}>
-                <SelectTrigger id="edit-teacher-dept">
+                <SelectTrigger id="edit-teacher-dept" className="w-full">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.name}>
-                      {d.name} ({d.code})
+                      <span className="font-medium">{d.name}</span>
+                      <span className="text-xs text-muted-foreground">({d.code})</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <Button onClick={handleEditTeacher} className="mt-2" disabled={isSubmitting}>
+            {/* Read-only notice */}
+            {editTarget && (
+              <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+                <span className="font-medium">Teacher ID:</span>
+                <span className="font-mono font-semibold text-foreground">{editTarget.teacherId}</span>
+              </div>
+            )}
+
+            <Button
+              onClick={handleEditTeacher}
+              className="mt-2 h-10.5 rounded-xl font-semibold shadow-sm hover:shadow transition-all gap-2 cursor-pointer"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Saving...
+                  Saving Changes...
                 </>
               ) : (
                 "Save Changes"
