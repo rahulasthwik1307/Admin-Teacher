@@ -9,17 +9,19 @@ import { TodayAttendanceSummarySkeleton } from "@/components/ui/skeletons"
 function getBarColor(pct: number) {
   if (pct >= 75) return "bg-emerald-500"
   if (pct >= 60) return "bg-amber-500"
-  return "bg-red-500"
+  return "bg-rose-500"
 }
+
 function getBadgeBg(pct: number) {
-  if (pct >= 75) return "bg-emerald-50 text-emerald-700 border-emerald-200"
-  if (pct >= 60) return "bg-amber-50 text-amber-700 border-amber-200"
-  return "bg-red-50 text-red-700 border-red-200"
+  if (pct >= 75) return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/60"
+  if (pct >= 60) return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800/60"
+  return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800/60"
 }
+
 function getRingColor(pct: number) {
   if (pct >= 75) return "#10b981"
   if (pct >= 60) return "#f59e0b"
-  return "#ef4444"
+  return "#f43f5e"
 }
 
 function AnimatedBar({ pct, color }: { pct: number; color: string }) {
@@ -29,7 +31,7 @@ function AnimatedBar({ pct, color }: { pct: number; color: string }) {
     return () => clearTimeout(t)
   }, [pct])
   return (
-    <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
       <div
         className={cn("h-full rounded-full", color)}
         style={{ width: `${width}%`, transition: "width 0.9s cubic-bezier(0.4,0,0.2,1)" }}
@@ -50,22 +52,24 @@ function DonutChart({ pct, color }: { pct: number; color: string }) {
   const offset = circ - (animPct / 100) * circ
 
   return (
-    <svg width="72" height="72" viewBox="0 0 72 72">
+    <svg width="72" height="72" viewBox="0 0 72 72" className="shrink-0 drop-shadow-2xs">
       {/* Track */}
-      <circle cx="36" cy="36" r={r} fill="none" stroke="#e2e8f0" strokeWidth="7" />
+      <circle cx="36" cy="36" r={r} fill="none" stroke="currentColor" strokeWidth="6.5" className="text-muted/40" />
       {/* Progress */}
       <circle
-        cx="36" cy="36" r={r}
+        cx="36"
+        cy="36"
+        r={r}
         fill="none"
         stroke={color}
-        strokeWidth="7"
+        strokeWidth="6.5"
         strokeLinecap="round"
         strokeDasharray={circ}
         strokeDashoffset={offset}
         transform="rotate(-90 36 36)"
         style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(0.4,0,0.2,1)" }}
       />
-      <text x="36" y="40" textAnchor="middle" fontSize="13" fontWeight="700" fill={color}>
+      <text x="36" y="41" textAnchor="middle" fontSize="13" fontWeight="800" fill={color}>
         {animPct}%
       </text>
     </svg>
@@ -86,27 +90,30 @@ export function TodayAttendanceSummary() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-5">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-          <BarChart2 className="size-4 text-primary" />
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <BarChart2 className="size-4" />
         </div>
-        <h3 className="text-base font-semibold text-foreground">{"Today's Attendance Summary"}</h3>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Today&apos;s Attendance Summary</h3>
+          <p className="text-[11px] text-muted-foreground">Session turnout metrics recorded today</p>
+        </div>
       </div>
 
       {subjects.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-            <Clock className="size-6 text-muted-foreground" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-2.5 py-10 text-center bg-muted/10 rounded-xl border border-dashed border-border/80">
+          <div className="flex size-11 items-center justify-center rounded-full bg-muted">
+            <Clock className="size-5 text-muted-foreground" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">No sessions today</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Start an attendance session to see data here
+            <p className="text-xs font-bold text-foreground">No sessions conducted today</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Attendance records will appear here after taking attendance
             </p>
           </div>
         </div>
       ) : (
-        <div className="flex flex-col gap-4 flex-1">
+        <div className="flex flex-col gap-3.5 flex-1">
           {/* Subject rows */}
           {subjects.map((subject) => {
             const pct = subject.total > 0
@@ -116,13 +123,15 @@ export function TodayAttendanceSummary() {
             return (
               <div
                 key={subject.id}
-                className="rounded-xl border border-border bg-white dark:bg-slate-900 p-4 shadow-sm"
+                className="rounded-xl border border-border bg-card p-4 shadow-2xs transition-all hover:border-border/90"
               >
                 {/* Top row: name + badge */}
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <span className="text-sm font-semibold text-foreground leading-snug">{subject.name}</span>
-                  <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-bold", getBadgeBg(pct))}>
-                    {pct}%
+                  <span className="text-xs sm:text-sm font-bold text-foreground leading-snug">
+                    {subject.name}
+                  </span>
+                  <span className={cn("shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-bold", getBadgeBg(pct))}>
+                    {pct}% Turnout
                   </span>
                 </div>
 
@@ -130,26 +139,34 @@ export function TodayAttendanceSummary() {
                 <div className="flex items-center gap-4">
                   <DonutChart pct={pct} color={ringColor} />
                   <div className="flex flex-col gap-2 flex-1">
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-6 items-center justify-center rounded-md bg-emerald-50">
-                        <UserCheck className="size-3.5 text-emerald-600" />
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <div className="flex size-5 items-center justify-center rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                          <UserCheck className="size-3" />
+                        </div>
+                        <span className="font-medium">Present</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">Present</span>
-                      <span className="ml-auto text-xs font-bold text-emerald-600">{subject.present}</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{subject.present}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-6 items-center justify-center rounded-md bg-red-50">
-                        <UserX className="size-3.5 text-red-500" />
+
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <div className="flex size-5 items-center justify-center rounded bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                          <UserX className="size-3" />
+                        </div>
+                        <span className="font-medium">Absent</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">Absent</span>
-                      <span className="ml-auto text-xs font-bold text-red-500">{subject.total - subject.present}</span>
+                      <span className="font-bold text-rose-600 dark:text-rose-400">{subject.total - subject.present}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex size-6 items-center justify-center rounded-md bg-slate-100">
-                        <Users className="size-3.5 text-slate-500" />
+
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <div className="flex size-5 items-center justify-center rounded bg-muted text-muted-foreground">
+                          <Users className="size-3" />
+                        </div>
+                        <span className="font-medium">Total Roster</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">Total</span>
-                      <span className="ml-auto text-xs font-bold text-slate-600">{subject.total}</span>
+                      <span className="font-bold text-foreground">{subject.total}</span>
                     </div>
                   </div>
                 </div>
@@ -162,31 +179,30 @@ export function TodayAttendanceSummary() {
             )
           })}
 
-          {/* Overall summary strip — only show when multiple subjects */}
+          {/* Overall summary strip */}
           {subjects.length > 1 && (
-            <div className="rounded-xl border border-border bg-slate-50 dark:bg-slate-900/60 px-4 py-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Overall Today</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-emerald-600">{totalPresent}</p>
-                    <p className="text-[10px] text-muted-foreground">Present</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-red-500">{totalAbsent}</p>
-                    <p className="text-[10px] text-muted-foreground">Absent</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-slate-600">{totalStudents}</p>
-                    <p className="text-[10px] text-muted-foreground">Total</p>
-                  </div>
-                </div>
-                <span className={cn(
-                  "rounded-full border px-3 py-1 text-sm font-bold",
-                  getBadgeBg(overallPct)
-                )}>
+            <div className="rounded-xl border border-border/80 bg-muted/30 p-3.5 shadow-2xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Overall Aggregate Today
+                </span>
+                <span className={cn("rounded-md border px-2 py-0.5 text-xs font-bold", getBadgeBg(overallPct))}>
                   {overallPct}%
                 </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg border border-border/60 bg-card p-2">
+                  <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{totalPresent}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">Present</p>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-card p-2">
+                  <p className="text-sm font-extrabold text-rose-600 dark:text-rose-400">{totalAbsent}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">Absent</p>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-card p-2">
+                  <p className="text-sm font-extrabold text-foreground">{totalStudents}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">Total</p>
+                </div>
               </div>
             </div>
           )}

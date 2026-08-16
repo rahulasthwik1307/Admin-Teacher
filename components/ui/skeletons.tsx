@@ -119,23 +119,22 @@ export function MapSkeleton({ className }: { className?: string }) {
 
 export function DashboardStatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
-      {[1, 2, 3, 4].map((i) => (
-        <Card
+    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+      {[1, 2, 3].map((i) => (
+        <div
           key={i}
-          className="relative overflow-hidden rounded-xl border bg-card p-5 shadow-sm border-l-4"
-          style={{
-            borderLeftColor: i === 1 ? "#3b82f6" : i === 2 ? "#10b981" : i === 3 ? "#f59e0b" : "#e2e8f0",
-          }}
+          className="rounded-xl border border-border bg-card p-3.5 lg:p-4 shadow-2xs"
         >
-          <div className="flex items-start gap-4">
-            <Skeleton className="size-11 rounded-xl shrink-0" />
-            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-              <Skeleton className="h-6 w-12" />
-              <Skeleton className="h-3.5 w-24" />
-            </div>
+          <div className="flex items-center justify-between mb-2.5">
+            <Skeleton className="size-8.5 rounded-lg shrink-0" />
+            <Skeleton className="h-4 w-14 rounded-md" />
           </div>
-        </Card>
+          <div className="flex flex-col gap-1">
+            <Skeleton className="h-7 w-16 rounded" />
+            <Skeleton className="h-3.5 w-24 rounded" />
+            <Skeleton className="h-3 w-32 rounded mt-0.5" />
+          </div>
+        </div>
       ))}
     </div>
   )

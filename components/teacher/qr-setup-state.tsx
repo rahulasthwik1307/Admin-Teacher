@@ -1,9 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { QrCode, CalendarDays, Users, BookOpen, Clock } from "lucide-react"
+import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Select,
@@ -48,21 +48,36 @@ interface QRSetupStateProps {
   periodAutoFilled?: boolean
 }
 
-/* ---------- Grouping helpers ---------- */
+/* ---------- Period label parser helper ---------- */
+function parsePeriodLabel(label: string) {
+  const match = label.match(/^(\d+)\s*(?:Period)?\s*(.*)$/i)
+  if (match) {
+    const periodNum = match[1]
+    let timeRange = match[2]?.trim() || ""
+    timeRange = timeRange.replace(/^[-–—]\s*/, "")
+    return {
+      periodNum,
+      periodText: `Period ${periodNum}`,
+      timeRange,
+    }
+  }
+  return {
+    periodNum: "",
+    periodText: label,
+    timeRange: "",
+  }
+}
 
+/* ---------- Grouping helpers ---------- */
 function getDayLabel(dateStr: string): string {
-  // dateStr is like "13/03/2026" from toLocaleDateString()
-  // Parse it back to compare with today/yesterday
   const parts = dateStr.split("/")
   if (parts.length !== 3) return dateStr
 
-  // Handle both DD/MM/YYYY and MM/DD/YYYY based on locale — use a safe approach
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const yesterday = new Date(today)
   yesterday.setDate(today.getDate() - 1)
 
-  // Try to reconstruct date — DD/MM/YYYY format
   const d = parseInt(parts[0])
   const m = parseInt(parts[1]) - 1
   const y = parseInt(parts[2])
@@ -78,7 +93,6 @@ function getDayLabel(dateStr: string): string {
 }
 
 type GroupedSessions = Map<string, Map<string, RecentSessionData[]>>
-// day -> section -> sessions[]
 
 function groupSessions(sessions: RecentSessionData[]): GroupedSessions {
   const map: GroupedSessions = new Map()
@@ -98,10 +112,10 @@ function getAttendancePct(present: number, total: number) {
   return Math.round((present / total) * 100)
 }
 
-function getPctColor(pct: number) {
-  if (pct >= 75) return "text-emerald-700"
-  if (pct >= 50) return "text-amber-600"
-  return "text-red-600"
+function getPctBadge(pct: number) {
+  if (pct >= 75) return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/60"
+  if (pct >= 50) return "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800/60"
+  return "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800/60"
 }
 
 /* ---------- Component ---------- */
@@ -127,7 +141,7 @@ export function QRSetupState({
 
   const uniqueClasses = useMemo(() => {
     const set = new Set<string>()
-    recentSessions.forEach(s => set.add(s.class))
+    recentSessions.forEach((s) => set.add(s.class))
     return Array.from(set).sort()
   }, [recentSessions])
 
@@ -144,10 +158,10 @@ export function QRSetupState({
           const y = parseInt(parts[2])
           const sessionDate = new Date(y, m, d)
           sessionDate.setHours(0, 0, 0, 0)
-          
+
           const today = new Date()
           today.setHours(0, 0, 0, 0)
-          
+
           const diffDays = Math.round((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24))
           passDate = diffDays <= 7 && diffDays >= 0
         }
@@ -164,133 +178,210 @@ export function QRSetupState({
 
   const grouped = useMemo(() => groupSessions(filteredSessions), [filteredSessions])
 
+  // Selected period formatting for trigger display
+  const selectedPeriodParsed = useMemo(() => {
+    if (!selectedPeriod) return null
+    const opt = periodOptions.find((o) => o.value === selectedPeriod)
+    return opt ? parsePeriodLabel(opt.label) : null
+  }, [selectedPeriod, periodOptions])
+
   return (
     <div className="flex flex-col gap-6">
-
       {/* ── Setup Card ── */}
-      <Card className="shadow-sm">
-        <CardHeader className="pb-4">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-              <QrCode className="size-4 text-primary" />
+      <Card className="border-border shadow-2xs overflow-hidden">
+        <CardHeader className="pb-3.5 border-b border-border/60 bg-muted/10">
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <QrCode className="size-4" />
             </div>
-            <CardTitle className="text-base font-semibold">Start Attendance Session</CardTitle>
+            <div>
+              <CardTitle className="text-sm font-bold text-foreground">
+                Start Live Attendance Window
+              </CardTitle>
+              <CardDescription className="text-[11px] text-muted-foreground">
+                Configure your lecture session parameters and generate a dynamic rotating QR code
+              </CardDescription>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-5">
+        <CardContent className="p-4 sm:p-6 flex flex-col gap-5">
           {/* Premium Connected Filter Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border">
-            
-            {/* Class Filter */}
-            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
-              <Users className="size-4 text-muted-foreground shrink-0" />
+          <div className="flex flex-col sm:flex-row sm:items-center rounded-xl border border-border/80 bg-muted/20 shadow-2xs w-full overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border/80">
+            {/* Class Select */}
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2.5 flex-1 bg-card hover:bg-muted/30 transition-colors">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <Users className="size-4" />
+              </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class & Section</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                  Class & Section
+                </span>
                 <Select value={selectedClass} onValueChange={onClassChange}>
-                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
-                    <SelectValue placeholder="Select class" />
+                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                    <SelectValue placeholder="Select class cohort" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {classOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  <SelectContent className="rounded-xl border-border shadow-md">
+                    {classOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Subject Filter */}
-            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
-              <BookOpen className="size-4 text-muted-foreground shrink-0" />
+            {/* Subject Select */}
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2.5 flex-1 bg-card hover:bg-muted/30 transition-colors">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <BookOpen className="size-4" />
+              </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Subject</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                  Subject Curriculum
+                </span>
                 <Select value={selectedSubject} onValueChange={onSubjectChange}>
-                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {subjectOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  <SelectContent className="rounded-xl border-border shadow-md">
+                    {subjectOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Period Filter */}
-            <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 relative">
-              <Clock className="size-4 text-muted-foreground shrink-0" />
+            {/* Period Select (Fixed formatting) */}
+            <div className="flex items-center gap-3 px-4 py-3 sm:py-2.5 flex-1 bg-card hover:bg-muted/30 transition-colors relative">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Clock className="size-4" />
+              </div>
               <div className="flex flex-col flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Period</span>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Timetable Period
+                  </span>
                   {periodAutoFilled && (
-                    <span className="text-[9px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Auto</span>
+                    <span className="text-[9px] font-extrabold text-primary bg-primary/10 px-1.5 py-0.2 rounded-md uppercase tracking-wider border border-primary/20">
+                      Auto-matched
+                    </span>
                   )}
                 </div>
                 <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
-                    <SelectValue placeholder="Select period" />
+                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                    {selectedPeriodParsed ? (
+                      <span className="flex items-center gap-2 truncate">
+                        <span className="font-bold text-primary">P{selectedPeriodParsed.periodNum}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{selectedPeriodParsed.timeRange}</span>
+                      </span>
+                    ) : (
+                      <SelectValue placeholder="Select period slot" />
+                    )}
                   </SelectTrigger>
-                  <SelectContent>
-                    {periodOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
+                  <SelectContent className="rounded-xl border-border shadow-md min-w-64">
+                    {periodOptions.map((opt) => {
+                      const parsed = parsePeriodLabel(opt.label)
+                      return (
+                        <SelectItem key={opt.value} value={opt.value} className="py-2.5">
+                          <div className="flex items-center justify-between w-full gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex size-6 items-center justify-center rounded-md bg-primary/15 text-primary text-xs font-black">
+                                P{parsed.periodNum || opt.label[0]}
+                              </span>
+                              <span className="font-bold text-xs text-foreground">
+                                {parsed.periodText}
+                              </span>
+                            </div>
+                            {parsed.timeRange && (
+                              <span className="font-mono text-[11px] text-muted-foreground rounded border border-border/60 bg-muted/40 px-2 py-0.5">
+                                {parsed.timeRange}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-2">
+          {/* Action Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
             <Button
               size="lg"
-              className="gap-2 font-semibold sm:w-auto"
+              className="gap-2 font-bold shadow-xs hover:shadow transition-all sm:w-auto h-11 px-5 rounded-xl cursor-pointer"
               disabled={!canStart}
               onClick={onStart}
             >
-              <QrCode className="size-5" />
-              Open Attendance Window
+              <QrCode className="size-4.5" />
+              <span>Open Attendance Window</span>
+              <ArrowRight className="size-4" />
             </Button>
-            <p className="text-xs text-muted-foreground max-w-sm">
-              Students must be inside campus and have marked college attendance before they can scan.
-            </p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+              <span>Geofencing and facial verification are automatically enforced</span>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* ── Recent Sessions — Grouped ── */}
-      <Card className="shadow-sm">
-        <CardHeader className="pb-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
-                <CalendarDays className="size-4 text-muted-foreground" />
+      <Card className="border-border shadow-2xs overflow-hidden">
+        <CardHeader className="pb-3.5 border-b border-border/60 bg-muted/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-slate-500/10 text-slate-700 dark:text-slate-300">
+                <CalendarDays className="size-4" />
               </div>
-              <CardTitle className="text-base font-semibold">Recent Sessions</CardTitle>
+              <div>
+                <CardTitle className="text-sm font-bold text-foreground">
+                  Recent Attendance Sessions
+                </CardTitle>
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  History of completed and finalized lecture sessions
+                </CardDescription>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center rounded-lg p-0.5 bg-muted">
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              {/* Date Filter Pills */}
+              <div className="flex items-center rounded-xl p-1 bg-muted/50 border border-border/70">
                 {(["today", "week", "all"] as const).map((opt) => (
                   <button
                     key={opt}
+                    type="button"
                     onClick={() => setDateFilter(opt)}
                     className={cn(
-                      "px-2.5 py-1 text-xs rounded-md capitalize transition-colors",
+                      "px-3 py-1 text-xs rounded-lg font-bold transition-all cursor-pointer",
                       dateFilter === opt
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-muted-foreground hover:text-foreground font-medium"
+                        ? "bg-primary text-primary-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    {opt === "week" ? "This Week" : opt}
+                    {opt === "today" ? "Today" : opt === "week" ? "This Week" : "All"}
                   </button>
                 ))}
               </div>
 
-              <div className="flex items-center h-7 rounded-lg border border-border bg-card px-2">
-                <Users className="size-3 text-muted-foreground mr-1.5 shrink-0" />
+              {/* Class Filter Dropdown */}
+              <div className="flex items-center h-8.5 rounded-xl border border-border bg-card px-2.5 shadow-2xs">
+                <Users className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
                 <Select value={classFilterLocal} onValueChange={setClassFilterLocal}>
-                  <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
-                    <SelectValue placeholder="All" />
+                  <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
+                    <SelectValue placeholder="All Cohorts" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                  <SelectContent className="rounded-xl border-border shadow-md">
+                    <SelectItem value="all" className="text-xs font-semibold">All Cohorts</SelectItem>
                     {uniqueClasses.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                      <SelectItem key={c} value={c} className="text-xs font-semibold">
+                        {c}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -298,67 +389,86 @@ export function QRSetupState({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-2">
+        <CardContent className="p-4 sm:p-5">
           {recentSessionsLoading ? (
             <RecentSessionsSkeleton />
           ) : filteredSessions.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              {recentSessions.length === 0 ? "No recent sessions found." : "No sessions match your filters."}
+            <div className="py-12 text-center text-sm text-muted-foreground bg-muted/10 rounded-xl border border-dashed border-border/80">
+              <CalendarDays className="mx-auto size-8 text-muted-foreground/40 mb-2" />
+              <p className="font-semibold text-xs">
+                {recentSessions.length === 0 ? "No recent sessions recorded." : "No sessions match your filter criteria."}
+              </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-6">
               {Array.from(grouped.entries()).map(([day, sectionMap]) => (
-                <div key={day}>
+                <div key={day} className="flex flex-col gap-3">
                   {/* Day header */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-bold text-foreground">{day}</span>
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">{day}</span>
+                    <div className="flex-1 h-px bg-border/80" />
+                    <span className="text-[11px] text-muted-foreground font-medium">
                       {Array.from(sectionMap.values()).flat().length} session{Array.from(sectionMap.values()).flat().length !== 1 ? "s" : ""}
                     </span>
                   </div>
 
                   {/* Sections within day */}
-                  <div className="flex flex-col gap-3 pl-2">
+                  <div className="flex flex-col gap-3 pl-1 sm:pl-3 border-l-2 border-border/60">
                     {Array.from(sectionMap.entries()).map(([section, sessions]) => (
-                      <div key={section}>
+                      <div key={section} className="flex flex-col gap-2">
                         {/* Section header */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 rounded-full px-2.5 py-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-primary font-mono bg-primary/10 rounded-md border border-primary/20 px-2 py-0.5">
                             {section}
                           </span>
-                          <span className="text-xs text-muted-foreground">{sessions.length} session{sessions.length !== 1 ? "s" : ""}</span>
+                          <span className="text-[11px] text-muted-foreground font-medium">
+                            {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
+                          </span>
                         </div>
 
                         {/* Subject rows within section */}
-                        <div className="rounded-xl border border-border bg-card overflow-hidden">
+                        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-2xs">
                           {sessions.map((session, i) => {
                             const pct = getAttendancePct(session.present, session.total)
                             return (
                               <div
                                 key={i}
-                                className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+                                className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors"
                               >
                                 {/* Subject + period */}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-semibold text-foreground truncate">{session.subject}</p>
-                                  <p className="text-xs text-muted-foreground">{session.period} Period · {session.time}</p>
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs border border-primary/20">
+                                    {session.period}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <p className="text-xs font-bold text-foreground truncate">
+                                      {session.subject}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                      <Clock className="size-3 text-muted-foreground/70 shrink-0" />
+                                      <span>{session.time}</span>
+                                    </p>
+                                  </div>
                                 </div>
 
-                                {/* Attendance count */}
-                                <div className="text-right shrink-0">
-                                  <p className={cn("text-sm font-bold", pct !== null ? getPctColor(pct) : "text-muted-foreground")}>
-                                    {session.present}/{session.total}
-                                  </p>
+                                {/* Attendance metrics & status */}
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <div className="text-right">
+                                    <p className="text-xs font-bold text-foreground">
+                                      <span className="text-emerald-600 dark:text-emerald-400">{session.present}</span>
+                                      <span className="text-muted-foreground">/{session.total}</span>
+                                    </p>
+                                    {pct !== null && (
+                                      <p className="text-[10px] text-muted-foreground font-semibold">{pct}% turnout</p>
+                                    )}
+                                  </div>
+
                                   {pct !== null && (
-                                    <p className={cn("text-xs", getPctColor(pct))}>{pct}%</p>
+                                    <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0.5", getPctBadge(pct))}>
+                                      {session.status}
+                                    </Badge>
                                   )}
                                 </div>
-
-                                {/* Status badge */}
-                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 shrink-0 text-xs">
-                                  {session.status}
-                                </Badge>
                               </div>
                             )
                           })}

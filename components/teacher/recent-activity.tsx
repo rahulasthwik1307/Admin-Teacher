@@ -1,7 +1,6 @@
 "use client"
 
 import { Activity, CheckCircle2, Radio, UserPlus, ScanFace } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { RecentActivitySkeleton } from "@/components/ui/skeletons"
 
@@ -23,39 +22,35 @@ function timeAgo(dateStr: string): string {
 const typeConfig = {
   finalized: {
     icon: CheckCircle2,
-    iconColor: "text-emerald-600",
-    dot: "bg-emerald-500",
-    line: "bg-emerald-200",
-    label: "Finalized",
-    labelColor: "text-emerald-600",
-    prefix: "Attendance finalized",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-200 dark:border-emerald-800/60",
+    label: "FINALIZED",
+    badgeBg: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
   },
   opened: {
     icon: Radio,
-    iconColor: "text-primary",
-    dot: "bg-primary",
-    line: "bg-primary/20",
-    label: "Window Opened",
-    labelColor: "text-primary",
-    prefix: "Session opened",
+    color: "text-sky-600 dark:text-sky-400",
+    bg: "bg-sky-500/10",
+    border: "border-sky-200 dark:border-sky-800/60",
+    label: "SESSION OPENED",
+    badgeBg: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800/60",
   },
   approved: {
     icon: ScanFace,
-    iconColor: "text-amber-600",
-    dot: "bg-amber-500",
-    line: "bg-amber-200",
-    label: "Face Approved",
-    labelColor: "text-amber-600",
-    prefix: "Face approved",
+    color: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-200 dark:border-amber-800/60",
+    label: "FACE APPROVED",
+    badgeBg: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60",
   },
   added: {
     icon: UserPlus,
-    iconColor: "text-violet-600",
-    dot: "bg-violet-500",
-    line: "bg-violet-200",
-    label: "Student Added",
-    labelColor: "text-violet-600",
-    prefix: "New student added",
+    color: "text-violet-600 dark:text-violet-400",
+    bg: "bg-violet-500/10",
+    border: "border-violet-200 dark:border-violet-800/60",
+    label: "STUDENT ADDED",
+    badgeBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60",
   },
 }
 
@@ -64,87 +59,74 @@ export function RecentActivity() {
 
   if (isLoading || !data) return <RecentActivitySkeleton />
 
-  const activities = data.recentActivity.map(item => ({
+  const activities = data.recentActivity.map((item) => ({
     ...item,
     time: timeAgo(item.time),
     sortKey: new Date(item.time).getTime(),
   }))
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeInItem {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-            <Activity className="size-4 text-primary" />
-          </div>
-          <h3 className="text-base font-semibold text-foreground">Recent Activity</h3>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-5">
+        <div className="flex size-8 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+          <Activity className="size-4" />
         </div>
-
-        {activities.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <Activity className="size-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">No activity yet</p>
-          </div>
-        ) : (
-          <div className="relative flex flex-col">
-            {activities.map((activity, i) => {
-              const cfg = typeConfig[activity.type]
-              const Icon = cfg.icon
-              const isLast = i === activities.length - 1
-              return (
-                <div
-                  key={i}
-                  className="relative flex gap-4 opacity-0"
-                  style={{
-                    animation: "fadeInItem 0.35s ease forwards",
-                    animationDelay: `${i * 55}ms`,
-                  }}
-                >
-                  {/* Timeline column */}
-                  <div className="relative flex flex-col items-center">
-                    {/* Dot with icon */}
-                    <div className={cn(
-                      "relative z-10 mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border-2 border-white bg-white shadow-sm dark:border-slate-900 dark:bg-slate-900",
-                    )}>
-                      <Icon className={cn("size-4", cfg.iconColor)} />
-                    </div>
-                    {/* Vertical connecting line */}
-                    {!isLast && (
-                      <div className={cn("mt-1 w-0.5 flex-1 min-h-7", cfg.line)} />
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className={cn("flex-1 min-w-0 pb-5", isLast && "pb-0")}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                          <span className={cfg.labelColor}>{cfg.label}</span>
-                        </p>
-                        <p className="text-sm font-medium text-foreground leading-snug mt-0.5 truncate">
-                          {activity.description}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap mt-0.5">
-                        {activity.time}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Recent Activity</h3>
+          <p className="text-[11px] text-muted-foreground">Recent attendance and registration actions</p>
+        </div>
       </div>
-    </>
+
+      {activities.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2.5 py-10 text-center bg-muted/10 rounded-xl border border-dashed border-border/80">
+          <div className="flex size-11 items-center justify-center rounded-full bg-muted">
+            <Activity className="size-5 text-muted-foreground" />
+          </div>
+          <p className="text-xs font-bold text-foreground">No recent activity</p>
+          <p className="text-[11px] text-muted-foreground">Actions will be logged as they occur</p>
+        </div>
+      ) : (
+        <div className="relative flex flex-col">
+          {activities.map((activity, i) => {
+            const cfg = typeConfig[activity.type] || typeConfig.finalized
+            const Icon = cfg.icon
+            const isLast = i === activities.length - 1
+            return (
+              <div key={i} className="relative flex gap-3.5 pb-4 last:pb-0">
+                {/* Vertical connecting line */}
+                {!isLast && (
+                  <div className="absolute left-3.75 top-7.5 h-full w-px bg-border" />
+                )}
+
+                {/* Timeline node icon */}
+                <div
+                  className={`relative z-10 flex size-7.5 shrink-0 items-center justify-center rounded-lg border shadow-2xs ${cfg.bg} ${cfg.border}`}
+                >
+                  <Icon className={`size-3.5 ${cfg.color}`} />
+                </div>
+
+                {/* Content */}
+                <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <span
+                      className={`inline-flex items-center rounded border px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wider ${cfg.badgeBg}`}
+                    >
+                      {cfg.label}
+                    </span>
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      {activity.description}
+                    </span>
+                  </div>
+                  <span className="shrink-0 text-[11px] text-muted-foreground font-medium sm:pl-3">
+                    {activity.time}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }

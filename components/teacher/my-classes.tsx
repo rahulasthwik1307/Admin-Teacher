@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BookOpen, ArrowRight } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { BookOpen, ArrowRight, Users, Clock, GraduationCap } from "lucide-react"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { MyClassesSkeleton } from "@/components/ui/skeletons"
 
@@ -15,45 +16,94 @@ export function MyClasses() {
   const rows = data.myClasses
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-0">
-        <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-          <BookOpen className="size-4 text-primary" />
-          My Classes & Subjects
-        </CardTitle>
+    <Card className="border-border shadow-2xs overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between pb-3.5 border-b border-border/60 bg-muted/10">
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <BookOpen className="size-4" />
+          </div>
+          <div>
+            <CardTitle className="text-sm font-bold text-foreground">
+              My Classes & Subjects
+            </CardTitle>
+            <CardDescription className="text-[11px] text-muted-foreground">
+              Classes and courses assigned to your teaching schedule
+            </CardDescription>
+          </div>
+        </div>
+        <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5">
+          {rows.length} Assigned
+        </Badge>
       </CardHeader>
-      <CardContent className="pt-4">
+      <CardContent className="p-0">
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-10">No subjects assigned yet.</p>
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            <BookOpen className="mx-auto size-8 text-muted-foreground/40 mb-2" />
+            <p>No classes or subjects assigned yet.</p>
+          </div>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden sm:block overflow-x-hidden w-full">
-              <table className="w-full text-sm table-fixed">
+            <div className="hidden sm:block overflow-x-auto w-full">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    <th className="pb-3 pr-4 w-[28%]">Subject</th>
-                    <th className="pb-3 pr-4 w-[16%]">Class</th>
-                    <th className="pb-3 pr-4 w-[14%]">Section</th>
-                    <th className="pb-3 pr-4 w-[14%]">Students</th>
-                    <th className="pb-3 pr-4 w-[14%]">Last Attendance</th>
-                    <th className="pb-3 text-right w-[14%]">Action</th>
+                  <tr className="border-b border-border/60 bg-muted/20 text-left">
+                    <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Subject
+                    </th>
+                    <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Class & Section
+                    </th>
+                    <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-center">
+                      Students
+                    </th>
+                    <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Last Attendance
+                    </th>
+                    <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row) => (
-                    <tr key={row.key} className="group border-b border-border last:border-0 transition-colors duration-150 hover:bg-muted/40">
-                      <td className="py-3.5 pr-4 truncate max-w-30" title={row.subject}>
-                        <span className="font-semibold text-foreground">{row.subject}</span>
+                    <tr
+                      key={row.key}
+                      className="border-b border-border/50 last:border-0 transition-colors hover:bg-muted/20"
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex size-7.5 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                            <BookOpen className="size-3.5" />
+                          </div>
+                          <span className="font-semibold text-xs text-foreground truncate max-w-56" title={row.subject}>
+                            {row.subject}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.className}</td>
-                      <td className="py-3.5 pr-4 text-muted-foreground truncate">{row.section}</td>
-                      <td className="py-3.5 pr-4">
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{row.students}</span>
+                      <td className="px-5 py-3.5">
+                        <span className="font-mono text-xs font-semibold rounded-md border border-border/70 bg-muted/40 px-2 py-0.5 text-muted-foreground">
+                          {row.className}-{row.section}
+                        </span>
                       </td>
-                      <td className="py-3.5 pr-4 text-muted-foreground text-xs truncate">{row.lastAttendance}</td>
-                      <td className="py-3.5 text-right">
-                        <Button asChild size="sm" className="transition-all duration-150 hover:scale-[1.03] group/btn gap-1.5 px-2.5">
+                      <td className="px-5 py-3.5 text-center">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                          <Users className="size-3" />
+                          {row.students}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Clock className="size-3 shrink-0 text-muted-foreground/70" />
+                          <span>{row.lastAttendance}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Button
+                          asChild
+                          size="sm"
+                          className="h-8 rounded-lg px-3 text-xs font-semibold shadow-2xs hover:shadow-xs transition-all gap-1.5 group/btn cursor-pointer"
+                        >
                           <Link href="/teacher/qr-attendance">
                             Take Attendance
                             <ArrowRight className="size-3.5 transition-transform duration-150 group-hover/btn:translate-x-0.5" />
@@ -67,20 +117,41 @@ export function MyClasses() {
             </div>
 
             {/* Mobile cards */}
-            <div className="flex flex-col gap-3 sm:hidden">
+            <div className="flex flex-col gap-2.5 p-3 sm:hidden">
               {rows.map((row) => (
-                <div key={row.key + "-mobile"} className="rounded-xl border border-border p-4 transition-colors hover:bg-muted/40">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-foreground">{row.subject}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{row.className} — Section {row.section}</p>
+                <div
+                  key={row.key + "-mobile"}
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3.5 shadow-2xs transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                        <BookOpen className="size-4" />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-xs text-foreground truncate">{row.subject}</span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                          <GraduationCap className="size-3 shrink-0" />
+                          <span className="font-mono">{row.className}-{row.section}</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{row.students} students</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary shrink-0">
+                      <Users className="size-3" />
+                      {row.students}
+                    </span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">Last: {row.lastAttendance}</span>
-                    <Button asChild size="sm" className="gap-1.5">
-                      <Link href="/teacher/qr-attendance">Take Attendance <ArrowRight className="size-3.5" /></Link>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Clock className="size-3 shrink-0" />
+                      <span>{row.lastAttendance}</span>
+                    </div>
+                    <Button asChild size="sm" className="h-7.5 text-xs font-semibold px-2.5 gap-1">
+                      <Link href="/teacher/qr-attendance">
+                        Take Attendance
+                        <ArrowRight className="size-3" />
+                      </Link>
                     </Button>
                   </div>
                 </div>
