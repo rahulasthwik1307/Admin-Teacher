@@ -13,6 +13,7 @@ export interface GeofenceMapProps {
   onRadiusChange?: (radius: number) => void
 }
 
+// Esri World Imagery raster tile source with maxzoom: 18 to allow overzooming without "Map data not available" tiles
 const SATELLITE_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -22,6 +23,7 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       ],
       tileSize: 256,
+      maxzoom: 18,
       attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, USDA, USGS, AeroGRID, IGN",
     },
   },
@@ -31,7 +33,7 @@ const SATELLITE_STYLE: maplibregl.StyleSpecification = {
       type: "raster",
       source: "esri-satellite",
       minzoom: 0,
-      maxzoom: 20,
+      maxzoom: 22,
     },
   ],
 }
@@ -69,6 +71,14 @@ export default function GeofenceMap({
   const [mapStyleType, setMapStyleType] = useState<"streets" | "satellite">("streets")
   const [liveRadius, setLiveRadius] = useState(radius)
 
+  // Track latest center and radius in refs for event callbacks and style reload listeners
+  const centerRef = useRef(center)
+  const radiusRef = useRef(radius)
+  const collegeNameRef = useRef(collegeName)
+  centerRef.current = center
+  radiusRef.current = radius
+  collegeNameRef.current = collegeName
+
   // Sync internal live radius with prop when not actively dragging
   useEffect(() => {
     if (!isDraggingRadiusRef.current) {
@@ -101,7 +111,7 @@ export default function GeofenceMap({
     []
   )
 
-  // GeoJSON for concentric guide rings (e.g. 33% and 66%)
+  // GeoJSON for concentric guide rings (at 33% and 66%)
   const createGuideRingsGeoJSON = useCallback(
     (centerCoords: [number, number], radiusMeters: number) => {
       const r1 = Math.round(radiusMeters * 0.33)
@@ -161,7 +171,7 @@ export default function GeofenceMap({
     []
   )
 
-  // Add / Re-add map sources & layers
+  // Add / Re-add map sources & layers (called on style.load)
   const setupLayersAndSources = useCallback(
     (map: maplibregl.Map, currentCenter: { lat: number; lng: number }, currentRadius: number) => {
       const circleData = createGeoJSONCircle([currentCenter.lng, currentCenter.lat], currentRadius)
@@ -182,7 +192,7 @@ export default function GeofenceMap({
           source: "geofence-pulse",
           paint: {
             "fill-color": "#3b82f6",
-            "fill-opacity": 0.06,
+            "fill-opacity": 0.08,
           },
         })
       }
@@ -202,7 +212,7 @@ export default function GeofenceMap({
           paint: {
             "line-color": "#6366f1",
             "line-width": 1.5,
-            "line-opacity": 0.45,
+            "line-opacity": 0.5,
             "line-dasharray": [3, 3],
           },
         })
@@ -236,7 +246,7 @@ export default function GeofenceMap({
           paint: {
             "line-color": "#3b82f6",
             "line-width": 6,
-            "line-opacity": 0.25,
+            "line-opacity": 0.3,
             "line-blur": 3,
           },
         })
@@ -296,12 +306,12 @@ export default function GeofenceMap({
       style: STREET_STYLE,
       center: [center.lng, center.lat],
       zoom: 16.5,
-      pitch: 15,
       attributionControl: false,
     })
 
+    // Native controls: clean Zoom +/- without inactive compass, plus Fullscreen and Geolocate
     map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right")
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), "top-right")
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right")
     map.addControl(new maplibregl.FullscreenControl(), "top-right")
     map.addControl(
       new maplibregl.GeolocateControl({
@@ -440,9 +450,18 @@ export default function GeofenceMap({
       onRadiusChange?.(finalRadius)
     })
 
-    // Setup layers on initial load
+    // ── Style Load Listener (Fires on initial load AND on every setStyle() call) ──
+    map.on("style.load", () => {
+      setupLayersAndSources(map, centerRef.current, radiusRef.current)
+      map.resize()
+    })
+
+    // Initial resize calls to prevent canvas sizing gaps
     map.on("load", () => {
-      setupLayersAndSources(map, center, radius)
+      map.resize()
+    })
+    requestAnimationFrame(() => {
+      map.resize()
     })
 
     // Dual Pulse Animation (smoothly breathes opacity and border glow)
@@ -471,7 +490,7 @@ export default function GeofenceMap({
     }
     animationFrameId = requestAnimationFrame(animatePulse)
 
-    // ResizeObserver to ensure edge-to-edge fitting with 0 dead gaps
+    // ResizeObserver to guarantee 100% edge-to-edge canvas sizing with 0 dead gaps
     const resizeObserver = new ResizeObserver(() => {
       map.resize()
     })
@@ -502,25 +521,11 @@ export default function GeofenceMap({
       if (!map || mapStyleType === newStyle) return
 
       setMapStyleType(newStyle)
-      const currentCenter = map.getCenter()
-      const currentZoom = map.getZoom()
-      const currentBearing = map.getBearing()
-      const currentPitch = map.getPitch()
-
       const targetStyle = newStyle === "satellite" ? SATELLITE_STYLE : STREET_STYLE
 
       map.setStyle(targetStyle)
-      map.once("style.load", () => {
-        setupLayersAndSources(map, center, radius)
-        map.jumpTo({
-          center: currentCenter,
-          zoom: currentZoom,
-          bearing: currentBearing,
-          pitch: currentPitch,
-        })
-      })
     },
-    [mapStyleType, center, radius, setupLayersAndSources]
+    [mapStyleType]
   )
 
   // Update marker, handle, and circle when props change from external inputs
@@ -570,13 +575,13 @@ export default function GeofenceMap({
   }, [center, radius, collegeName, createGeoJSONCircle, createGuideRingsGeoJSON, createGuideLabelsGeoJSON, getHandlePosition])
 
   const handleRecenter = () => {
-    mapRef.current?.flyTo({ center: [center.lng, center.lat], zoom: 16.5, pitch: 15, duration: 800 })
+    mapRef.current?.flyTo({ center: [center.lng, center.lat], zoom: 16.5, duration: 800 })
   }
 
   return (
-    <div className="relative size-full overflow-hidden rounded-2xl bg-muted/40">
-      {/* MapLibre Canvas Container */}
-      <div ref={containerRef} className="size-full" />
+    <div className="relative w-full h-full min-h-137.5 lg:min-h-180 overflow-hidden rounded-2xl bg-muted/40">
+      {/* MapLibre Canvas Container: absolute inset-0 fills the entire parent card edge-to-edge */}
+      <div ref={containerRef} className="absolute inset-0 w-full h-full" />
 
       {/* Floating Style Toggle (Top-Left) */}
       <div className="absolute left-3.5 top-3.5 z-10 flex items-center gap-1 rounded-xl border border-white/40 bg-background/90 p-1 shadow-lg backdrop-blur-md dark:border-border/80 dark:bg-card/90">
@@ -623,7 +628,7 @@ export default function GeofenceMap({
             {liveRadius}m
           </span>
           <span className="text-[11px] text-muted-foreground">
-            Drag perimeter pill or click map to reposition
+            Drag perimeter handle or click map to reposition
           </span>
         </div>
       </div>

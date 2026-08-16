@@ -635,8 +635,8 @@ export default function GeofencePage() {
 
         {/* ── RIGHT COLUMN: Interactive Geofence Map Showcase ── */}
         <div className="flex flex-col min-h-137.5 lg:min-h-180 h-full min-w-0">
-          <Card className="h-full flex flex-col overflow-hidden rounded-2xl border border-border/80 shadow-sm">
-            <CardContent className="p-0 flex-1 relative w-full h-full min-h-137.5 lg:min-h-180 overflow-hidden">
+          <Card className="h-full flex flex-col overflow-hidden rounded-2xl border border-border/80 shadow-sm p-0 py-0 gap-0">
+            <CardContent className="p-0 px-0 py-0 flex-1 relative w-full h-full min-h-137.5 lg:min-h-180 overflow-hidden">
               <GeofenceMap
                 center={mapCenter}
                 radius={mapRadius}
