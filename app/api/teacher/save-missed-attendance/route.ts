@@ -18,6 +18,26 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient()
 
+    // Server-side safety net: only accept attendance rows for students who
+    // were actually enrolled in this class by the session date. Even though
+    // the UI already filters this client-side, never trust client input for
+    // who gets marked present/absent in a permanent record.
+    const { data: validRoster } = await admin
+      .from("students")
+      .select("id")
+      .eq("class_id", class_id)
+      .eq("is_approved", true)
+      .lte("created_at", `${session_date}T23:59:59`)
+
+    const validStudentIds = new Set((validRoster ?? []).map((s: any) => s.id))
+    const filteredAttendance = (attendance as { student_id: string; status: string }[]).filter(
+      (a) => validStudentIds.has(a.student_id)
+    )
+
+    if (filteredAttendance.length === 0) {
+      return NextResponse.json({ error: "No valid enrolled students in this attendance payload" }, { status: 400 })
+    }
+
     // Check if a session already exists for this slot
     const { data: existing } = await admin
       .from("attendance_sessions")
@@ -55,8 +75,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create session" }, { status: 500 })
     }
 
-    // Insert period_attendance for each student
-    const attendanceRows = attendance.map((a: { student_id: string; status: string }) => ({
+    // Insert period_attendance for each student — using the server-filtered list
+    const attendanceRows = filteredAttendance.map((a) => ({
       session_id: session.id,
       student_id: a.student_id,
       status: a.status,

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       supabase
         .from("timetables")
         .select(`
-          day_of_week, subject_id, class_id, period_id,
+          day_of_week, subject_id, class_id, period_id, created_at,
           subject:subjects ( id, name, code ),
           class:classes ( id, name, section ),
           period:periods ( id, period_number, start_time, end_time )
@@ -55,6 +55,19 @@ export async function GET(request: Request) {
         const isToday = dateStr === todayStr
         for (const slot of timetable) {
           if ((slot as any).day_of_week !== dayOfWeek) continue
+
+          // ── Bound by when this timetable slot was actually created ──
+          // Never generate a missed occurrence for a date before the slot
+          // existed. This is the fix — previously the loop walked back to
+          // the full selected range regardless of when the timetable row
+          // (or the teacher assignment behind it) was created, producing
+          // phantom missed sessions for dates before the slot existed.
+          const slotCreatedAt = (slot as any).created_at as string | null
+          if (slotCreatedAt) {
+            const slotCreatedDateStr = new Date(slotCreatedAt).toISOString().split("T")[0]
+            if (dateStr < slotCreatedDateStr) continue
+          }
+
           const key = `${dateStr}__${slot.subject_id}__${slot.class_id}__${slot.period_id}`
           if (existingKeys.has(key)) continue
           if (isToday) {
