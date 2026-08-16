@@ -47,6 +47,7 @@ import {
   ChevronRight,
   X,
   Layers,
+  AlertTriangle,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -342,15 +343,18 @@ export default function TimetablePage() {
 
       {/* ── Stat chips ── */}
       {!isLoading && (
-        <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-            <CalendarDays className="size-3.5" />{totalSlots} Total Slots
+        <div className="flex flex-wrap gap-2.5">
+          <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary shadow-2xs">
+            <CalendarDays className="size-3.5" />
+            <span>{totalSlots} Total Slots</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700">
-            <GraduationCap className="size-3.5" />{classesWithTimetable} Classes Scheduled
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+            <GraduationCap className="size-3.5" />
+            <span>{classesWithTimetable} Classes Scheduled</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700">
-            <Clock className="size-3.5" />{coveredToday} Periods Today
+          <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 shadow-2xs">
+            <Clock className="size-3.5" />
+            <span>{coveredToday} Periods Today</span>
           </div>
         </div>
       )}
@@ -362,13 +366,13 @@ export default function TimetablePage() {
           <div className="inline-flex gap-1 rounded-xl bg-muted/60 p-1">
             <button
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${viewMode === "grid" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${viewMode === "grid" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
             >
               <LayoutGrid className="size-3.5" /> Grid
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${viewMode === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${viewMode === "list" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
             >
               <AlignJustify className="size-3.5" /> List
             </button>
@@ -379,7 +383,7 @@ export default function TimetablePage() {
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => setSelectedClassForGrid("all")}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${selectedClassForGrid === "all" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${selectedClassForGrid === "all" ? "bg-primary text-primary-foreground shadow-xs" : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"}`}
               >
                 All Classes
               </button>
@@ -387,7 +391,7 @@ export default function TimetablePage() {
                 <button
                   key={c}
                   onClick={() => setSelectedClassForGrid(c)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ${selectedClassForGrid === c ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${selectedClassForGrid === c ? "bg-primary text-primary-foreground shadow-xs" : "bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground"}`}
                 >
                   {c}
                 </button>
@@ -397,10 +401,10 @@ export default function TimetablePage() {
 
           {/* List: filters */}
           {viewMode === "list" && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               <Select value={filterDay} onValueChange={setFilterDay}>
-                <SelectTrigger className="h-9 w-36 text-xs">
-                  <CalendarDays className="size-3.5 mr-1.5 text-muted-foreground" />
+                <SelectTrigger className="h-9 w-36 text-xs font-medium">
+                  <CalendarDays className="size-3.5 mr-1 text-muted-foreground" />
                   <SelectValue placeholder="All Days" />
                 </SelectTrigger>
                 <SelectContent>
@@ -409,8 +413,8 @@ export default function TimetablePage() {
                 </SelectContent>
               </Select>
               <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="h-9 w-40 text-xs">
-                  <GraduationCap className="size-3.5 mr-1.5 text-muted-foreground" />
+                <SelectTrigger className="h-9 w-40 text-xs font-medium">
+                  <GraduationCap className="size-3.5 mr-1 text-muted-foreground" />
                   <SelectValue placeholder="All Classes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -419,7 +423,12 @@ export default function TimetablePage() {
                 </SelectContent>
               </Select>
               {(filterDay !== "all" || filterClass !== "all") && (
-                <Button variant="ghost" size="sm" className="h-9 gap-1 text-muted-foreground" onClick={() => { setFilterDay("all"); setFilterClass("all") }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100/80 dark:hover:bg-rose-950/40 text-xs font-semibold px-3 gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  onClick={() => { setFilterDay("all"); setFilterClass("all") }}
+                >
                   <X className="size-3.5" /> Clear
                 </Button>
               )}
@@ -428,12 +437,12 @@ export default function TimetablePage() {
         </div>
 
         <div className="flex gap-2 self-start sm:self-auto">
-          <Button variant="outline" size="sm" onClick={() => setBulkSheetOpen(true)} className="gap-2">
+          <Button variant="outline" size="sm" onClick={() => setBulkSheetOpen(true)} className="h-9 rounded-xl font-semibold gap-2 shadow-2xs hover:shadow transition-all cursor-pointer">
             <Layers className="size-4" />
             <span className="hidden sm:inline">Fill Week</span>
             <span className="sm:hidden">Bulk</span>
           </Button>
-          <Button size="sm" onClick={() => setSheetOpen(true)} className="gap-2">
+          <Button size="sm" onClick={() => setSheetOpen(true)} className="h-9 rounded-xl font-semibold gap-2 shadow-2xs hover:shadow transition-all cursor-pointer">
             <Plus className="size-4" />
             <span className="hidden sm:inline">Add Slot</span>
             <span className="sm:hidden">Add</span>
@@ -694,40 +703,65 @@ export default function TimetablePage() {
           ADD SINGLE SLOT SHEET
       ══════════════════════════════════════ */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Add Timetable Slot</SheetTitle>
-            <SheetDescription>Assign a subject and teacher to a specific day and period for a class.</SheetDescription>
+        <SheetContent className="overflow-y-auto sm:max-w-md p-0 flex flex-col gap-0 border-l border-border bg-background">
+          <SheetHeader className="p-6 border-b border-border/80 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CalendarDays className="size-5" />
+              </div>
+              <div className="flex flex-col">
+                <SheetTitle className="text-base font-bold text-foreground">Add Timetable Slot</SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
+                  Assign a subject and teacher to a specific day and period for a class
+                </SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <div className="flex flex-col gap-5 py-6">
-            <div className="flex flex-col gap-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium"><GraduationCap className="size-3.5 text-muted-foreground" /> Class & Section</Label>
+          <div className="flex flex-col gap-4.5 p-6 overflow-y-auto flex-1">
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <GraduationCap className="size-3.5 text-muted-foreground" /> Class & Section
+              </Label>
               <Select value={formClassId} onValueChange={v => { setFormClassId(v); setFormAssignmentKey("") }}>
-                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
                 <SelectContent>{classOptions.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium"><BookOpen className="size-3.5 text-muted-foreground" /> Subject & Teacher</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <BookOpen className="size-3.5 text-muted-foreground" /> Subject & Teacher
+              </Label>
               <Select value={formAssignmentKey} onValueChange={setFormAssignmentKey} disabled={!formClassId}>
-                <SelectTrigger><SelectValue placeholder={formClassId ? "Select subject" : "Select class first"} /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={formClassId ? "Select subject curriculum" : "Select class first"} />
+                </SelectTrigger>
                 <SelectContent>
                   {filteredAssignments.map(a => <SelectItem key={`${a.teacherId}__${a.subjectId}__${a.classId}`} value={`${a.teacherId}__${a.subjectId}__${a.classId}`}>{a.subjectName} — {a.teacherName}</SelectItem>)}
                   {filteredAssignments.length === 0 && formClassId && <SelectItem value="none" disabled>No assignments found for this class</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium"><CalendarDays className="size-3.5 text-muted-foreground" /> Day</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <CalendarDays className="size-3.5 text-muted-foreground" /> Day of Week
+              </Label>
               <Select value={formDay} onValueChange={setFormDay}>
-                <SelectTrigger><SelectValue placeholder="Select day" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
                 <SelectContent>{DAYS.map(d => <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium"><Clock className="size-3.5 text-muted-foreground" /> Period</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <Clock className="size-3.5 text-muted-foreground" /> Class Period
+              </Label>
               <Select value={formPeriodId} onValueChange={setFormPeriodId}>
-                <SelectTrigger><SelectValue placeholder="Select period" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
                 <SelectContent>{periodOptions.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -740,8 +774,12 @@ export default function TimetablePage() {
                   const conflictEntry = conflictMap[`${selectedAssignment.teacherName}__${formDay}__${selectedPeriod.number}`];
                   if (conflictEntry && conflictEntry.classSection !== selectedClassLabel) {
                     return (
-                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive">
-                        ⚠ Conflict: {selectedAssignment.teacherName} is already assigned to {conflictEntry.classSection} — {conflictEntry.subject} on this day and period.
+                      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive flex items-start gap-2.5">
+                        <AlertTriangle className="size-4 shrink-0 mt-0.5 text-destructive" />
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold">Faculty Schedule Conflict</span>
+                          <span className="leading-relaxed">{selectedAssignment.teacherName} is already assigned to {conflictEntry.classSection} — {conflictEntry.subject} on this day and period.</span>
+                        </div>
                       </div>
                     )
                   }
@@ -756,8 +794,12 @@ export default function TimetablePage() {
 
                   if (isSameSubjectSameDay) {
                     return (
-                      <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-                        ⚠ {selectedAssignment.subjectName} is already scheduled for {selectedClassLabel} on {getDayLabel(parseInt(formDay))}. Each subject should appear only once per day.
+                      <div className="rounded-xl border border-amber-300/80 bg-linear-to-r from-amber-500/10 via-amber-500/5 to-transparent p-3.5 text-xs text-amber-800 dark:text-amber-300 dark:border-amber-800/60 flex items-start gap-2.5">
+                        <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-amber-900 dark:text-amber-200">Duplicate Subject on Same Day</span>
+                          <span className="leading-relaxed">{selectedAssignment.subjectName} is already scheduled for {selectedClassLabel} on {getDayLabel(parseInt(formDay))}. Each subject should appear only once per day.</span>
+                        </div>
                       </div>
                     )
                   }
@@ -765,11 +807,26 @@ export default function TimetablePage() {
               }
               return null;
             })()}
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-              Each class can only have one subject per period per day. Duplicates are rejected automatically.
+            <div className="rounded-xl border border-border/80 bg-muted/40 p-3 text-xs text-muted-foreground flex items-center gap-2">
+              <Clock className="size-3.5 text-muted-foreground shrink-0" />
+              <span>Each class can only have one subject per period per day. Duplicates are rejected automatically.</span>
             </div>
-            <Button onClick={handleAdd} disabled={isSubmitting}>
-              {isSubmitting ? <><Loader2 className="size-4 animate-spin" />Adding...</> : <><Plus className="size-4" />Add Slot</>}
+            <Button
+              onClick={handleAdd}
+              className="mt-2 h-10.5 rounded-xl font-semibold shadow-sm hover:shadow transition-all gap-2 cursor-pointer"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Adding Timetable Slot...
+                </>
+              ) : (
+                <>
+                  <Plus className="size-4" />
+                  Add Slot
+                </>
+              )}
             </Button>
           </div>
         </SheetContent>
@@ -779,32 +836,55 @@ export default function TimetablePage() {
           BULK FILL WEEK SHEET
       ══════════════════════════════════════ */}
       <Sheet open={bulkSheetOpen} onOpenChange={v => { setBulkSheetOpen(v); if (!v) { setBulkClassId(""); setBulkSlots({}) } }}>
-        <SheetContent className="overflow-y-auto max-w-[100vw] w-full sm:max-w-[100vw] p-4 sm:p-6">
-          <SheetHeader>
-            <SheetTitle>Fill Week Timetable</SheetTitle>
-            <SheetDescription>Select a class, then assign subjects to each day × period slot at once.</SheetDescription>
+        <SheetContent className="overflow-y-auto max-w-[100vw] w-full sm:max-w-4xl p-0 flex flex-col gap-0 border-l border-border bg-background">
+          <SheetHeader className="p-6 border-b border-border/80 bg-muted/20">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Layers className="size-5" />
+              </div>
+              <div className="flex flex-col">
+                <SheetTitle className="text-base font-bold text-foreground">Fill Week Timetable</SheetTitle>
+                <SheetDescription className="text-xs text-muted-foreground">
+                  Select a class cohort, then assign subjects to each day × period slot simultaneously
+                </SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
-          <div className="flex flex-col gap-5 py-6">
+          <div className="flex flex-col gap-5 p-6 overflow-y-auto flex-1">
             {/* Class selector */}
-            <div className="flex flex-col gap-2">
-              <Label className="flex items-center gap-1.5 text-sm font-medium"><GraduationCap className="size-3.5 text-muted-foreground" /> Class & Section</Label>
+            <div className="flex flex-col gap-1.5 max-w-sm">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <GraduationCap className="size-3.5 text-muted-foreground" /> Target Class & Section
+              </Label>
               <Select value={bulkClassId} onValueChange={v => { setBulkClassId(v); setBulkSlots({}) }}>
-                <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select class cohort" />
+                </SelectTrigger>
                 <SelectContent>{classOptions.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             {/* Grid of day × period */}
             {bulkClassId && periodOptions.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <p className="text-xs text-muted-foreground">Fill the slots you want to add. Leave empty to skip.</p>
-                <div className="w-full">
+              <div className="flex flex-col gap-3.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Select subjects for desired slots. Blank slots will remain untouched.</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setBulkSlots({})}
+                    className="h-7 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                  >
+                    Clear selections
+                  </Button>
+                </div>
+                <div className="w-full overflow-x-auto rounded-xl border border-border">
                   <table className="w-full text-xs border-collapse table-fixed">
                     <thead>
-                      <tr>
-                        <th className="text-left px-1 sm:px-2 py-2 text-muted-foreground font-medium w-12 sm:w-20 text-[9px] sm:text-xs">Period</th>
+                      <tr className="bg-muted/40 border-b border-border">
+                        <th className="text-left px-2 sm:px-3 py-2.5 text-muted-foreground font-semibold w-16 sm:w-24 text-[10px] sm:text-xs uppercase tracking-wide">Period</th>
                         {DAYS.map(d => (
-                          <th key={d.value} className={`text-center px-0.5 sm:px-1 py-2 font-semibold text-[9px] sm:text-xs ${d.value === todayValue ? "text-primary" : "text-muted-foreground"}`}>
+                          <th key={d.value} className={`text-center px-1 sm:px-2 py-2.5 font-bold text-[10px] sm:text-xs uppercase tracking-wide ${d.value === todayValue ? "text-primary bg-primary/5" : "text-muted-foreground"}`}>
                             {d.short} {d.value === todayValue ? "•" : ""}
                           </th>
                         ))}
@@ -813,9 +893,9 @@ export default function TimetablePage() {
                     <tbody>
                       {periodOptions.map(p => (
                         <tr key={p.id} className="border-t border-border">
-                          <td className="px-1 sm:px-2 py-2">
-                            <div className="font-bold text-foreground text-sm">P{p.number}</div>
-                            <div className="text-muted-foreground text-xs wrap-break-word">{p.start}</div>
+                          <td className="px-2 sm:px-3 py-2 bg-muted/20 border-r border-border">
+                            <div className="font-bold text-foreground text-xs sm:text-sm">P{p.number}</div>
+                            <div className="text-muted-foreground text-[10px] sm:text-xs font-mono">{p.start}–{p.end}</div>
                           </td>
                           {DAYS.map(d => {
                             const key = `${d.value}__${p.id}`
@@ -823,14 +903,14 @@ export default function TimetablePage() {
                             const existingEntry = entries.find(e => e.classSection === classOptions.find(c => c.id === bulkClassId)?.label && e.day === d.value && e.periodNumber === p.number)
 
                             return (
-                              <td key={d.value} className={`px-0.5 sm:px-1 py-1 sm:py-1.5 ${d.value === todayValue ? "bg-primary/3" : ""}`}>
+                              <td key={d.value} className={`px-1 py-1.5 border-r border-border last:border-r-0 ${d.value === todayValue ? "bg-primary/3" : ""}`}>
                                 {existingEntry ? (
-                                  <div className="rounded-md bg-muted px-1 sm:px-1.5 py-1 text-[9px] sm:text-[10px] text-muted-foreground text-center truncate" title="Already assigned">
-                                    {existingEntry.subject.split(" ").map((w: string) => w[0]).join("").slice(0, 3)}
+                                  <div className="rounded-lg bg-muted/70 px-1.5 py-2 text-[10px] text-muted-foreground text-center font-medium truncate" title="Already scheduled">
+                                    {existingEntry.subject}
                                   </div>
                                 ) : (
                                   <Select value={val} onValueChange={v => setBulkSlots(prev => ({ ...prev, [key]: v }))}>
-                                    <SelectTrigger className="h-9 text-xs px-1 sm:px-1.5 min-w-0 w-full overflow-hidden">
+                                    <SelectTrigger className="h-8.5 text-xs px-2 min-w-0 w-full overflow-hidden rounded-lg">
                                       <SelectValue placeholder="—" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -884,20 +964,35 @@ export default function TimetablePage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{Object.values(bulkSlots).filter(v => v && v !== "__skip__").length} slots selected</span>
-                  <button onClick={() => setBulkSlots({})} className="text-destructive hover:underline">Clear all</button>
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                  <span className="font-semibold text-foreground">{Object.values(bulkSlots).filter(v => v && v !== "__skip__").length} slots selected for bulk insert</span>
                 </div>
-                <Button onClick={handleBulkAdd} disabled={isSubmitting || Object.values(bulkSlots).filter(v => v && v !== "__skip__").length === 0}>
-                  {isSubmitting ? <><Loader2 className="size-4 animate-spin" />Adding slots...</> : <><Layers className="size-4" />Add {Object.values(bulkSlots).filter(v => v && v !== "__skip__").length} Slot{Object.values(bulkSlots).filter(v => v && v !== "__skip__").length !== 1 ? "s" : ""}</>}
+                <Button
+                  onClick={handleBulkAdd}
+                  className="h-10.5 rounded-xl font-semibold shadow-sm hover:shadow transition-all gap-2 cursor-pointer"
+                  disabled={isSubmitting || Object.values(bulkSlots).filter(v => v && v !== "__skip__").length === 0}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Adding slots to timetable...
+                    </>
+                  ) : (
+                    <>
+                      <Layers className="size-4" />
+                      Add {Object.values(bulkSlots).filter(v => v && v !== "__skip__").length} Timetable Slot{Object.values(bulkSlots).filter(v => v && v !== "__skip__").length !== 1 ? "s" : ""}
+                    </>
+                  )}
                 </Button>
               </div>
             )}
             {bulkClassId && periodOptions.length === 0 && (
-              <p className="text-sm text-muted-foreground">No periods configured. Add periods in Academic Structure first.</p>
+              <p className="text-xs text-muted-foreground">No periods configured. Add periods in Academic Structure first.</p>
             )}
             {!bulkClassId && (
-              <div className="rounded-lg bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">Select a class above to start filling the timetable</div>
+              <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-10 text-center text-xs text-muted-foreground">
+                Select a class cohort above to view the week layout and fill timetable slots
+              </div>
             )}
           </div>
         </SheetContent>
@@ -905,22 +1000,33 @@ export default function TimetablePage() {
 
       {/* Remove Dialog */}
       <AlertDialog open={!!removeTarget} onOpenChange={() => setRemoveTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove this timetable slot?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the slot from the weekly timetable.
-              {removeTarget && (
-                <span className="mt-2 block rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium text-foreground">
-                  {removeTarget.subject} — {removeTarget.classSection} — {removeTarget.dayLabel} — {removeTarget.period}
+            <AlertDialogTitle>Remove timetable slot?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-2.5 pt-1">
+                <span className="text-xs text-muted-foreground">
+                  This slot will be removed from the class schedule and become available again.
                 </span>
-              )}
+                {removeTarget && (
+                  <div className="flex flex-col gap-1 rounded-xl border border-border/70 bg-muted/40 p-3 text-xs">
+                    <div className="font-bold text-foreground">{removeTarget.subject}</div>
+                    <div className="text-muted-foreground font-medium flex items-center gap-1.5">
+                      <span>{removeTarget.classSection}</span>
+                      <span>•</span>
+                      <span>{removeTarget.dayLabel}</span>
+                      <span>•</span>
+                      <span>{removeTarget.period}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRemove} className="bg-destructive text-white hover:bg-destructive/90" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Remove"}
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemove} className="rounded-xl bg-destructive text-white hover:bg-destructive/90" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : "Remove Slot"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -349,15 +349,15 @@ export default function AcademicStructurePage() {
       {/* ── Polished Tab Bar & Actions ── */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          {/* Segmented pill tabs with clear active state */}
-          <div className="inline-flex flex-wrap gap-1 rounded-xl bg-muted/60 p-1 border border-border/60">
+          {/* Segmented pill tabs with clear active state & comfortable height */}
+          <div className="inline-flex flex-wrap items-center gap-1.5 rounded-xl bg-muted/60 p-1.5 border border-border/70 shadow-2xs">
             {tabConfig.map(tab => {
               const isActive = activeTab === tab.id
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-150 cursor-pointer select-none ${
+                  className={`relative flex items-center gap-2 rounded-lg h-10 px-4 text-xs font-semibold transition-all duration-150 cursor-pointer select-none ${
                     isActive
                       ? "bg-card text-foreground shadow-2xs ring-1 ring-border"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -371,10 +371,10 @@ export default function AcademicStructurePage() {
                     />
                   )}
                   <span className="relative z-10 flex items-center gap-2">
-                    <tab.icon className={`size-3.5 ${isActive ? tab.themeColor : "text-muted-foreground"}`} />
+                    <tab.icon className={`size-4 ${isActive ? tab.themeColor : "text-muted-foreground"}`} />
                     <span>{tab.label}</span>
                     <span
-                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold min-w-4.5 text-center transition-colors ${
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold min-w-5 text-center transition-colors ${
                         isActive
                           ? tab.badgeActive
                           : "bg-muted text-muted-foreground"
@@ -391,7 +391,7 @@ export default function AcademicStructurePage() {
           <Button
             onClick={addActions[activeTab]}
             size="sm"
-            className="gap-2 rounded-xl h-9.5 px-4 font-semibold shadow-2xs hover:shadow transition-all self-start sm:self-auto cursor-pointer"
+            className="gap-2 rounded-xl h-11 px-4.5 font-semibold shadow-2xs hover:shadow transition-all self-start sm:self-auto cursor-pointer"
           >
             <Plus className="size-4" />
             <span className="hidden sm:inline">{addLabels[activeTab]}</span>

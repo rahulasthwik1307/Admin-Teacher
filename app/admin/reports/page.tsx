@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TableSkeleton, ListSkeleton, CardSkeleton, ChartSkeleton } from "@/components/ui/skeletons"
+import { motion, AnimatePresence } from "framer-motion"
 
 /* ── Types ── */
 interface TeacherActivityRow {
@@ -50,15 +51,15 @@ interface LogEntry {
 
 /* ── Helpers ── */
 function getRateColor(rate: number) {
-  if (rate >= 80) return { text: "text-emerald-600", bg: "bg-emerald-500", badge: "bg-emerald-500/10 text-emerald-700 border-emerald-200" }
-  if (rate >= 60) return { text: "text-amber-600", bg: "bg-amber-500", badge: "bg-amber-500/10 text-amber-700 border-amber-200" }
-  return { text: "text-rose-600", bg: "bg-rose-500", badge: "bg-rose-500/10 text-rose-700 border-rose-200" }
+  if (rate >= 80) return { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20" }
+  if (rate >= 60) return { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20" }
+  return { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500", badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20" }
 }
 
 function getAttendanceColor(avg: number) {
-  if (avg >= 80) return { text: "text-emerald-600", bar: "bg-emerald-500" }
-  if (avg >= 60) return { text: "text-amber-600", bar: "bg-amber-500" }
-  return { text: "text-rose-600", bar: "bg-rose-500" }
+  if (avg >= 80) return { text: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-500" }
+  if (avg >= 60) return { text: "text-amber-600 dark:text-amber-400", bar: "bg-amber-500" }
+  return { text: "text-rose-600 dark:text-rose-400", bar: "bg-rose-500" }
 }
 
 function formatTimestamp(raw: string): string {
@@ -88,11 +89,11 @@ function inferLogType(actionType: string): LogType {
 function getActionConfig(actionType: string, details: string) {
   const d = details.toLowerCase()
   switch (actionType) {
-    case "create": return { icon: UserPlus, color: "text-emerald-600", bg: "bg-emerald-500/10", border: "border-emerald-200", label: "CREATED", labelColor: "text-emerald-600" }
-    case "update": return { icon: Pencil, color: "text-blue-600", bg: "bg-blue-500/10", border: "border-blue-200", label: "UPDATED", labelColor: "text-blue-600" }
-    case "delete": return { icon: Trash2, color: "text-rose-600", bg: "bg-rose-500/10", border: "border-rose-200", label: "DELETED", labelColor: "text-rose-600" }
-    case "reset": return { icon: KeyRound, color: "text-amber-600", bg: "bg-amber-500/10", border: "border-amber-200", label: "RESET", labelColor: "text-amber-600" }
-    case "assign": return { icon: Link2, color: "text-violet-600", bg: "bg-violet-500/10", border: "border-violet-200", label: "ASSIGNED", labelColor: "text-violet-600" }
+    case "create": return { icon: UserPlus, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", label: "CREATED", labelColor: "text-emerald-700 dark:text-emerald-300" }
+    case "update": return { icon: Pencil, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/20", label: "UPDATED", labelColor: "text-sky-700 dark:text-sky-300" }
+    case "delete": return { icon: Trash2, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20", label: "DELETED", labelColor: "text-rose-700 dark:text-rose-300" }
+    case "reset": return { icon: KeyRound, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", label: "RESET", labelColor: "text-amber-700 dark:text-amber-300" }
+    case "assign": return { icon: Link2, color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-500/10", border: "border-violet-500/20", label: "ASSIGNED", labelColor: "text-violet-700 dark:text-violet-300" }
     default: return { icon: Settings, color: "text-muted-foreground", bg: "bg-muted", border: "border-border", label: "ACTION", labelColor: "text-muted-foreground" }
   }
 }
@@ -285,580 +286,734 @@ export default function ReportsPage() {
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Premium Tab Bar ── */}
-      <div className="inline-flex gap-1 rounded-xl bg-muted/60 p-1 self-start">
-        {tabConfig.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-base font-medium transition-all ${activeTab === tab.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <tab.icon className="size-3.5" />
-            {tab.label}
-          </button>
-        ))}
+      {/* ── Segmented Tab Bar with Smooth Spring Indicator ── */}
+      <div className="inline-flex gap-1.5 rounded-xl border border-border/80 bg-muted/60 p-1.5 self-start shadow-2xs">
+        {tabConfig.map(tab => {
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative flex items-center gap-2 rounded-lg px-4 h-10 text-xs font-semibold transition-all cursor-pointer ${
+                isActive ? "text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="activeReportsTabPill"
+                  className="absolute inset-0 rounded-lg bg-background border border-border/80 shadow-xs"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center gap-2">
+                <tab.icon className={`size-3.5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                <span>{tab.label}</span>
+              </span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* ════════════════════════════════
-          TAB 1: TEACHER ACTIVITY
-      ════════════════════════════════ */}
-      {activeTab === "teacher-activity" && (
-        <div className="flex flex-col gap-5">
-          {/* Stat cards */}
-          {!loadingTeachers && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-              <Card className="border-l-4 border-l-primary">
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                    <TrendingUp className="size-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className={`text-2xl font-bold ${getRateColor(avgRate).text}`}>{avgRate}%</div>
-                    <div className="text-sm text-muted-foreground">Avg Completion</div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="border-l-4 border-l-emerald-500">
-                <CardContent className="flex items-center gap-3 p-4">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
-                    <Users className="size-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</div>
-                    <div className="text-sm text-muted-foreground">Active Teachers</div>
-                  </div>
-                </CardContent>
-              </Card>
-              {topTeacher && (
-                <Card className="border-l-4 border-l-amber-500 col-span-2 lg:col-span-1">
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10">
-                      <CheckCircle2 className="size-4 text-amber-600" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-2xl font-bold text-foreground truncate">{topTeacher.name}</div>
-                      <div className="text-xs text-muted-foreground">{topTeacher.sessions} sessions · Top Performer</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-
-          {/* Filter bar */}
-          <div className="flex flex-wrap items-center gap-2 justify-between">
-            <div className="flex gap-2">
-              <Select value={teacherDeptFilter} onValueChange={setTeacherDeptFilter}>
-                <SelectTrigger className="h-9 w-56 text-xs">
-                  <div className="flex items-center w-full min-w-0 overflow-hidden">
-                    <span className="truncate text-left w-full">
-                      <SelectValue placeholder="All Departments" />
-                    </span>
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {uniqueDepts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {teacherDeptFilter !== "all" && (
-                <Button variant="ghost" size="sm" className="h-9 gap-1 text-muted-foreground" onClick={() => setTeacherDeptFilter("all")}>
-                  <X className="size-3.5" /> Clear
-                </Button>
-              )}
-            </div>
-            <Button variant="outline" size="sm" className="gap-2 h-9" disabled={loadingTeachers || teacherActivity.length === 0} onClick={() => exportTeacherCSV(teacherActivity)}>
-              <Download className="size-4" /> Export CSV
-            </Button>
-          </div>
-
-          {loadingTeachers ? (
-            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-              <CardSkeleton />
-              <TableSkeleton cols={5} rows={6} hasAvatar={true} />
-            </div>
-          ) : (
-            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-              {/* Completion Overview Chart */}
-              <Card>
-                <CardHeader className="pb-2 pt-4">
-                  <CardTitle className="text-base font-semibold">Completion Overview</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  <div className="relative h-55">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[{ name: "Completed", value: avgRate }, { name: "Remaining", value: Math.max(0, 100 - avgRate) }]}
-                          innerRadius={70}
-                          outerRadius={100}
-                          dataKey="value"
-                          startAngle={90}
-                          endAngle={-270}
-                          stroke="none"
-                        >
-                          <Cell fill="#3b82f6" />
-                          <Cell fill="#e2e8f0" />
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-3xl font-bold text-primary">{avgRate}%</span>
-                      <span className="text-xs text-muted-foreground">Avg Completion</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col mt-2">
-                    <div className="flex justify-between items-center py-2 border-b border-border">
-                      <span className="text-sm text-muted-foreground">Total Teachers</span>
-                      <span className="text-base font-bold text-foreground">{teacherActivity.length}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-border">
-                      <span className="text-sm text-muted-foreground">Active Teachers</span>
-                      <span className="text-base font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm text-muted-foreground">Avg Rate</span>
-                      <span className="text-base font-bold text-primary">{avgRate}%</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="flex flex-col gap-5 min-w-0">
-                {/* Desktop table */}
-                <Card className="hidden md:block">
-                <CardContent className="p-0">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left">
-                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Teacher</th>
-                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Dept</th>
-                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Sessions</th>
-                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Assigned</th>
-                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Completion</th>
-                        <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Last Session</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTeachers.length === 0 ? (
-                        <tr><td colSpan={6} className="px-5 py-10 text-center text-base text-muted-foreground">No data available.</td></tr>
-                      ) : filteredTeachers.map((t, i) => {
-                        const color = getRateColor(t.rate)
-                        return (
-                          <tr key={t.id} className={`border-t border-border hover:bg-muted/20 transition-colors ${i === 0 && t.sessions > 0 ? "bg-amber-500/3" : ""}`}>
-                            <td className="px-5 py-3">
-                              <div className="flex items-center gap-2.5">
-                                <Avatar className="size-8">
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{getInitials(t.name)}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="text-base font-medium text-foreground">{t.name}</div>
-                                  {i === 0 && t.sessions > 0 && <div className="text-[10px] text-amber-600 font-semibold">Top Performer</div>}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-5 py-3"><span className="font-mono text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground">{t.dept}</span></td>
-                            <td className="px-5 py-3 text-center text-base font-semibold text-foreground">{t.sessions}</td>
-                            <td className="px-5 py-3 text-center text-base text-muted-foreground">{t.assigned}</td>
-                            <td className="px-5 py-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="h-2.5 w-32 overflow-hidden rounded-full bg-muted">
-                                  <div className={`h-full rounded-full ${color.bg} transition-all`} style={{ width: `${t.rate}%` }} />
-                                </div>
-                                <span className={`text-base font-semibold ${color.text}`}>{t.rate}%</span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-3 text-xs text-muted-foreground">{t.lastSession}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </CardContent>
-              </Card>
-
-              {/* Mobile cards */}
-              <div className="flex flex-col gap-3 md:hidden">
-                {filteredTeachers.map(t => {
-                  const color = getRateColor(t.rate)
-                  return (
-                    <Card key={t.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <Avatar className="size-9"><AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{getInitials(t.name)}</AvatarFallback></Avatar>
-                            <div>
-                              <div className="text-base font-medium text-foreground">{t.name}</div>
-                              <div className="text-xs text-muted-foreground">{t.dept} · {t.sessions}/{t.assigned} sessions</div>
-                            </div>
-                          </div>
-                          <span className={`text-2xl font-bold ${color.text}`}>{t.rate}%</span>
-                        </div>
-                        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
-                          <div className={`h-full rounded-full ${color.bg}`} style={{ width: `${t.rate}%` }} />
-                        </div>
-                        <div className="mt-2 text-xs text-muted-foreground">Last: {t.lastSession}</div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-          )}
-        </div>
-      )}
-
-      {/* ════════════════════════════════
-          TAB 2: ATTENDANCE OVERVIEW
-      ════════════════════════════════ */}
-      {activeTab === "attendance-overview" && (
-        loadingOverview ? (
-          <div className="flex flex-col gap-5">
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {[1, 2, 3, 4].map(i => <CardSkeleton key={i} />)}
-            </div>
-            <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-              <ChartSkeleton />
-              <ListSkeleton count={4} hasAvatar={false} />
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5">
+      <AnimatePresence mode="wait">
+        {/* ════════════════════════════════
+            TAB 1: TEACHER ACTIVITY
+        ════════════════════════════════ */}
+        {activeTab === "teacher-activity" && (
+          <motion.div
+            key="teacher-activity"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="flex flex-col gap-5"
+          >
             {/* Stat cards */}
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {[
-                {
-                  label: "Overall Campus", value: `${overviewStats?.overallPct ?? 0}%`,
-                  sub: "All subjects combined",
-                  accent: "border-l-primary", iconColor: "bg-primary/10 text-primary",
-                  icon: BarChart3,
-                },
-                {
-                  label: "Highest Subject", value: overviewStats?.highestSubject ?? "—",
-                  sub: `${overviewStats?.highestPct ?? 0}% attendance`,
-                  accent: "border-l-emerald-500", iconColor: "bg-emerald-500/10 text-emerald-600",
-                  icon: TrendingUp,
-                },
-                {
-                  label: "Lowest Subject", value: overviewStats?.lowestSubject ?? "—",
-                  sub: `${overviewStats?.lowestPct ?? 0}% attendance`,
-                  accent: "border-l-rose-500", iconColor: "bg-rose-500/10 text-rose-600",
-                  icon: AlertTriangle,
-                },
-                {
-                  label: "Students Below 75%", value: `${overviewStats?.studentsBelow75 ?? 0}`,
-                  sub: "Need attention",
-                  accent: "border-l-amber-500", iconColor: "bg-amber-500/10 text-amber-600",
-                  icon: Users,
-                },
-              ].map(s => (
-                <Card key={s.label} className={`border-l-4 ${s.accent} transition-shadow hover:shadow-md`}>
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${s.iconColor}`}>
-                      <s.icon className="size-4" />
+            {!loadingTeachers && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {/* Card 1: Avg Completion */}
+                <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-sky-800/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                          Performance
+                        </span>
+                      </div>
+                      <div className="text-2xl lg:text-3xl font-black tracking-tight text-foreground mt-0.5">
+                        <span className={getRateColor(avgRate).text}>{avgRate}%</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground font-medium">Average Session Completion Rate</span>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-2xl font-bold text-foreground leading-tight truncate">{s.value}</div>
-                      <div className="text-sm font-medium text-foreground/80 truncate">{s.label}</div>
-                      <div className="text-xs text-muted-foreground truncate">{s.sub}</div>
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                      <TrendingUp className="size-4.5" />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Card 2: Active Teachers */}
+                <Card className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-emerald-800/60">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                          Faculty
+                        </span>
+                      </div>
+                      <div className="text-2xl lg:text-3xl font-black tracking-tight text-foreground mt-0.5">
+                        {teacherActivity.filter(t => t.sessions > 0).length}
+                        <span className="text-xs font-semibold text-muted-foreground ml-1.5">/ {teacherActivity.length}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground font-medium">Active Teachers With Sessions</span>
+                    </div>
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <Users className="size-4.5" />
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Card 3: Top Performer */}
+                {topTeacher && (
+                  <Card className="relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-amber-800/60 col-span-1 sm:col-span-2 lg:col-span-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                            Leader
+                          </span>
+                        </div>
+                        <div className="text-xl lg:text-2xl font-black tracking-tight text-foreground mt-0.5 truncate">
+                          {topTeacher.name}
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">{topTeacher.sessions} sessions conducted · {topTeacher.rate}% rate</span>
+                      </div>
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                        <CheckCircle2 className="size-4.5" />
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Filter bar */}
+            <div className="flex flex-wrap items-center gap-2 justify-between">
+              <div className="flex items-center gap-2">
+                <Select value={teacherDeptFilter} onValueChange={setTeacherDeptFilter}>
+                  <SelectTrigger className="h-9 w-56 text-xs font-medium">
+                    <div className="flex items-center w-full min-w-0 overflow-hidden">
+                      <span className="truncate text-left w-full">
+                        <SelectValue placeholder="All Departments" />
+                      </span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {uniqueDepts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {teacherDeptFilter !== "all" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100/80 dark:hover:bg-rose-950/40 text-xs font-semibold px-3 gap-1.5 shadow-2xs transition-all cursor-pointer"
+                    onClick={() => setTeacherDeptFilter("all")}
+                  >
+                    <X className="size-3.5" /> Clear
+                  </Button>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 h-9 rounded-xl font-semibold shadow-2xs hover:shadow transition-all cursor-pointer"
+                disabled={loadingTeachers || teacherActivity.length === 0}
+                onClick={() => exportTeacherCSV(teacherActivity)}
+              >
+                <Download className="size-4" /> Export CSV
+              </Button>
+            </div>
+
+            {loadingTeachers ? (
+              <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-stretch">
+                <CardSkeleton />
+                <TableSkeleton cols={5} rows={6} hasAvatar={true} />
+              </div>
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-stretch">
+                {/* Completion Overview Chart */}
+                <Card className="h-full flex flex-col overflow-hidden">
+                  <CardHeader className="pb-2 pt-4 border-b border-border/60 bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <TrendingUp className="size-3.5" />
+                      </div>
+                      <CardTitle className="text-sm font-bold text-foreground">Completion Overview</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col justify-between flex-1 p-5 gap-4">
+                    <div className="relative h-52 flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={[{ name: "Completed", value: avgRate }, { name: "Remaining", value: Math.max(0, 100 - avgRate) }]}
+                            innerRadius={68}
+                            outerRadius={95}
+                            dataKey="value"
+                            startAngle={90}
+                            endAngle={-270}
+                            stroke="none"
+                          >
+                            <Cell fill="#3b82f6" />
+                            <Cell fill="#e2e8f0" />
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span className="text-3xl font-black text-primary">{avgRate}%</span>
+                        <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Avg Completion</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/70 bg-muted/20 px-3.5">
+                      <div className="flex justify-between items-center py-2.5">
+                        <span className="text-xs text-muted-foreground font-medium">Total Teachers</span>
+                        <span className="text-xs font-bold text-foreground">{teacherActivity.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2.5">
+                        <span className="text-xs text-muted-foreground font-medium">Active Teachers</span>
+                        <span className="text-xs font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2.5">
+                        <span className="text-xs text-muted-foreground font-medium">Avg Completion Rate</span>
+                        <span className="text-xs font-bold text-primary">{avgRate}%</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
 
-            <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-              <Card>
-                <CardHeader className="pb-2 pt-4">
-                  <CardTitle className="text-base font-semibold">Overall Attendance</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4">
-                  <div className="relative h-55">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[{ name: "Completed", value: overviewStats?.overallPct ?? 0 }, { name: "Remaining", value: Math.max(0, 100 - (overviewStats?.overallPct ?? 0)) }]}
-                          innerRadius={70}
-                          outerRadius={100}
-                          dataKey="value"
-                          startAngle={90}
-                          endAngle={-270}
-                          stroke="none"
-                        >
-                          <Cell fill="#10b981" />
-                          <Cell fill="#e2e8f0" />
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <span className="text-3xl font-bold text-emerald-600">{overviewStats?.overallPct ?? 0}%</span>
-                      <span className="text-xs text-muted-foreground">Overall</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col mt-2">
-                    <div className="flex justify-between items-center py-2 border-b border-border">
-                      <span className="text-sm text-muted-foreground">Highest: {overviewStats?.highestSubject ?? "—"}</span>
-                      <span className="text-base font-bold text-foreground">{overviewStats?.highestPct ?? 0}%</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-border">
-                      <span className="text-sm text-muted-foreground">Lowest: {overviewStats?.lowestSubject ?? "—"}</span>
-                      <span className="text-base font-bold text-foreground">{overviewStats?.lowestPct ?? 0}%</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm text-muted-foreground">Students Below 75%</span>
-                      <span className="text-base font-bold text-foreground">{overviewStats?.studentsBelow75 ?? 0}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Subject table */}
-              <Card className="min-w-0 overflow-hidden">
-                <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-                    <BookOpen className="size-4 text-primary" />
-                  </div>
-                  <CardTitle className="text-base font-semibold">Subject-wise Attendance</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-t border-border text-left">
-                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Subject</th>
-                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Dept</th>
-                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">Attendance</th>
-                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Visual</th>
-                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center hidden md:table-cell">Sessions</th>
-                      <th className="px-5 py-2.5 text-sm font-medium uppercase tracking-wide text-muted-foreground text-center">Below 75%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subjectAttendance.length === 0 ? (
-                      <tr><td colSpan={6} className="px-5 py-10 text-center text-base text-muted-foreground">No attendance data available.</td></tr>
-                    ) : subjectAttendance.map(s => {
-                      const color = getAttendanceColor(s.avg)
-                      return (
-                        <tr key={s.subject} className="border-t border-border hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3 text-base font-medium text-foreground">{s.subject}</td>
-                          <td className="px-5 py-3 hidden sm:table-cell"><span className="font-mono text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground">{s.dept}</span></td>
-                          <td className="px-5 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-2.5 w-32 overflow-hidden rounded-full bg-muted">
-                                <div className={`h-full rounded-full ${color.bar} transition-all`} style={{ width: `${s.avg}%` }} />
-                              </div>
-                              <span className={`text-base font-bold ${color.text}`}>{s.avg}%</span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3 text-center">
-                            <div className="inline-flex items-center justify-center">
-                              <PieChart width={40} height={40}>
-                                <Pie
-                                  data={[{ value: s.avg }, { value: Math.max(0, 100 - s.avg) }]}
-                                  innerRadius={12}
-                                  outerRadius={18}
-                                  dataKey="value"
-                                  startAngle={90}
-                                  endAngle={-270}
-                                  stroke="none"
-                                >
-                                  <Cell fill={s.avg >= 80 ? "#10b981" : s.avg >= 60 ? "#f59e0b" : "#f43f5e"} />
-                                  <Cell fill="#e2e8f0" />
-                                </Pie>
-                              </PieChart>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3 text-center text-base text-foreground hidden md:table-cell">{s.sessions}</td>
-                          <td className="px-5 py-3 text-center">
-                            <Badge variant="secondary" className={`text-sm ${
-                              s.below75 >= 8 ? "bg-rose-500/10 text-rose-600 border-rose-200"
-                              : s.below75 >= 4 ? "bg-amber-500/10 text-amber-600 border-amber-200"
-                              : "bg-emerald-500/10 text-emerald-600 border-emerald-200"
-                            }`}>
-                              {s.below75}
-                            </Badge>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </CardContent>
-              </Card>
-            </div>
-          </div>
-        )
-      )}
-
-      {/* ════════════════════════════════
-          TAB 3: SYSTEM LOGS
-      ════════════════════════════════ */}
-      {activeTab === "system-logs" && (
-        <div className="flex flex-col gap-5">
-          {/* Stat chips */}
-          {!loadingLogs && (
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-                <Activity className="size-3.5" />{systemLogs.length} Total Logs
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-700">
-                <Calendar className="size-3.5" />{todayLogCount} Today
-              </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-sm font-medium text-amber-700">
-                <Users className="size-3.5" />{uniquePerformers.length} Users Active
-              </div>
-            </div>
-          )}
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2">
-            <Select value={logFilterPerformer} onValueChange={setLogFilterPerformer}>
-              <SelectTrigger className="h-9 w-44 text-xs">
-                <Users className="size-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue placeholder="All Users" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                {uniquePerformers.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={logFilterAction} onValueChange={setLogFilterAction}>
-              <SelectTrigger className="h-9 w-36 text-xs">
-                <Activity className="size-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue placeholder="All Actions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="create">Create</SelectItem>
-                <SelectItem value="update">Update</SelectItem>
-                <SelectItem value="delete">Delete</SelectItem>
-                <SelectItem value="reset">Reset</SelectItem>
-                <SelectItem value="assign">Assign</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={logFilterRange} onValueChange={setLogFilterRange}>
-              <SelectTrigger className="h-9 w-36 text-xs">
-                <Calendar className="size-3.5 mr-1.5 text-muted-foreground" />
-                <SelectValue placeholder="All Time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-              </SelectContent>
-            </Select>
-            {(logFilterPerformer !== "all" || logFilterAction !== "all" || logFilterRange !== "all") && (
-              <Button variant="ghost" size="sm" className="h-9 gap-1 text-muted-foreground" onClick={() => { setLogFilterPerformer("all"); setLogFilterAction("all"); setLogFilterRange("all") }}>
-                <X className="size-3.5" /> Clear
-              </Button>
-            )}
-          </div>
-
-          {loadingLogs ? (
-            <div className="flex flex-col gap-4">
-              {[1, 2].map(i => (
-                <div key={i} className="flex flex-col gap-3">
-                  <Skeleton className="h-4 w-28" />
-                  <TableSkeleton cols={4} rows={3} hasAvatar={false} />
-                </div>
-              ))}
-            </div>
-          ) : filteredLogs.length === 0 ? (
-            <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No logs match the selected filters.</CardContent></Card>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {groupedLogs.map(([dateLabel, logs]) => (
-                <div key={dateLabel}>
-                  {/* Date group header */}
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{dateLabel}</span>
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-xs text-muted-foreground">{logs.length}</span>
-                  </div>
-
+                <div className="flex flex-col gap-5 min-w-0 h-full">
                   {/* Desktop table */}
-                  <Card className="hidden md:block overflow-hidden">
-                    <CardContent className="p-0">
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {logs.map((log, li) => {
-                            const cfg = getActionConfig(log.actionType, log.details)
-                            const Icon = cfg.icon
-                            const uColor = getUserColor(log.performedBy)
-                            return (
-                              <tr key={log.id} className={`border-l-2 ${uColor.border} hover:bg-muted/20 transition-colors ${li !== 0 ? "border-t border-border" : ""}`}>
-                                <td className="px-5 py-3 w-10">
-                                  <div className={`flex size-8 items-center justify-center rounded-full border ${cfg.bg} ${cfg.border}`}>
-                                    <Icon className={`size-3.5 ${cfg.color}`} />
-                                  </div>
-                                </td>
-                                <td className="px-3 py-3 w-32">
-                                  <span className={`text-[10px] font-bold tracking-widest ${cfg.labelColor}`}>{cfg.label}</span>
-                                </td>
-                                <td className="px-3 py-3 flex-1">
-                                  <span className="text-sm text-foreground">{log.details}</span>
-                                </td>
-                                <td className="px-3 py-3 w-32">
-                                  <div className="flex items-center gap-1.5">
-                                    <Avatar className="size-5 shrink-0">
-                                      <AvatarFallback className={`${uColor.avatar} text-[9px] font-medium`}>{getInitials(log.performedBy)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className={`text-xs truncate ${uColor.text}`}>{log.performedBy}</span>
-                                  </div>
-                                </td>
-                                <td className="px-5 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">{log.timestamp}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                  <Card className="hidden md:flex flex-col h-full overflow-hidden">
+                    <CardContent className="p-0 flex-1 flex flex-col">
+                      <div className="overflow-x-auto flex-1">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/30 text-left">
+                              <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Teacher</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dept</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Sessions</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Assigned</th>
+                              <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Completion</th>
+                              <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last Session</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredTeachers.length === 0 ? (
+                              <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">No data available for the selected department.</td></tr>
+                            ) : filteredTeachers.map((t, i) => {
+                              const color = getRateColor(t.rate)
+                              return (
+                                <tr key={t.id} className={`border-t border-border hover:bg-muted/20 transition-colors ${i === 0 && t.sessions > 0 ? "bg-amber-500/3" : ""}`}>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <Avatar className="size-8 ring-1 ring-border">
+                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{getInitials(t.name)}</AvatarFallback>
+                                      </Avatar>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs font-bold text-foreground truncate">{t.name}</span>
+                                        {i === 0 && t.sessions > 0 && <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">★ Top Performer</span>}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3"><span className="font-mono text-xs font-bold rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{t.dept}</span></td>
+                                  <td className="px-4 py-3 text-center text-xs font-bold text-foreground">{t.sessions}</td>
+                                  <td className="px-4 py-3 text-center text-xs text-muted-foreground">{t.assigned}</td>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-2 w-28 overflow-hidden rounded-full bg-muted">
+                                        <div className={`h-full rounded-full ${color.bg} transition-all`} style={{ width: `${t.rate}%` }} />
+                                      </div>
+                                      <span className={`text-xs font-bold ${color.text}`}>{t.rate}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3 text-xs text-muted-foreground whitespace-nowrap">{t.lastSession}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </CardContent>
                   </Card>
 
                   {/* Mobile cards */}
-                  <div className="flex flex-col gap-2 md:hidden">
-                    {logs.map(log => {
-                      const cfg = getActionConfig(log.actionType, log.details)
-                      const Icon = cfg.icon
-                      const uColor = getUserColor(log.performedBy)
+                  <div className="flex flex-col gap-3 md:hidden">
+                    {filteredTeachers.map(t => {
+                      const color = getRateColor(t.rate)
                       return (
-                        <Card key={log.id}>
-                          <CardContent className="p-3">
-                            <div className="flex items-start gap-3">
-                              <div className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${cfg.bg} ${cfg.border}`}>
-                                <Icon className={`size-3.5 ${cfg.color}`} />
-                              </div>
-                              <div className="flex flex-1 flex-col gap-0.5">
-                                <span className={`text-[10px] font-bold tracking-widest ${cfg.labelColor}`}>{cfg.label}</span>
-                                <span className="text-xs text-foreground">{log.details}</span>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <Avatar className="size-4 shrink-0">
-                                    <AvatarFallback className={`${uColor.avatar} text-[8px] font-medium`}>{getInitials(log.performedBy)}</AvatarFallback>
-                                  </Avatar>
-                                  <span className={`text-[11px] font-medium ${uColor.text}`}>{log.performedBy}</span>
-                                  <span className="text-muted-foreground leading-none">·</span>
-                                  <span className="text-[11px] text-muted-foreground">{log.timestamp}</span>
+                        <Card key={t.id} className="overflow-hidden">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <Avatar className="size-9 ring-1 ring-border">
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">{getInitials(t.name)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="text-xs font-bold text-foreground">{t.name}</div>
+                                  <div className="text-[11px] text-muted-foreground">{t.dept} · {t.sessions}/{t.assigned} sessions</div>
                                 </div>
                               </div>
+                              <span className={`text-xl font-bold ${color.text}`}>{t.rate}%</span>
                             </div>
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                              <div className={`h-full rounded-full ${color.bg}`} style={{ width: `${t.rate}%` }} />
+                            </div>
+                            <div className="mt-2 text-[11px] text-muted-foreground">Last Session: {t.lastSession}</div>
                           </CardContent>
                         </Card>
                       )
                     })}
                   </div>
                 </div>
-              ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ════════════════════════════════
+            TAB 2: ATTENDANCE OVERVIEW
+        ════════════════════════════════ */}
+        {activeTab === "attendance-overview" && (
+          <motion.div
+            key="attendance-overview"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="flex flex-col gap-5"
+          >
+            {loadingOverview ? (
+              <div className="flex flex-col gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {[1, 2, 3, 4].map(i => <CardSkeleton key={i} />)}
+                </div>
+                <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-stretch">
+                  <ChartSkeleton />
+                  <ListSkeleton count={4} hasAvatar={false} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {/* Stat cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                  {/* Card 1: Overall Campus */}
+                  <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-sky-800/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                          Campus Attendance
+                        </span>
+                        <div className="text-2xl lg:text-3xl font-black tracking-tight text-foreground mt-0.5">
+                          {overviewStats?.overallPct ?? 0}%
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">All Subjects Combined</span>
+                      </div>
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                        <BarChart3 className="size-4.5" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 2: Highest Subject */}
+                  <Card className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-emerald-800/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                          Top Attendance
+                        </span>
+                        <div className="text-xl lg:text-2xl font-black tracking-tight text-foreground mt-0.5 truncate">
+                          {overviewStats?.highestSubject ?? "—"}
+                        </div>
+                        <span className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold">{overviewStats?.highestPct ?? 0}% average</span>
+                      </div>
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <TrendingUp className="size-4.5" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 3: Lowest Subject */}
+                  <Card className="relative overflow-hidden rounded-xl border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-rose-800/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                          Attention Required
+                        </span>
+                        <div className="text-xl lg:text-2xl font-black tracking-tight text-foreground mt-0.5 truncate">
+                          {overviewStats?.lowestSubject ?? "—"}
+                        </div>
+                        <span className="text-xs text-rose-700 dark:text-rose-300 font-semibold">{overviewStats?.lowestPct ?? 0}% lowest average</span>
+                      </div>
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                        <AlertTriangle className="size-4.5" />
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* Card 4: Students Below 75% */}
+                  <Card className="relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-amber-800/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                          At Risk
+                        </span>
+                        <div className="text-2xl lg:text-3xl font-black tracking-tight text-foreground mt-0.5">
+                          {overviewStats?.studentsBelow75 ?? 0}
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">Students Below 75% Criteria</span>
+                      </div>
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                        <Users className="size-4.5" />
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+
+                <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-stretch">
+                  {/* Left Overview card */}
+                  <Card className="h-full flex flex-col overflow-hidden">
+                    <CardHeader className="pb-2 pt-4 border-b border-border/60 bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+                          <BarChart3 className="size-3.5" />
+                        </div>
+                        <CardTitle className="text-sm font-bold text-foreground">Overall Attendance</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-col justify-between flex-1 p-5 gap-4">
+                      <div className="relative h-52 flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={[{ name: "Completed", value: overviewStats?.overallPct ?? 0 }, { name: "Remaining", value: Math.max(0, 100 - (overviewStats?.overallPct ?? 0)) }]}
+                              innerRadius={68}
+                              outerRadius={95}
+                              dataKey="value"
+                              startAngle={90}
+                              endAngle={-270}
+                              stroke="none"
+                            >
+                              <Cell fill="#10b981" />
+                              <Cell fill="#e2e8f0" />
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{overviewStats?.overallPct ?? 0}%</span>
+                          <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Campus Wide</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/70 bg-muted/20 px-3.5">
+                        <div className="flex justify-between items-center py-2.5">
+                          <span className="text-xs text-muted-foreground font-medium truncate max-w-36">Top: {overviewStats?.highestSubject ?? "—"}</span>
+                          <span className="text-xs font-bold text-foreground">{overviewStats?.highestPct ?? 0}%</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2.5">
+                          <span className="text-xs text-muted-foreground font-medium truncate max-w-36">Lowest: {overviewStats?.lowestSubject ?? "—"}</span>
+                          <span className="text-xs font-bold text-foreground">{overviewStats?.lowestPct ?? 0}%</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2.5">
+                          <span className="text-xs text-muted-foreground font-medium">Below 75% Students</span>
+                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{overviewStats?.studentsBelow75 ?? 0}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Subject table card */}
+                  <Card className="min-w-0 h-full flex flex-col overflow-hidden">
+                    <CardHeader className="pb-3 pt-4 border-b border-border/60 bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <BookOpen className="size-3.5" />
+                        </div>
+                        <CardTitle className="text-sm font-bold text-foreground">Subject-wise Attendance Distribution</CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-1 flex flex-col">
+                      <div className="overflow-x-auto flex-1">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border bg-muted/30 text-left">
+                              <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subject</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Dept</th>
+                              <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Visual</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center hidden md:table-cell">Sessions</th>
+                              <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Below 75%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {subjectAttendance.length === 0 ? (
+                              <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">No attendance data available.</td></tr>
+                            ) : subjectAttendance.map(s => {
+                              const color = getAttendanceColor(s.avg)
+                              return (
+                                <tr key={s.subject} className="border-t border-border hover:bg-muted/20 transition-colors">
+                                  <td className="px-5 py-3 text-xs font-bold text-foreground">{s.subject}</td>
+                                  <td className="px-4 py-3 hidden sm:table-cell">
+                                    <span className="font-mono text-xs font-bold rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{s.dept}</span>
+                                  </td>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-2 w-28 overflow-hidden rounded-full bg-muted">
+                                        <div className={`h-full rounded-full ${color.bar} transition-all`} style={{ width: `${s.avg}%` }} />
+                                      </div>
+                                      <span className={`text-xs font-bold ${color.text}`}>{s.avg}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <div className="inline-flex items-center justify-center">
+                                      <PieChart width={36} height={36}>
+                                        <Pie
+                                          data={[{ value: s.avg }, { value: Math.max(0, 100 - s.avg) }]}
+                                          innerRadius={11}
+                                          outerRadius={16}
+                                          dataKey="value"
+                                          startAngle={90}
+                                          endAngle={-270}
+                                          stroke="none"
+                                        >
+                                          <Cell fill={s.avg >= 80 ? "#10b981" : s.avg >= 60 ? "#f59e0b" : "#f43f5e"} />
+                                          <Cell fill="#e2e8f0" />
+                                        </Pie>
+                                      </PieChart>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center text-xs font-bold text-foreground hidden md:table-cell">{s.sessions}</td>
+                                  <td className="px-5 py-3 text-center">
+                                    <Badge variant="outline" className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                                      s.below75 >= 8 ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
+                                      : s.below75 >= 4 ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                                      : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                                    }`}>
+                                      {s.below75} students
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ════════════════════════════════
+            TAB 3: SYSTEM LOGS
+        ════════════════════════════════ */}
+        {activeTab === "system-logs" && (
+          <motion.div
+            key="system-logs"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="flex flex-col gap-5"
+          >
+            {/* Stat cards */}
+            {!loadingLogs && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div className="flex items-center gap-3 rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 shadow-2xs dark:border-sky-800/60">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                    <Activity className="size-4.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-lg font-black text-foreground leading-none">{systemLogs.length}</span>
+                    <span className="text-[11px] text-muted-foreground font-medium mt-1">Total System Logs</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 shadow-2xs dark:border-emerald-800/60">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Calendar className="size-4.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-lg font-black text-foreground leading-none">{todayLogCount}</span>
+                    <span className="text-[11px] text-muted-foreground font-medium mt-1">Events Logged Today</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-3.5 shadow-2xs dark:border-amber-800/60">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Users className="size-4.5" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-lg font-black text-foreground leading-none">{uniquePerformers.length}</span>
+                    <span className="text-[11px] text-muted-foreground font-medium mt-1">Active Administrators</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <Select value={logFilterPerformer} onValueChange={setLogFilterPerformer}>
+                <SelectTrigger className="h-9 w-44 text-xs font-medium">
+                  <Users className="size-3.5 mr-1 text-muted-foreground" />
+                  <SelectValue placeholder="All Users" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  {uniquePerformers.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={logFilterAction} onValueChange={setLogFilterAction}>
+                <SelectTrigger className="h-9 w-36 text-xs font-medium">
+                  <Activity className="size-3.5 mr-1 text-muted-foreground" />
+                  <SelectValue placeholder="All Actions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="create">Create</SelectItem>
+                  <SelectItem value="update">Update</SelectItem>
+                  <SelectItem value="delete">Delete</SelectItem>
+                  <SelectItem value="reset">Reset</SelectItem>
+                  <SelectItem value="assign">Assign</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={logFilterRange} onValueChange={setLogFilterRange}>
+                <SelectTrigger className="h-9 w-36 text-xs font-medium">
+                  <Calendar className="size-3.5 mr-1 text-muted-foreground" />
+                  <SelectValue placeholder="All Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                </SelectContent>
+              </Select>
+              {(logFilterPerformer !== "all" || logFilterAction !== "all" || logFilterRange !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100/80 dark:hover:bg-rose-950/40 text-xs font-semibold px-3 gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  onClick={() => { setLogFilterPerformer("all"); setLogFilterAction("all"); setLogFilterRange("all") }}
+                >
+                  <X className="size-3.5" /> Clear
+                </Button>
+              )}
             </div>
-          )}
-        </div>
-      )}
+
+            {loadingLogs ? (
+              <div className="flex flex-col gap-4">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex flex-col gap-3">
+                    <Skeleton className="h-4 w-28" />
+                    <TableSkeleton cols={4} rows={3} hasAvatar={false} />
+                  </div>
+                ))}
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <Card><CardContent className="py-12 text-center text-sm text-muted-foreground">No logs match the selected filters.</CardContent></Card>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {groupedLogs.map(([dateLabel, logs]) => (
+                  <div key={dateLabel}>
+                    {/* Date group header */}
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{dateLabel}</span>
+                      <div className="flex-1 h-px bg-border" />
+                      <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5">{logs.length}</Badge>
+                    </div>
+
+                    {/* Desktop table */}
+                    <Card className="hidden md:block overflow-hidden">
+                      <CardContent className="p-0">
+                        <table className="w-full text-sm">
+                          <tbody>
+                            {logs.map((log, li) => {
+                              const cfg = getActionConfig(log.actionType, log.details)
+                              const Icon = cfg.icon
+                              const uColor = getUserColor(log.performedBy)
+                              return (
+                                <tr key={log.id} className={`border-l-3 ${uColor.border} hover:bg-muted/20 transition-colors ${li !== 0 ? "border-t border-border" : ""}`}>
+                                  <td className="px-4 py-3 w-10">
+                                    <div className={`flex size-8 items-center justify-center rounded-lg border ${cfg.bg} ${cfg.border}`}>
+                                      <Icon className={`size-4 ${cfg.color}`} />
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-3 w-28">
+                                    <Badge variant="outline" className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                                      {cfg.label}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-3 flex-1">
+                                    <span className="text-xs font-medium text-foreground">{log.details}</span>
+                                  </td>
+                                  <td className="px-3 py-3 w-36">
+                                    <div className="flex items-center gap-2">
+                                      <Avatar className="size-6 shrink-0 ring-1 ring-border">
+                                        <AvatarFallback className={`${uColor.avatar} text-[9px] font-bold`}>{getInitials(log.performedBy)}</AvatarFallback>
+                                      </Avatar>
+                                      <span className={`text-xs font-semibold truncate ${uColor.text}`}>{log.performedBy}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3 text-right text-xs font-mono text-muted-foreground whitespace-nowrap">{log.timestamp}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </CardContent>
+                    </Card>
+
+                    {/* Mobile cards */}
+                    <div className="flex flex-col gap-2.5 md:hidden">
+                      {logs.map(log => {
+                        const cfg = getActionConfig(log.actionType, log.details)
+                        const Icon = cfg.icon
+                        const uColor = getUserColor(log.performedBy)
+                        return (
+                          <div key={log.id} className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
+                            <div className="flex items-start gap-3">
+                              <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg border ${cfg.bg} ${cfg.border}`}>
+                                <Icon className={`size-4 ${cfg.color}`} />
+                              </div>
+                              <div className="flex flex-1 flex-col gap-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Badge variant="outline" className={`text-[10px] font-bold tracking-wider px-1.5 py-0.2 rounded-md ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                                    {cfg.label}
+                                  </Badge>
+                                  <span className="text-[10px] font-mono text-muted-foreground">{log.timestamp}</span>
+                                </div>
+                                <span className="text-xs font-medium text-foreground">{log.details}</span>
+                                <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-border/60">
+                                  <Avatar className="size-4.5 shrink-0 ring-1 ring-border">
+                                    <AvatarFallback className={`${uColor.avatar} text-[8px] font-bold`}>{getInitials(log.performedBy)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className={`text-xs font-semibold ${uColor.text}`}>{log.performedBy}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
