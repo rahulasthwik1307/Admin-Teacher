@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +25,7 @@ interface QRSummaryStateProps {
   initialStudents: Student[]
   teacherId: string
   sessionId: string
+  classId?: string
   onDone: () => void
 }
 
@@ -73,11 +74,29 @@ export function QRSummaryState({
   initialStudents,
   teacherId,
   sessionId,
+  classId,
   onDone,
 }: QRSummaryStateProps) {
   const [students, setStudents] = useState<Student[]>(() =>
     initialStudents.map((s) => (s.status === "pending" ? { ...s, status: "absent" } : s))
   )
+
+  useEffect(() => {
+    if (initialStudents.length === 0 && classId && sessionId) {
+      fetch(`/api/teacher/student-list?class_id=${classId}&session_id=${sessionId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.students) {
+            setStudents(
+              data.students.map((s: Student) =>
+                s.status === "pending" ? { ...s, status: "absent" } : s
+              )
+            )
+          }
+        })
+        .catch((err) => console.error("Failed to load students in summary state:", err))
+    }
+  }, [classId, sessionId, initialStudents.length])
 
   const presentCount = students.filter((s) => s.status === "present").length
   const absentCount = students.filter((s) => s.status === "absent").length
@@ -107,8 +126,11 @@ export function QRSummaryState({
           .from("period_attendance")
           .update({
             status: newStatus,
+            override_by_teacher: true,
+            override_reason: "Manual teacher review override",
             overridden_by: teacherId,
             overridden_at: new Date().toISOString(),
+            face_verified: newStatus === "present",
           })
           .eq("session_id", sessionId)
           .eq("student_id", studentId)
@@ -118,8 +140,11 @@ export function QRSummaryState({
           session_id: sessionId,
           student_id: studentId,
           status: newStatus,
+          override_by_teacher: true,
+          override_reason: "Manual teacher review override",
           overridden_by: teacherId,
           overridden_at: new Date().toISOString(),
+          face_verified: newStatus === "present",
         })
         if (error) throw error
       }

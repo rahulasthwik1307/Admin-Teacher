@@ -239,20 +239,26 @@ export default function QRAttendancePage() {
   const checkForActiveSession = useCallback(async (uid: string) => {
     try {
       const supabase = createClient()
-      const { data: active } = await supabase
+      const { data: session } = await supabase
         .from("attendance_sessions")
         .select("*")
         .eq("teacher_id", uid)
-        .eq("status", "active")
-        .single()
+        .in("status", ["active", "reviewing"])
+        .order("opened_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      if (active) {
-        setActiveSessionId(active.id)
-        setCurrentQrToken(active.current_qr_token || "")
-        setSelectedClass(active.class_id)
-        setSelectedSubject(active.subject_id)
-        setSelectedPeriod(active.period_id)
-        setPageState("active")
+      if (session) {
+        setActiveSessionId(session.id)
+        setCurrentQrToken(session.current_qr_token || "")
+        setSelectedClass(session.class_id)
+        setSelectedSubject(session.subject_id)
+        setSelectedPeriod(session.period_id)
+        if (session.status === "active") {
+          setPageState("active")
+        } else if (session.status === "reviewing") {
+          setPageState("summary")
+        }
       }
     } catch (err) {
       console.error("Check active session error:", err)
@@ -446,7 +452,6 @@ export default function QRAttendancePage() {
         .from("attendance_sessions")
         .update({
           status: "reviewing",
-          finalized_at: new Date().toISOString(),
         })
         .eq("id", activeSessionId)
 
@@ -485,16 +490,10 @@ export default function QRAttendancePage() {
         .eq("session_id", activeSessionId)
         .eq("status", "pending")
 
-      await supabase.from("system_logs").insert({
-        performed_by: teacherId,
-        action_type: "create",
-        description: `Finalized attendance session for ${subjectLabel}`,
-      })
-
       setTimeout(async () => {
         setPageState("summary")
         setIsTransitioning(false)
-        toast.success("Attendance finalized successfully", {
+        toast.success("Attendance closed for review", {
           description: `${subjectLabel} — ${classLabel} — ${periodLabel}`,
         })
 
@@ -504,7 +503,7 @@ export default function QRAttendancePage() {
       }, 200)
     } catch (err) {
       console.error(err)
-      toast.error("Failed to finalize session")
+      toast.error("Failed to enter review mode")
       setIsTransitioning(false)
     }
   }
@@ -578,13 +577,67 @@ export default function QRAttendancePage() {
           initialStudents={liveStudents}
           teacherId={teacherId!}
           sessionId={activeSessionId!}
+          classId={selectedClass}
           onDone={async () => {
             if (activeSessionId) {
               const supabase = createClient()
+
+              // Step 1: Ensure all class students have records resolved before session is finalized
+              if (selectedClass) {
+                const { data: classStudents } = await supabase
+                  .from("students")
+                  .select("id")
+                  .eq("class_id", selectedClass)
+
+                const { data: existingAttendance } = await supabase
+                  .from("period_attendance")
+                  .select("student_id")
+                  .eq("session_id", activeSessionId)
+
+                const existingIds = new Set(
+                  (existingAttendance || []).map((r: any) => r.student_id)
+                )
+
+                const missingStudents = (classStudents || []).filter(
+                  (s: any) => !existingIds.has(s.id)
+                )
+                if (missingStudents.length > 0) {
+                  await supabase.from("period_attendance").insert(
+                    missingStudents.map((s: any) => ({
+                      session_id: activeSessionId,
+                      student_id: s.id,
+                      status: "absent",
+                    }))
+                  )
+                }
+              }
+
+              // Step 2: Ensure any remaining pending records are marked absent
+              await supabase
+                .from("period_attendance")
+                .update({ status: "absent" })
+                .eq("session_id", activeSessionId)
+                .eq("status", "pending")
+
+              // Step 3: Set attendance_sessions to finalized with finalized_at
               await supabase
                 .from("attendance_sessions")
-                .update({ status: "finalized" })
+                .update({
+                  status: "finalized",
+                  finalized_at: new Date().toISOString(),
+                })
                 .eq("id", activeSessionId)
+
+              // Step 4: Write system log
+              await supabase.from("system_logs").insert({
+                performed_by: teacherId,
+                action_type: "create",
+                description: `Finalized attendance session for ${subjectLabel}`,
+              })
+
+              toast.success("Attendance session finalized successfully", {
+                description: `${subjectLabel} — ${classLabel} — ${periodLabel}`,
+              })
             }
             setPageState("setup")
             setSelectedClass("")

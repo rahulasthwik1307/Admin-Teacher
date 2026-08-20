@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   // 3. Fetch attendance records for this session
   const { data: attendanceData, error: attendanceError } = await supabaseAdmin
     .from('period_attendance')
-    .select('student_id, status')
+    .select('student_id, status, scanned_at, face_verified')
     .eq('session_id', sessionId)
 
   console.log('attendance error:', attendanceError)
@@ -65,8 +65,8 @@ export async function GET(req: NextRequest) {
 
     if (att) {
       status = att.status
-      if (att.marked_at) {
-        time = new Date(att.marked_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      if (att.scanned_at) {
+        time = new Date(att.scanned_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       }
     }
 
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
   })
 
   // Sort: present first, then absent, then pending
-  const order: Record<string, number> = { present: 0, absent: 1, pending: 2 }
+  const order: Record<string, number> = { present: 0, absent: 1, pending: 2, failed: 3 }
   students.sort((a: any, b: any) => (order[a.status] ?? 2) - (order[b.status] ?? 2))
 
   console.log('merged students:', JSON.stringify(students))
