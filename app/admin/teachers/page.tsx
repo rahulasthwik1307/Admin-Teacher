@@ -69,6 +69,7 @@ interface Teacher {
   departmentId: string
   subjects: number
   status: "Active" | "Disabled"
+  contactEmail: string | null
 }
 
 function getInitials(name: string): string {
@@ -110,6 +111,7 @@ export default function TeacherManagementPage() {
   const [editTitle, setEditTitle] = useState("Mr")
   const [editName, setEditName] = useState("")
   const [editDept, setEditDept] = useState("")
+  const [editContactEmail, setEditContactEmail] = useState("")
 
   // Search & filter
   const [searchQuery, setSearchQuery] = useState("")
@@ -121,7 +123,7 @@ export default function TeacherManagementPage() {
   const [formName, setFormName] = useState("")
   const [formTeacherId, setFormTeacherId] = useState("")
   const [formDept, setFormDept] = useState("")
-  const [formEmail, setFormEmail] = useState("")
+  const [formContactEmail, setFormContactEmail] = useState("")
 
   const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([])
 
@@ -139,7 +141,7 @@ export default function TeacherManagementPage() {
           title,
           department_id,
           department:departments ( id, name ),
-          user:users ( full_name, email )
+          user:users ( full_name, email, contact_email )
         `)
         .order("created_at", { ascending: false })
 
@@ -159,6 +161,7 @@ export default function TeacherManagementPage() {
         departmentId: t.department?.id ?? "unassigned",
         subjects: 0,
         status: t.is_active ? "Active" : "Disabled",
+        contactEmail: t.user?.contact_email ?? null,
       }))
 
       const { data: assignments } = await supabase
@@ -282,6 +285,7 @@ export default function TeacherManagementPage() {
         full_name: formName,
         role: "teacher",
         must_change_password: true,
+        contact_email: formContactEmail.trim() || null,
       })
       if (userInsertError) {
         toast.error(`Users insert failed: ${userInsertError.message}`, {
@@ -330,7 +334,7 @@ export default function TeacherManagementPage() {
       setFormName("")
       setFormTeacherId("")
       setFormDept("")
-      setFormEmail("")
+      setFormContactEmail("")
       fetchTeachers()
     } catch {
       toast.error("An unexpected error occurred.", {
@@ -430,10 +434,13 @@ export default function TeacherManagementPage() {
 
       const { error: userError } = await supabase
         .from("users")
-        .update({ full_name: editName.trim() })
+        .update({
+          full_name: editName.trim(),
+          contact_email: editContactEmail.trim() || null,
+        })
         .eq("id", editTarget.id)
       if (userError) {
-        toast.error(`Failed to update name: ${userError.message}`)
+        toast.error(`Failed to update user profile: ${userError.message}`)
         setIsSubmitting(false)
         return
       }
@@ -450,6 +457,7 @@ export default function TeacherManagementPage() {
       toast.success("Teacher updated successfully")
       setEditSheetOpen(false)
       setEditTarget(null)
+      setEditContactEmail("")
       fetchTeachers()
     } catch {
       toast.error("An unexpected error occurred.")
@@ -711,6 +719,7 @@ export default function TeacherManagementPage() {
                                           setEditTitle(t.title)
                                           setEditName(t.name)
                                           setEditDept(t.department)
+                                          setEditContactEmail(t.contactEmail ?? "")
                                           setEditSheetOpen(true)
                                         }}
                                       >
@@ -791,6 +800,7 @@ export default function TeacherManagementPage() {
                                     setEditTitle(t.title)
                                     setEditName(t.name)
                                     setEditDept(t.department)
+                                    setEditContactEmail(t.contactEmail ?? "")
                                     setEditSheetOpen(true)
                                   }}
                                 >
@@ -918,7 +928,7 @@ export default function TeacherManagementPage() {
               </Select>
             </div>
 
-            {/* Email (display only) */}
+            {/* Contact Email */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="teacher-email" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Mail className="size-3.5 text-muted-foreground" />
@@ -927,9 +937,9 @@ export default function TeacherManagementPage() {
               <Input
                 id="teacher-email"
                 type="email"
-                placeholder="teacher@nnrg.edu.in"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="teacher@gmail.com"
+                value={formContactEmail}
+                onChange={(e) => setFormContactEmail(e.target.value)}
                 className="h-10 rounded-xl"
               />
             </div>
@@ -1111,6 +1121,15 @@ export default function TeacherManagementPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Contact Email */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-contact-email" className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <Mail className="size-3.5 text-muted-foreground" />
+                Contact Email <span className="text-[10px] font-normal text-muted-foreground">(for absence notifications)</span>
+              </Label>
+              <Input id="edit-contact-email" type="email" placeholder="teacher@gmail.com" value={editContactEmail} onChange={(e) => setEditContactEmail(e.target.value)} className="h-10 rounded-xl" />
             </div>
 
             {/* Read-only notice */}

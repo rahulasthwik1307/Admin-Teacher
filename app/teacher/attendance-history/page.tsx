@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "sonner"
+import { motion, useReducedMotion, type Variants } from "framer-motion"
 import {
   Download,
   CalendarDays,
@@ -9,11 +10,13 @@ import {
   BookOpen,
   AlertTriangle,
   CheckCircle2,
-  Loader2,
   ChevronDown,
   ChevronRight,
-  BarChart3,
   Users,
+  X,
+  ShieldCheck,
+  Clock,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +36,8 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import { AttendanceHistorySkeleton, StudentDetailsSkeleton } from "@/components/ui/skeletons"
+import { useAttendanceHistory } from "@/hooks/use-attendance-history"
+import { createClient } from "@/lib/supabase/client"
 
 /* ── types ─────────────────────────────────────────────── */
 interface Session {
@@ -60,15 +65,15 @@ interface DetailStudent {
 
 /* ── helpers ───────────────────────────────────────────── */
 function pctColor(pct: number) {
-  if (pct >= 75) return "text-emerald-600"
-  if (pct >= 60) return "text-amber-600"
-  return "text-red-600"
+  if (pct >= 75) return "text-emerald-600 dark:text-emerald-400"
+  if (pct >= 60) return "text-amber-600 dark:text-amber-400"
+  return "text-rose-600 dark:text-rose-400"
 }
 
 function pctBg(pct: number) {
-  if (pct >= 75) return "bg-emerald-50 border-emerald-200 text-emerald-700"
-  if (pct >= 60) return "bg-amber-50 border-amber-200 text-amber-700"
-  return "bg-red-50 border-red-200 text-red-700"
+  if (pct >= 75) return "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+  if (pct >= 60) return "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300"
+  return "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-300"
 }
 
 function formatDate(dateStr: string): string {
@@ -170,25 +175,48 @@ function SubjectSummaryStrip({ sessions }: { sessions: Session[] }) {
   if (subjects.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Per-Subject Summary</p>
-      <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center gap-2">
+        <div className="flex size-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <BookOpen className="size-3.5" />
+        </div>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Per-Subject Summary
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {subjects.map((sub) => (
           <div
             key={sub.name}
             className={cn(
-              "flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm",
-              pctBg(sub.avg)
+              "group relative flex items-center justify-between gap-3.5 rounded-xl border bg-card p-3.5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs",
+              sub.avg >= 75
+                ? "border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card dark:border-emerald-900/50"
+                : sub.avg >= 60
+                ? "border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card dark:border-amber-900/50"
+                : "border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card dark:border-rose-900/50"
             )}
           >
-            <div className="flex flex-col">
-              <span className="font-semibold leading-tight">{sub.name}</span>
-              <span className="text-xs opacity-70">{sub.count} session{sub.count !== 1 ? "s" : ""}</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold text-foreground truncate" title={sub.name}>
+                {sub.name}
+              </span>
+              <span className="text-xs text-muted-foreground font-medium mt-0.5">
+                {sub.count} session{sub.count !== 1 ? "s" : ""} conducted
+              </span>
             </div>
-            <div className="flex flex-col items-end">
-              <span className="text-base font-bold leading-tight">{sub.avg}%</span>
-              {sub.lowCount > 0 && (
-                <span className="text-xs opacity-70">{sub.lowCount} below 75%</span>
+            <div className="flex flex-col items-end shrink-0">
+              <span className={cn("text-lg font-extrabold tracking-tight leading-none", pctColor(sub.avg))}>
+                {sub.avg}%
+              </span>
+              {sub.lowCount > 0 ? (
+                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 mt-1">
+                  {sub.lowCount} below 75%
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
+                  All on track
+                </span>
               )}
             </div>
           </div>
@@ -216,56 +244,71 @@ function SectionGroup({
       {/* Section header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 py-2 text-left"
+        className="flex items-center gap-2.5 py-2.5 px-1 text-left group cursor-pointer"
       >
-        {open ? (
-          <ChevronDown className="size-3.5 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-3.5 text-muted-foreground" />
-        )}
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
+        <div className="flex size-5 items-center justify-center rounded-md bg-muted/80 text-muted-foreground group-hover:text-foreground transition-colors">
+          {open ? (
+            <ChevronDown className="size-3.5" />
+          ) : (
+            <ChevronRight className="size-3.5" />
+          )}
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-xs font-bold text-primary">
           {section}
         </span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           {sessions.length} session{sessions.length !== 1 ? "s" : ""}
         </span>
-        <span className={cn("ml-auto text-xs font-semibold", pctColor(avgPct))}>
+        <span className={cn("ml-auto text-xs font-bold px-2 py-0.5 rounded-md border", pctBg(avgPct))}>
           avg {avgPct}%
         </span>
       </button>
 
       {/* Subject rows */}
       {open && (
-        <div className="mb-2 rounded-xl border border-border bg-card overflow-hidden">
-          {sessions.map((s, i) => (
+        <div className="mb-2.5 rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs divide-y divide-border/60">
+          {sessions.map((s) => (
             <div
               key={s.id}
               onClick={() => onSelect(s)}
-              className="group flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 last:border-0 hover:bg-muted/30 transition-colors"
+              className="group flex cursor-pointer items-center justify-between gap-3.5 px-4 py-3.5 hover:bg-muted/40 transition-all duration-150"
             >
               {/* Subject + period */}
               <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-sm font-semibold text-foreground">{s.subject}</span>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground">{s.periodShort}</span>
-                  <span className="text-xs text-muted-foreground/50">·</span>
-                  <span className="text-xs text-muted-foreground">{s.periodTime}</span>
+                <span className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                  {s.subject}
+                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground bg-muted/70 border border-border/60 px-1.5 py-0.2 rounded-md">
+                    {s.periodShort}
+                  </span>
+                  <span className="text-muted-foreground/40 text-xs">·</span>
+                  <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                    <Clock className="size-3 text-muted-foreground/60" />
+                    {s.periodTime}
+                  </span>
                 </div>
               </div>
 
-              {/* Present / Absent */}
-              <div className="hidden sm:flex items-center gap-3 text-sm shrink-0">
-                <span className="text-emerald-600 font-semibold">{s.present} P</span>
-                <span className="text-red-500 font-semibold">{s.absent} A</span>
+              {/* Present / Absent badges */}
+              <div className="hidden sm:flex items-center gap-2 text-xs shrink-0">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                  {s.present} Present
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-xs font-bold text-rose-700 dark:text-rose-300">
+                  <span className="size-1.5 rounded-full bg-rose-500" />
+                  {s.absent} Absent
+                </span>
               </div>
 
               {/* Percentage badge */}
-              <span className={cn("text-sm font-bold shrink-0", pctColor(s.percentage))}>
+              <span className={cn("text-sm font-extrabold shrink-0 px-2.5 py-1 rounded-lg border", pctBg(s.percentage))}>
                 {s.percentage}%
               </span>
 
               {/* Arrow hint */}
-              <ChevronRight className="size-3.5 text-muted-foreground/40 shrink-0 group-hover:text-muted-foreground transition-colors" />
+              <ChevronRight className="size-4 text-muted-foreground/40 shrink-0 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
             </div>
           ))}
         </div>
@@ -274,12 +317,10 @@ function SectionGroup({
   )
 }
 
-import { useAttendanceHistory } from "@/hooks/use-attendance-history"
-import { createClient } from "@/lib/supabase/client"
-
 /* ── Page ──────────────────────────────────────────────── */
 export default function AttendanceHistoryPage() {
   const { data: sessions = [], isLoading: loading } = useAttendanceHistory()
+  const shouldReduceMotion = useReducedMotion()
 
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
@@ -370,26 +411,64 @@ export default function AttendanceHistoryPage() {
     if (avg > bestSubject.avg) bestSubject = { name, avg }
   })
 
-  /* ── render ────────────────────────────────────────────── */
+  const hasActiveFilters = subjectFilter !== "all" || classFilter !== "all" || startDate !== "" || endDate !== ""
+
+  const clearFilters = () => {
+    setSubjectFilter("all")
+    setClassFilter("all")
+    setStartDate("")
+    setEndDate("")
+  }
+
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: shouldReduceMotion ? 0 : 0.05,
+      },
+    },
+  }
+
+  const itemVariants: Variants = {
+    hidden: shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+      },
+    },
+  }
+
   return (
-    <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted-foreground -mt-1">
-        View past attendance records for your classes.
-      </p>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="flex flex-col gap-6"
+    >
+      {/* ── Page description ── */}
+      <motion.div variants={itemVariants} className="flex flex-col gap-1">
+        <p className="text-sm text-muted-foreground -mt-1">
+          Historical attendance logs, session breakdowns, and student presence records.
+        </p>
+      </motion.div>
 
       {/* ── Filter toolbar ─────────────────────────────────── */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <motion.div variants={itemVariants} className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         
         {/* Premium Connected Filter Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border">
+        <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border/80 bg-card shadow-2xs w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border/70">
           
           {/* Subject Filter */}
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-55">
+          <div className="flex items-center gap-3 px-4 py-2.5 flex-1 sm:w-56 hover:bg-muted/20 transition-colors">
             <BookOpen className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Subject</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Subject</span>
               <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-xs w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -401,12 +480,12 @@ export default function AttendanceHistoryPage() {
           </div>
 
           {/* Class Filter */}
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-45">
+          <div className="flex items-center gap-3 px-4 py-2.5 flex-1 sm:w-48 hover:bg-muted/20 transition-colors">
             <Users className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Class</span>
               <Select value={classFilter} onValueChange={setClassFilter}>
-                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium text-xs w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -418,24 +497,24 @@ export default function AttendanceHistoryPage() {
           </div>
 
           {/* Date Range Filter */}
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1">
+          <div className="flex items-center gap-3 px-4 py-2.5 flex-1 hover:bg-muted/20 transition-colors">
             <CalendarDays className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Date Range</span>
-              <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Date Range</span>
+              <div className="flex items-center gap-1.5">
                 <input
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-31.25"
+                  className="bg-muted/40 hover:bg-muted/60 border border-border/70 focus:border-primary/50 rounded-lg px-2 py-0.5 text-xs font-medium text-foreground outline-none transition-all cursor-pointer w-full max-w-31"
                   aria-label="Start date"
                 />
-                <span className="text-[10px] font-semibold text-muted-foreground/60 w-4 text-center">TO</span>
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase">to</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="bg-transparent border-0 p-0 text-sm font-medium text-foreground outline-none focus:ring-0 cursor-pointer w-full max-w-31.25"
+                  className="bg-muted/40 hover:bg-muted/60 border border-border/70 focus:border-primary/50 rounded-lg px-2 py-0.5 text-xs font-medium text-foreground outline-none transition-all cursor-pointer w-full max-w-31"
                   aria-label="End date"
                 />
               </div>
@@ -443,66 +522,151 @@ export default function AttendanceHistoryPage() {
           </div>
         </div>
 
-        {/* Export Button */}
-        <Button
-          className="gap-2 sm:self-end lg:self-auto h-13 rounded-2xl w-full sm:w-auto shadow-sm shrink-0"
-          disabled={filtered.length === 0}
-          onClick={() => { exportSessionsCSV(filtered); toast.success("Exported successfully.") }}
-        >
-          <Download className="size-4" />
-          Export
-        </Button>
-      </div>
+        {/* Clear & Export Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          {hasActiveFilters && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearFilters}
+              className="rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100/80 text-xs font-semibold px-3 h-11 gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <X className="size-3.5" /> Clear Filters
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            className="gap-2 h-11 rounded-xl font-semibold shadow-2xs hover:shadow transition-all cursor-pointer shrink-0 w-full sm:w-auto"
+            disabled={filtered.length === 0}
+            onClick={() => { exportSessionsCSV(filtered); toast.success("Exported successfully.") }}
+          >
+            <Download className="size-4" />
+            Export CSV
+          </Button>
+        </div>
+      </motion.div>
 
       {/* ── Summary stats ───────────────────────────────────── */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap gap-2">
+      <motion.div variants={itemVariants} className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Total Sessions */}
-          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-              <CalendarDays className="size-4 text-primary" />
+          <div className="group relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-sky-300 dark:border-sky-900/50 dark:from-sky-950/20">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex size-8.5 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                <CalendarDays className="size-4.5" />
+              </div>
+              <span className="rounded-md bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                Sessions
+              </span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Total Sessions</span>
-              <span className="text-sm font-bold text-foreground">{totalSessions}</span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground leading-none">
+                {totalSessions}
+              </span>
+              <span className="text-xs font-semibold text-foreground/80 mt-1">
+                Total Sessions
+              </span>
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                <BookOpen className="size-3 text-sky-500 shrink-0" />
+                Finalized lecture records
+              </span>
             </div>
           </div>
 
           {/* Average Attendance */}
-          <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-              <TrendingUp className="size-4 text-primary" />
+          <div className="group relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/20">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex size-8.5 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="size-4.5" />
+              </div>
+              <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Average
+              </span>
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-muted-foreground">Avg Attendance</span>
-              <span className={cn("text-sm font-bold", pctColor(avgAttendance))}>{avgAttendance}%</span>
+            <div className="flex flex-col gap-0.5">
+              <span className={cn("text-2xl lg:text-3xl font-extrabold tracking-tight leading-none", pctColor(avgAttendance))}>
+                {avgAttendance}%
+              </span>
+              <span className="text-xs font-semibold text-foreground/80 mt-1">
+                Avg Attendance
+              </span>
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
+                Across filtered sessions
+              </span>
             </div>
           </div>
 
           {/* Best Subject */}
-          {bestSubject.name !== "—" && (
-            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 shadow-sm">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-100">
-                <BookOpen className="size-4 text-emerald-600" />
+          <div className="group relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/20">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex size-8.5 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <BookOpen className="size-4.5" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-emerald-700">Best Subject</span>
-                <span className="text-sm font-bold text-emerald-800">
-                  {bestSubject.name} · {bestSubject.avg}%
+              <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                Top Subject
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xl lg:text-2xl font-extrabold tracking-tight text-foreground leading-tight truncate" title={bestSubject.name}>
+                {bestSubject.name}
+              </span>
+              <span className="text-xs font-semibold text-foreground/80 mt-1">
+                {bestSubject.avg > 0 ? `${bestSubject.avg}% Average` : "No records"}
+              </span>
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                <Sparkles className="size-3 text-amber-500 shrink-0" />
+                Highest performing cohort
+              </span>
+            </div>
+          </div>
+
+          {/* Low Sessions / All on track */}
+          {lowSessions > 0 ? (
+            <div className="group relative overflow-hidden rounded-xl border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-rose-300 dark:border-rose-900/50 dark:from-rose-950/20">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex size-8.5 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <AlertTriangle className="size-4.5" />
+                </div>
+                <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                  At Risk
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xl lg:text-3xl font-extrabold tracking-tight text-rose-600 dark:text-rose-400 leading-none">
+                  {lowSessions}
+                </span>
+                <span className="text-xs font-semibold text-foreground/80 mt-1">
+                  Below 75% Target
+                </span>
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                  <AlertTriangle className="size-3 text-rose-500 shrink-0" />
+                  Sessions needing review
                 </span>
               </div>
             </div>
-          )}
-
-          {/* Low sessions */}
-          {lowSessions > 0 && (
-            <div className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 shadow-sm">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-red-100">
-                <AlertTriangle className="size-4 text-red-500" />
+          ) : (
+            <div className="group relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/20">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex size-8.5 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck className="size-4.5" />
+                </div>
+                <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                  On Track
+                </span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-red-700">Below 75%</span>
-                <span className="text-sm font-bold text-red-800">{lowSessions} session{lowSessions !== 1 ? "s" : ""}</span>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-2xl lg:text-3xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400 leading-none">
+                  0
+                </span>
+                <span className="text-xs font-semibold text-foreground/80 mt-1">
+                  Below 75% Target
+                </span>
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                  <ShieldCheck className="size-3 text-emerald-500 shrink-0" />
+                  All sessions meet target
+                </span>
               </div>
             </div>
           )}
@@ -510,40 +674,43 @@ export default function AttendanceHistoryPage() {
 
         {/* Per-subject summary strip */}
         {filtered.length > 0 && <SubjectSummaryStrip sessions={filtered} />}
-      </div>
+      </motion.div>
 
       {/* ── Loading ─────────────────────────────────────────── */}
       {loading && <AttendanceHistorySkeleton />}
 
       {/* ── Grouped sessions ────────────────────────────────── */}
       {!loading && filtered.length === 0 && (
-        <div className="rounded-xl border border-border bg-card py-14 text-center text-sm text-muted-foreground">
+        <div className="rounded-2xl border border-dashed border-border/80 bg-card/60 py-16 text-center text-sm text-muted-foreground">
           {sessions.length === 0 ? "No finalized sessions yet." : "No records match your filters."}
         </div>
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className="flex flex-col gap-6">
+        <motion.div variants={itemVariants} className="flex flex-col gap-6">
           {Array.from(grouped.entries()).map(([day, sectionMap]) => {
             const daySessions = Array.from(sectionMap.values()).flat()
             const dayAvg = Math.round(daySessions.reduce((a, s) => a + s.percentage, 0) / daySessions.length)
 
             return (
-              <div key={day} className="flex flex-col gap-1">
+              <div key={day} className="flex flex-col gap-2">
                 {/* Day header */}
                 <div className="flex items-center gap-3 mb-1">
-                  <span className="text-sm font-bold text-foreground">{day}</span>
-                  <div className="flex-1 h-px bg-border" />
-                  <span className={cn("text-xs font-semibold", pctColor(dayAvg))}>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="size-4 text-primary" />
+                    <span className="text-sm font-bold text-foreground">{day}</span>
+                  </div>
+                  <div className="flex-1 h-px bg-border/80" />
+                  <span className={cn("text-xs font-bold px-2 py-0.5 rounded-md border", pctBg(dayAvg))}>
                     avg {dayAvg}%
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs font-semibold text-muted-foreground bg-muted/60 border border-border/60 px-2 py-0.5 rounded-md">
                     {daySessions.length} session{daySessions.length !== 1 ? "s" : ""}
                   </span>
                 </div>
 
                 {/* Sections within day */}
-                <div className="flex flex-col gap-1 pl-3 border-l-2 border-border">
+                <div className="flex flex-col gap-1.5 pl-3 border-l-2 border-border/80">
                   {Array.from(sectionMap.entries()).map(([section, sectionSessions]) => (
                     <SectionGroup
                       key={section}
@@ -556,7 +723,7 @@ export default function AttendanceHistoryPage() {
               </div>
             )
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* ── Detail sheet ────────────────────────────────────── */}
@@ -570,12 +737,16 @@ export default function AttendanceHistoryPage() {
           {selectedSession && (
             <div className="flex flex-col gap-5 px-4 py-3">
               {/* Session info card */}
-              <div className="rounded-xl border border-border bg-card overflow-hidden">
-                <div className="h-1 w-full bg-linear-to-r from-primary/60 to-primary" />
-                <div className="p-4 flex flex-col gap-1">
-                  <span className="text-base font-bold text-foreground">{selectedSession.subject}</span>
-                  <span className="text-sm font-medium text-foreground">{selectedSession.class}</span>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
+                <div className="h-1.5 w-full bg-linear-to-r from-primary/80 via-primary to-primary/60" />
+                <div className="p-4 flex flex-col gap-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-base font-bold text-foreground">{selectedSession.subject}</span>
+                    <span className="inline-flex items-center rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-xs font-semibold text-primary">
+                      {selectedSession.class}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mt-0.5">
                     <span>{selectedSession.periodShort}</span>
                     {selectedSession.periodTime && (
                       <>
@@ -584,12 +755,20 @@ export default function AttendanceHistoryPage() {
                       </>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground mt-0.5">{selectedSession.date}</span>
+                  <span className="text-xs text-muted-foreground font-medium">{selectedSession.date}</span>
                 </div>
-                <div className="flex items-center gap-4 border-t border-border px-4 py-3">
-                  <span className="text-sm text-emerald-600 font-semibold">{selectedSession.present} Present</span>
-                  <span className="text-sm text-red-600 font-semibold">{selectedSession.absent} Absent</span>
-                  <span className={cn("ml-auto text-xl font-bold", pctColor(selectedSession.percentage))}>
+                <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                      {selectedSession.present} Present
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-md">
+                      <span className="size-1.5 rounded-full bg-rose-500" />
+                      {selectedSession.absent} Absent
+                    </span>
+                  </div>
+                  <span className={cn("text-lg font-extrabold", pctColor(selectedSession.percentage))}>
                     {selectedSession.percentage}%
                   </span>
                 </div>
@@ -598,56 +777,60 @@ export default function AttendanceHistoryPage() {
               {/* Export */}
               <Button
                 variant="outline"
-                className="gap-2 w-full"
+                className="gap-2 w-full h-10 rounded-xl font-semibold shadow-2xs hover:shadow transition-all cursor-pointer"
                 disabled={detailLoading || detailStudents.length === 0}
                 onClick={() => { exportDetailCSV(selectedSession, detailStudents); toast.success("Session exported.") }}
               >
                 <Download className="size-4" />
-                Export This Session
+                Export This Session CSV
               </Button>
 
               {/* Student breakdown */}
-              <div className="flex flex-col gap-2">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                  Student Breakdown
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Student Breakdown
+                  </h3>
                   {!detailLoading && (
-                    <span className="ml-2 font-normal normal-case">
-                      ({detailStudents.length} students)
+                    <span className="text-xs font-semibold text-muted-foreground bg-muted/60 border border-border/60 px-2 py-0.5 rounded-md">
+                      {detailStudents.length} student{detailStudents.length !== 1 ? "s" : ""}
                     </span>
                   )}
-                </h3>
+                </div>
 
                 {detailLoading ? (
                   <StudentDetailsSkeleton />
                 ) : detailStudents.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">No records found.</p>
                 ) : (
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     {detailStudents.map((st, i) => (
                       <div
                         key={`${st.roll}-${i}`}
                         className={cn(
-                          "flex items-center justify-between rounded-xl border px-4 py-3 transition-colors",
+                          "flex items-center justify-between rounded-xl border p-3 shadow-2xs transition-colors",
                           st.status === "Present"
-                            ? "bg-emerald-50/70 border-emerald-200 border-l-4 border-l-emerald-400 dark:bg-emerald-950/20"
-                            : "bg-red-50/50 border-red-200 border-l-4 border-l-red-400 dark:bg-red-950/20"
+                            ? "bg-emerald-500/5 border-emerald-500/20 border-l-4 border-l-emerald-500"
+                            : "bg-rose-500/5 border-rose-500/20 border-l-4 border-l-rose-500"
                         )}
                       >
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-foreground">{st.name}</span>
-                          <span className="text-xs text-muted-foreground font-mono">{st.roll}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-bold text-foreground">{st.name}</span>
+                          <span className="font-mono text-xs text-muted-foreground bg-muted/70 border border-border/60 px-1.5 py-0.2 rounded font-semibold self-start">
+                            {st.roll}
+                          </span>
                         </div>
                         <Badge
                           className={cn(
-                            "gap-1 font-semibold",
+                            "gap-1 font-bold text-xs",
                             st.status === "Present"
-                              ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                              : "bg-red-100 text-red-700 border-red-200"
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
                           )}
                         >
                           {st.status === "Present"
-                            ? <CheckCircle2 className="size-3" />
-                            : <AlertTriangle className="size-3" />
+                            ? <CheckCircle2 className="size-3 text-emerald-500" />
+                            : <AlertTriangle className="size-3 text-rose-500" />
                           }
                           {st.status}
                         </Badge>
@@ -660,6 +843,6 @@ export default function AttendanceHistoryPage() {
           )}
         </SheetContent>
       </Sheet>
-    </div>
+    </motion.div>
   )
 }

@@ -151,9 +151,9 @@ export function QRSummaryState({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-300 dark:border-emerald-800/60 px-2.5 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-300 dark:border-amber-800/60 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">
                   <Check className="size-3" />
-                  SESSION FINALIZED
+                  REVIEWING — NOT YET FINAL
                 </span>
                 <span className="text-xs text-muted-foreground font-medium">{dateLabel}</span>
               </div>
@@ -265,7 +265,7 @@ export function QRSummaryState({
                 Roster Attendance Records
               </CardTitle>
               <CardDescription className="text-[11px] text-muted-foreground">
-                Override attendance statuses manually if required before completing the flow
+                Review and correct attendance below. This session becomes final only after you click Done.
               </CardDescription>
             </div>
             <span className="text-xs font-semibold text-muted-foreground">
@@ -367,7 +367,7 @@ export function QRSummaryState({
         size="lg"
         className="w-full gap-2 font-bold shadow-sm hover:shadow transition-all h-11.5 rounded-xl text-sm cursor-pointer"
       >
-        <span>Done — Return to Setup</span>
+        <span>Finalize Session &amp; Return to Setup</span>
         <ArrowRight className="size-4" />
       </Button>
     </div>

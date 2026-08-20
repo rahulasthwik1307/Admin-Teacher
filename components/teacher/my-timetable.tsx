@@ -292,13 +292,13 @@ export function MyTimetable() {
                       {/* Period Badge — high prominence */}
                       <div
                         className={cn(
-                          "flex flex-col items-center justify-center size-10 sm:size-11 shrink-0 rounded-xl border shadow-2xs",
+                          "flex flex-col items-center justify-center min-w-15 sm:min-w-16 h-11 px-2 shrink-0 rounded-xl border shadow-2xs text-center",
                           color.bg,
                           color.border,
                           color.text
                         )}
                       >
-                        <span className="text-[10px] uppercase font-bold leading-none tracking-tight">Period</span>
+                        <span className="text-[9.5px] uppercase font-extrabold leading-none tracking-wider opacity-85">Period</span>
                         <span className="text-base sm:text-lg font-black leading-none mt-0.5">{slot.periodNumber}</span>
                       </div>
 
@@ -358,13 +358,14 @@ export function MyTimetable() {
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div
                         className={cn(
-                          "flex size-11 shrink-0 flex-col items-center justify-center rounded-xl font-black shadow-2xs border",
+                          "flex h-11 min-w-16 px-2 shrink-0 flex-col items-center justify-center rounded-xl font-bold shadow-2xs border text-center",
                           color.badge,
-                          color.border
+                          color.border,
+                          color.text
                         )}
                       >
-                        <span className="text-[10px] uppercase tracking-wide">P</span>
-                        <span className="text-base leading-none">{slot.periodNumber}</span>
+                        <span className="text-[9.5px] uppercase font-extrabold tracking-wider opacity-85 leading-none">Period</span>
+                        <span className="text-base sm:text-lg font-black leading-none mt-0.5">{slot.periodNumber}</span>
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className={cn("text-sm font-bold truncate", color.text)}>

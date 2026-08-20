@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import {
   Search, Plus, MoreHorizontal, Trash2, ChevronLeft, ChevronRight,
   Users, UserCheck, UserCog, Loader2, User, Hash, GraduationCap,
-  CalendarDays, Building2,
+  CalendarDays, Building2, Mail,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ interface Student {
   faceStatus: "Approved" | "Pending" | "Rejected" | "None"
   isActive: boolean
   photoUrl: string | null
+  contactEmail: string | null
 }
 
 interface ClassOption {
@@ -206,6 +207,8 @@ export default function AdminStudentsPage() {
   const [formClassId, setFormClassId] = useState("")
   const [formDeptId, setFormDeptId] = useState("")
   const [formYear, setFormYear] = useState("")
+  const [formContactEmail, setFormContactEmail] = useState("")
+  const [editContactEmail, setEditContactEmail] = useState("")
 
   const filteredClassOptions = useMemo(() => {
     if (!formDeptId) return []
@@ -229,7 +232,7 @@ export default function AdminStudentsPage() {
           id, roll_number, year, is_active, face_embedding, is_approved, is_rejected,
           registration_photo_url, class_id, department_id,
           class:classes ( name, section, department:departments ( code, id ) ),
-          user:users ( full_name )
+          user:users ( full_name, contact_email )
         `)
         .order("created_at", { ascending: false })
 
@@ -253,6 +256,7 @@ export default function AdminStudentsPage() {
           faceStatus,
           isActive: s.is_active ?? true,
           photoUrl: isApproved ? (s.registration_photo_url ?? null) : null,
+          contactEmail: s.user?.contact_email ?? null,
         }
       })
       setStudents(mapped)
@@ -334,6 +338,7 @@ export default function AdminStudentsPage() {
           class_id: formClassId,
           department_id: formDeptId,
           year: formYear,
+          contact_email: formContactEmail || undefined,
         }),
       })
       const result = await res.json()
@@ -343,7 +348,7 @@ export default function AdminStudentsPage() {
       }
       toast.success("Student account created successfully. Default password is Student@1234")
       setSheetOpen(false)
-      setFormName(""); setFormRoll(""); setFormClassId(""); setFormDeptId(""); setFormYear("")
+      setFormName(""); setFormRoll(""); setFormClassId(""); setFormDeptId(""); setFormYear(""); setFormContactEmail("")
       fetchStudents()
     } catch {
       toast.error("An unexpected error occurred.")
@@ -383,6 +388,7 @@ export default function AdminStudentsPage() {
           class_id: editClassId || undefined,
           department_id: editDeptId || undefined,
           year: editYear || undefined,
+          contact_email: editContactEmail,
         }),
       })
       const result = await response.json()
@@ -440,6 +446,7 @@ export default function AdminStudentsPage() {
                 setEditClassId(student.classId)
                 setEditDeptId(student.departmentId)
                 setEditYear(student.year)
+                setEditContactEmail(student.contactEmail ?? "")
                 setEditSheetOpen(true)
               }}>Edit Student</DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setResetTarget(student); setResetOpen(true) }}>Reset Password</DropdownMenuItem>
@@ -576,7 +583,16 @@ export default function AdminStudentsPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditTarget(student); setEditName(student.name); setEditRoll(student.roll); setEditClassId(student.classId); setEditDeptId(student.departmentId); setEditYear(student.year); setEditSheetOpen(true) }}>Edit Student</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setEditTarget(student)
+                            setEditName(student.name)
+                            setEditRoll(student.roll)
+                            setEditClassId(student.classId)
+                            setEditDeptId(student.departmentId)
+                            setEditYear(student.year)
+                            setEditContactEmail(student.contactEmail ?? "")
+                            setEditSheetOpen(true)
+                          }}>Edit Student</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => { setResetTarget(student); setResetOpen(true) }}>Reset Password</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}><Trash2 className="size-4" />Delete Student</DropdownMenuItem>
@@ -606,7 +622,16 @@ export default function AdminStudentsPage() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm"><MoreHorizontal className="size-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => { setEditTarget(student); setEditName(student.name); setEditRoll(student.roll); setEditClassId(student.classId); setEditDeptId(student.departmentId); setEditYear(student.year); setEditSheetOpen(true) }}>Edit Student</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      setEditTarget(student)
+                      setEditName(student.name)
+                      setEditRoll(student.roll)
+                      setEditClassId(student.classId)
+                      setEditDeptId(student.departmentId)
+                      setEditYear(student.year)
+                      setEditContactEmail(student.contactEmail ?? "")
+                      setEditSheetOpen(true)
+                    }}>Edit Student</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => { setResetTarget(student); setResetOpen(true) }}>Reset Password</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(student)}><Trash2 className="size-4" />Delete Student</DropdownMenuItem>
@@ -657,7 +682,7 @@ export default function AdminStudentsPage() {
       </AlertDialog>
 
       {/* Add Student Sheet */}
-      <Sheet open={sheetOpen} onOpenChange={(open) => { if (!open) { setFormName(""); setFormRoll(""); setFormClassId(""); setFormDeptId(""); setFormYear("") } setSheetOpen(open) }}>
+      <Sheet open={sheetOpen} onOpenChange={(open) => { if (!open) { setFormName(""); setFormRoll(""); setFormClassId(""); setFormDeptId(""); setFormYear(""); setFormContactEmail("") } setSheetOpen(open) }}>
         <SheetContent side="right" className="sm:max-w-md flex flex-col">
           <SheetHeader className="border-b border-border pb-4">
             <div className="flex items-center gap-3">
@@ -684,6 +709,16 @@ export default function AdminStudentsPage() {
                     onChange={(e) => setFormRoll(e.target.value.toUpperCase())}
                   />
                   <p className="text-xs text-muted-foreground">Format: 227Z1A6755 (3 digits, letter, digit, letter, 4 digits)</p>
+                </FormField>
+                <FormField icon={Mail} label="Contact Email" htmlFor="student-contact-email">
+                  <Input
+                    id="student-contact-email"
+                    type="email"
+                    placeholder="student@gmail.com (optional)"
+                    value={formContactEmail}
+                    onChange={(e) => setFormContactEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">Used only for absence notification emails — not for login.</p>
                 </FormField>
               </div>
             </div>
@@ -749,6 +784,16 @@ export default function AdminStudentsPage() {
                 placeholder="e.g. 227Z1A6755"
               />
               <p className="text-xs text-muted-foreground">Format: 227Z1A6755. Changing roll number will also update the student login email.</p>
+            </FormField>
+            <FormField icon={Mail} label="Contact Email" htmlFor="edit-contact-email">
+              <Input
+                id="edit-contact-email"
+                type="email"
+                placeholder="student@gmail.com (optional)"
+                value={editContactEmail}
+                onChange={(e) => setEditContactEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Used only for absence notification emails — not for login.</p>
             </FormField>
             <FormField icon={Building2} label="Department" htmlFor="edit-dept">
               <Select value={editDeptId} onValueChange={(v) => { setEditDeptId(v); setEditClassId("") }}>

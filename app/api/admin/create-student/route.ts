@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const body = await request.json()
-    const { full_name, roll_number, class_id, department_id, year } = body
+    const { full_name, roll_number, class_id, department_id, year, contact_email } = body
 
     if (!full_name || !roll_number || !class_id || !department_id || !year) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
@@ -67,6 +67,7 @@ export async function POST(request: Request) {
       full_name: full_name.trim(),
       role: "student",
       must_change_password: false,
+      contact_email: contact_email?.trim() || null,
     })
 
     if (userInsertError) {

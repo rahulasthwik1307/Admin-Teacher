@@ -13,6 +13,7 @@ import {
   ClipboardX,
   PanelLeftClose,
   PanelLeftOpen,
+  Mail,
 } from "lucide-react"
 import { FALogo } from "@/components/fa-logo"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -39,6 +40,7 @@ const navGroups = [
     items: [
       { label: "QR Attendance", href: "/teacher/qr-attendance", icon: QrCode },
       { label: "Missed Attendance", href: "/teacher/missed-attendance", icon: ClipboardX },
+      { label: "Absence Notifications", href: "/teacher/absence-notifications", icon: Mail },
       { label: "Attendance History", href: "/teacher/attendance-history", icon: CalendarDays },
       { label: "Analytics", href: "/teacher/analytics", icon: BarChart3 },
     ],

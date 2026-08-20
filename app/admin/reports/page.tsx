@@ -17,7 +17,7 @@ import {
   Download, UserPlus, MapPin, Link2, KeyRound,
   Trash2, Settings, Shield, Loader2, Activity,
   TrendingUp, Users, BookOpen, BarChart3, Calendar,
-  CheckCircle2, AlertTriangle, X, Pencil,
+  CheckCircle2, AlertTriangle, X, Pencil, Mail,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
@@ -88,6 +88,9 @@ function inferLogType(actionType: string): LogType {
 
 function getActionConfig(actionType: string, details: string) {
   const d = details.toLowerCase()
+  if (d.includes("absence notification")) {
+    return { icon: Mail, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", label: "NOTIFIED", labelColor: "text-blue-700 dark:text-blue-300" }
+  }
   switch (actionType) {
     case "create": return { icon: UserPlus, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", label: "CREATED", labelColor: "text-emerald-700 dark:text-emerald-300" }
     case "update": return { icon: Pencil, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10", border: "border-sky-500/20", label: "UPDATED", labelColor: "text-sky-700 dark:text-sky-300" }

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const body = await request.json()
-    const { student_id, full_name, roll_number, class_id, department_id, year } = body
+    const { student_id, full_name, roll_number, class_id, department_id, year, contact_email } = body
 
     if (!student_id) return NextResponse.json({ error: "Missing student_id" }, { status: 400 })
 
@@ -40,12 +40,15 @@ export async function POST(request: Request) {
     }
 
     // Update full_name in users table
-    if (full_name) {
+    if (full_name || contact_email !== undefined) {
+      const userUpdate: any = {}
+      if (full_name) userUpdate.full_name = full_name.trim()
+      if (contact_email !== undefined) userUpdate.contact_email = contact_email?.trim() || null
       const { error: nameError } = await admin
         .from("users")
-        .update({ full_name: full_name.trim() })
+        .update(userUpdate)
         .eq("id", student_id)
-      if (nameError) return NextResponse.json({ error: "Failed to update name" }, { status: 500 })
+      if (nameError) return NextResponse.json({ error: "Failed to update user details" }, { status: 500 })
     }
 
     // Update students table

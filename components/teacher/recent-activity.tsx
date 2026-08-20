@@ -1,8 +1,9 @@
 "use client"
 
-import { Activity, CheckCircle2, Radio, UserPlus, ScanFace } from "lucide-react"
+import { Activity, CheckCircle2, Radio, UserPlus, ScanFace, Clock } from "lucide-react"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { RecentActivitySkeleton } from "@/components/ui/skeletons"
+import { cn } from "@/lib/utils"
 
 function timeAgo(dateStr: string): string {
   const now = new Date()
@@ -24,33 +25,33 @@ const typeConfig = {
     icon: CheckCircle2,
     color: "text-emerald-600 dark:text-emerald-400",
     bg: "bg-emerald-500/10",
-    border: "border-emerald-200 dark:border-emerald-800/60",
+    border: "border-emerald-500/20 dark:border-emerald-800/60",
     label: "FINALIZED",
-    badgeBg: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60",
+    badgeBg: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20 dark:border-emerald-800/60",
   },
   opened: {
     icon: Radio,
     color: "text-sky-600 dark:text-sky-400",
     bg: "bg-sky-500/10",
-    border: "border-sky-200 dark:border-sky-800/60",
+    border: "border-sky-500/20 dark:border-sky-800/60",
     label: "SESSION OPENED",
-    badgeBg: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800/60",
+    badgeBg: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20 dark:border-sky-800/60",
   },
   approved: {
     icon: ScanFace,
     color: "text-amber-600 dark:text-amber-400",
     bg: "bg-amber-500/10",
-    border: "border-amber-200 dark:border-amber-800/60",
+    border: "border-amber-500/20 dark:border-amber-800/60",
     label: "FACE APPROVED",
-    badgeBg: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60",
+    badgeBg: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 dark:border-amber-800/60",
   },
   added: {
     icon: UserPlus,
     color: "text-violet-600 dark:text-violet-400",
     bg: "bg-violet-500/10",
-    border: "border-violet-200 dark:border-violet-800/60",
+    border: "border-violet-500/20 dark:border-violet-800/60",
     label: "STUDENT ADDED",
-    badgeBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60",
+    badgeBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20 dark:border-violet-800/60",
   },
 }
 
@@ -93,24 +94,35 @@ export function RecentActivity() {
             const Icon = cfg.icon
             const isLast = i === activities.length - 1
             return (
-              <div key={i} className="relative flex gap-3.5 pb-4 last:pb-0">
-                {/* Vertical connecting line */}
+              <div key={i} className="group relative flex gap-3.5 pb-4 last:pb-0 items-start">
+                {/* Vertical connecting line — stops cleanly between icon edges */}
                 {!isLast && (
-                  <div className="absolute left-3.75 top-7.5 h-full w-px bg-border" />
+                  <div
+                    aria-hidden="true"
+                    className="absolute left-4 top-8.5 bottom-0 w-px -translate-x-1/2 bg-border/90 pointer-events-none"
+                  />
                 )}
 
-                {/* Timeline node icon */}
+                {/* Timeline node icon with opaque solid card background */}
                 <div
-                  className={`relative z-10 flex size-7.5 shrink-0 items-center justify-center rounded-lg border shadow-2xs ${cfg.bg} ${cfg.border}`}
+                  className={cn(
+                    "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-xl border bg-card shadow-2xs transition-transform group-hover:scale-105",
+                    cfg.border
+                  )}
                 >
-                  <Icon className={`size-3.5 ${cfg.color}`} />
+                  <div className={cn("flex size-full items-center justify-center rounded-[10px]", cfg.bg)}>
+                    <Icon className={cn("size-4", cfg.color)} />
+                  </div>
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between min-w-0">
+                <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between min-w-0 pt-0.5">
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <span
-                      className={`inline-flex items-center rounded border px-1.5 py-0.2 text-[9px] font-extrabold uppercase tracking-wider ${cfg.badgeBg}`}
+                      className={cn(
+                        "inline-flex items-center rounded-md border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider",
+                        cfg.badgeBg
+                      )}
                     >
                       {cfg.label}
                     </span>
@@ -118,8 +130,9 @@ export function RecentActivity() {
                       {activity.description}
                     </span>
                   </div>
-                  <span className="shrink-0 text-[11px] text-muted-foreground font-medium sm:pl-3">
-                    {activity.time}
+                  <span className="shrink-0 text-[11px] text-muted-foreground font-medium flex items-center gap-1 sm:pl-3">
+                    <Clock className="size-3 text-muted-foreground/60 shrink-0" />
+                    <span>{activity.time}</span>
                   </span>
                 </div>
               </div>

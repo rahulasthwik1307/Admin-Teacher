@@ -239,7 +239,7 @@ export function QRActiveSession({
                 This will immediately close the QR window for <span className="font-semibold text-foreground">{subjectLabel}</span> ({classLabel}). Students who haven&apos;t checked in will be recorded as absent.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogFooter className="gap-2.5 sm:gap-3">
               <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={onFinalize}
