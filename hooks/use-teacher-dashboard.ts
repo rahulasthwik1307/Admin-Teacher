@@ -25,7 +25,7 @@ export interface TeacherDashboardData {
   recentActivity: {
     description: string
     time: string
-    type: "finalized" | "opened" | "approved" | "added"
+    type: "finalized" | "opened" | "approved" | "added" | "notified"
   }[]
 }
 

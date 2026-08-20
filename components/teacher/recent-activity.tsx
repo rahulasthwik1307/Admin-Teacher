@@ -1,6 +1,6 @@
 "use client"
 
-import { Activity, CheckCircle2, Radio, UserPlus, ScanFace, Clock } from "lucide-react"
+import { Activity, CheckCircle2, Radio, UserPlus, ScanFace, Clock, Send } from "lucide-react"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { RecentActivitySkeleton } from "@/components/ui/skeletons"
 import { cn } from "@/lib/utils"
@@ -52,6 +52,14 @@ const typeConfig = {
     border: "border-violet-500/20 dark:border-violet-800/60",
     label: "STUDENT ADDED",
     badgeBg: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20 dark:border-violet-800/60",
+  },
+  notified: {
+    icon: Send,
+    color: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-500/10",
+    border: "border-indigo-500/20 dark:border-indigo-800/60",
+    label: "NOTIFIED",
+    badgeBg: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20 dark:border-indigo-800/60",
   },
 }
 

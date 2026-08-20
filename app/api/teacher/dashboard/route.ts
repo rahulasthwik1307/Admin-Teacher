@@ -32,6 +32,7 @@ export async function GET() {
       finalizedSessionsResult,
       openedSessionsResult,
       recentStudentsResult,
+      notificationBatchesResult,
     ] = await Promise.all([
       // Total students across teacher's classes
       classIds.length > 0
@@ -95,6 +96,14 @@ export async function GET() {
         .eq("created_by", teacherId)
         .order("created_at", { ascending: false })
         .limit(10),
+
+      // Recent absence notification batches
+      supabase
+        .from("notification_batches")
+        .select(`id, sent_at, sent_count, failed_count, session:attendance_sessions ( subjects ( name ), classes ( name, section ) )`)
+        .eq("teacher_id", teacherId)
+        .order("sent_at", { ascending: false })
+        .limit(5),
     ])
 
     // 3. Today's session IDs for attendance count
@@ -224,6 +233,14 @@ export async function GET() {
         time: s.created_at,
         type: "added",
       })
+    }
+
+    for (const b of (notificationBatchesResult.data ?? [])) {
+      const sess: any = Array.isArray((b as any).session) ? (b as any).session[0] : (b as any).session
+      const subj: any = Array.isArray(sess?.subjects) ? sess.subjects[0] : sess?.subjects
+      const cls: any = Array.isArray(sess?.classes) ? sess.classes[0] : sess?.classes
+      const label = `${subj?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""} — ${b.sent_count} sent${b.failed_count > 0 ? `, ${b.failed_count} failed` : ""}`
+      activityItems.push({ description: label, time: b.sent_at, type: "notified" })
     }
 
     activityItems.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
