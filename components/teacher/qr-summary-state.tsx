@@ -15,7 +15,7 @@ import { Pencil, CheckCircle2, XCircle, AlertCircle, Users, ArrowRight, ShieldCh
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
-import type { Student } from "@/lib/qr-attendance-data"
+import { formatScanTime, type Student } from "@/lib/qr-attendance-data"
 
 interface QRSummaryStateProps {
   subjectLabel: string
@@ -334,10 +334,10 @@ export function QRSummaryState({
                         </span>
                         <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
                           <span className="font-mono font-semibold">{s.roll}</span>
-                          {s.time && (
+                          {formatScanTime(s.time) && (
                             <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                               <Clock className="size-2.5" />
-                              {s.time}
+                              {formatScanTime(s.time)}
                             </span>
                           )}
                         </div>

@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     if (att) {
       status = att.status
       if (att.scanned_at) {
-        time = new Date(att.scanned_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        time = att.scanned_at
       }
     }
 

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-import type { Student, StudentStatus } from "@/lib/qr-attendance-data"
+import { formatScanTime, type Student, type StudentStatus } from "@/lib/qr-attendance-data"
 
 /* ---------- Status config ---------- */
 
@@ -109,10 +109,10 @@ function StudentRow({ student }: { student: Student }) {
           </span>
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
             <span className="font-mono font-semibold">{student.roll}</span>
-            {student.time && (
+            {formatScanTime(student.time) && (
               <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                 <Clock className="size-2.5" />
-                {student.time}
+                {formatScanTime(student.time)}
               </span>
             )}
           </div>
