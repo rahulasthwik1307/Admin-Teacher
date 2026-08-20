@@ -77,9 +77,21 @@ export function QRSummaryState({
   classId,
   onDone,
 }: QRSummaryStateProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [students, setStudents] = useState<Student[]>(() =>
     initialStudents.map((s) => (s.status === "pending" ? { ...s, status: "absent" } : s))
   )
+
+  async function handleDone() {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onDone()
+    } catch (err) {
+      console.error("Error finalizing session:", err)
+      setIsSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     if (initialStudents.length === 0 && classId && sessionId) {
@@ -388,12 +400,22 @@ export function QRSummaryState({
 
       {/* ── Done Button ── */}
       <Button
-        onClick={onDone}
+        onClick={handleDone}
+        disabled={isSubmitting}
         size="lg"
-        className="w-full gap-2 font-bold shadow-sm hover:shadow transition-all h-11.5 rounded-xl text-sm cursor-pointer"
+        className="w-full gap-2 font-bold shadow-sm hover:shadow transition-all h-11.5 rounded-xl text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        <span>Finalize Session &amp; Return to Setup</span>
-        <ArrowRight className="size-4" />
+        {isSubmitting ? (
+          <>
+            <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            <span>Finalizing Session...</span>
+          </>
+        ) : (
+          <>
+            <span>Finalize Session &amp; Return to Setup</span>
+            <ArrowRight className="size-4" />
+          </>
+        )}
       </Button>
     </div>
   )

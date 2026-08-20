@@ -27,6 +27,7 @@ interface QRActiveSessionProps {
   teacherName: string
   students: Student[]
   currentQrToken: string
+  openedAt?: string
   onFinalize: () => void
   onRotate?: () => void
 }
@@ -38,27 +39,44 @@ export function QRActiveSession({
   teacherName,
   students,
   currentQrToken,
+  openedAt,
   onFinalize,
   onRotate,
 }: QRActiveSessionProps) {
   const { secondsLeft: qrSecondsLeft, totalSeconds: qrTotalSeconds, isFlashing } = useQRTimer(true, false, onRotate)
 
-  // 180-second session timer
+  // 180-second authoritative session timer derived from database opened_at
   const SESSION_TOTAL = 180
-  const [sessionSecondsLeft, setSessionSecondsLeft] = useState(SESSION_TOTAL)
+  const computeRemaining = () => {
+    if (!openedAt) return SESSION_TOTAL
+    const openedTime = new Date(openedAt).getTime()
+    if (isNaN(openedTime)) return SESSION_TOTAL
+    const deadline = openedTime + SESSION_TOTAL * 1000
+    return Math.max(0, Math.round((deadline - Date.now()) / 1000))
+  }
+
+  const [sessionSecondsLeft, setSessionSecondsLeft] = useState(() => computeRemaining())
 
   useEffect(() => {
+    setSessionSecondsLeft(computeRemaining())
     const interval = setInterval(() => {
-      setSessionSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval)
-          return 0
-        }
-        return prev - 1
-      })
+      setSessionSecondsLeft(computeRemaining())
     }, 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [openedAt])
+
+  // Recalculate immediately on tab visibility change or window focus
+  useEffect(() => {
+    const handleRecalculate = () => {
+      setSessionSecondsLeft(computeRemaining())
+    }
+    document.addEventListener("visibilitychange", handleRecalculate)
+    window.addEventListener("focus", handleRecalculate)
+    return () => {
+      document.removeEventListener("visibilitychange", handleRecalculate)
+      window.removeEventListener("focus", handleRecalculate)
+    }
+  }, [openedAt])
 
   useEffect(() => {
     if (sessionSecondsLeft === 0) onFinalize()

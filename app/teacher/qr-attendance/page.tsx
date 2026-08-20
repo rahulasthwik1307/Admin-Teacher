@@ -40,6 +40,7 @@ export default function QRAttendancePage() {
   const [periodOptions, setPeriodOptions] = useState<DropdownOption[]>([])
   const [recentSessions, setRecentSessions] = useState<RecentSessionData[]>([])
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [activeSessionOpenedAt, setActiveSessionOpenedAt] = useState<string | null>(null)
   const [currentQrToken, setCurrentQrToken] = useState<string>("")
   const [liveStudents, setLiveStudents] = useState<Student[]>([])
   const [recentSessionsLoading, setRecentSessionsLoading] = useState(true)
@@ -250,6 +251,7 @@ export default function QRAttendancePage() {
 
       if (session) {
         setActiveSessionId(session.id)
+        setActiveSessionOpenedAt(session.opened_at || null)
         setCurrentQrToken(session.current_qr_token || "")
         setSelectedClass(session.class_id)
         setSelectedSubject(session.subject_id)
@@ -309,24 +311,27 @@ export default function QRAttendancePage() {
   }, [selectedClass, selectedSubject, timetableMap])
 
   // Fetch complete student list with attendance status via API route
+  const isFetchingStudentList = useRef(false)
   const fetchStudentList = useCallback(async () => {
-    if (!activeSessionId || !selectedClass) return
+    if (!activeSessionId || !selectedClass || isFetchingStudentList.current) return
 
+    isFetchingStudentList.current = true
     try {
       const res = await fetch(
         `/api/teacher/student-list?class_id=${selectedClass}&session_id=${activeSessionId}`
       )
       const data = await res.json()
-      console.log("full API response data:", JSON.stringify(data))
       if (data.students) {
         setLiveStudents(data.students)
       }
     } catch (err) {
       console.error("fetchStudentList error:", err)
+    } finally {
+      isFetchingStudentList.current = false
     }
   }, [activeSessionId, selectedClass])
 
-  // Real-time Student List + polling fallback
+  // Real-time Student List + polling fallback + tab resume synchronization
   const liveRefreshInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
@@ -353,12 +358,22 @@ export default function QRAttendancePage() {
       fetchStudentList()
     }, 5000)
 
+    const handleTabResume = () => {
+      if (document.visibilityState === "visible") {
+        fetchStudentList()
+      }
+    }
+    document.addEventListener("visibilitychange", handleTabResume)
+    window.addEventListener("focus", handleTabResume)
+
     return () => {
       supabase.removeChannel(channel)
       if (liveRefreshInterval.current) {
         clearInterval(liveRefreshInterval.current)
         liveRefreshInterval.current = null
       }
+      document.removeEventListener("visibilitychange", handleTabResume)
+      window.removeEventListener("focus", handleTabResume)
     }
   }, [activeSessionId, pageState, fetchStudentList])
 
@@ -383,7 +398,7 @@ export default function QRAttendancePage() {
           current_qr_token: token,
           qr_token_expires_at: expiry,
         })
-        .select("id")
+        .select("id, opened_at")
         .single()
 
       if (sessionErr) throw sessionErr
@@ -396,6 +411,7 @@ export default function QRAttendancePage() {
       })
 
       setActiveSessionId(session.id)
+      setActiveSessionOpenedAt(session.opened_at || null)
       setCurrentQrToken(token)
 
       setTimeout(() => {
@@ -488,7 +504,7 @@ export default function QRAttendancePage() {
         .from("period_attendance")
         .update({ status: "absent" })
         .eq("session_id", activeSessionId)
-        .eq("status", "pending")
+        .in("status", ["pending", "failed"])
 
       setTimeout(async () => {
         setPageState("summary")
@@ -565,6 +581,7 @@ export default function QRAttendancePage() {
           teacherName={teacherName}
           students={liveStudents}
           currentQrToken={currentQrToken}
+          openedAt={activeSessionOpenedAt ?? undefined}
           onFinalize={handleFinalize}
           onRotate={handleRotate}
         />
@@ -612,12 +629,12 @@ export default function QRAttendancePage() {
                 }
               }
 
-              // Step 2: Ensure any remaining pending records are marked absent
+              // Step 2: Ensure any remaining pending or failed records are marked absent
               await supabase
                 .from("period_attendance")
                 .update({ status: "absent" })
                 .eq("session_id", activeSessionId)
-                .eq("status", "pending")
+                .in("status", ["pending", "failed"])
 
               // Step 3: Set attendance_sessions to finalized with finalized_at
               await supabase
@@ -645,6 +662,7 @@ export default function QRAttendancePage() {
             setSelectedPeriod("")
             setPeriodAutoFilled(false)
             setActiveSessionId(null)
+            setActiveSessionOpenedAt(null)
             setLiveStudents([])
             if (teacherId) {
               fetchSetupData(teacherId)

@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles } from "lucide-react"
+import { useMemo, useState, useEffect } from "react"
+import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -138,6 +138,11 @@ export function QRSetupState({
 }: QRSetupStateProps) {
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today")
   const [classFilterLocal, setClassFilterLocal] = useState("all")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const uniqueClasses = useMemo(() => {
     const set = new Set<string>()
@@ -216,18 +221,27 @@ export function QRSetupState({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
                   Class & Section
                 </span>
-                <Select value={selectedClass} onValueChange={onClassChange}>
-                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
-                    <SelectValue placeholder="Select class cohort" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-md">
-                    {classOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!mounted ? (
+                  <div className="flex items-center justify-between font-semibold text-xs sm:text-sm text-muted-foreground w-full py-0.5">
+                    <span className="truncate">
+                      {classOptions.find((o) => o.value === selectedClass)?.label || "Select class cohort"}
+                    </span>
+                    <ChevronDown className="size-4 opacity-50 shrink-0 ml-auto" />
+                  </div>
+                ) : (
+                  <Select value={selectedClass} onValueChange={onClassChange}>
+                    <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                      <SelectValue placeholder="Select class cohort" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-border shadow-md">
+                      {classOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
@@ -240,18 +254,27 @@ export function QRSetupState({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
                   Subject Curriculum
                 </span>
-                <Select value={selectedSubject} onValueChange={onSubjectChange}>
-                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-md">
-                    {subjectOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!mounted ? (
+                  <div className="flex items-center justify-between font-semibold text-xs sm:text-sm text-muted-foreground w-full py-0.5">
+                    <span className="truncate">
+                      {subjectOptions.find((o) => o.value === selectedSubject)?.label || "Select subject"}
+                    </span>
+                    <ChevronDown className="size-4 opacity-50 shrink-0 ml-auto" />
+                  </div>
+                ) : (
+                  <Select value={selectedSubject} onValueChange={onSubjectChange}>
+                    <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-border shadow-md">
+                      {subjectOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
@@ -271,42 +294,56 @@ export function QRSetupState({
                     </span>
                   )}
                 </div>
-                <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                  <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                {!mounted ? (
+                  <div className="flex items-center justify-between font-semibold text-xs sm:text-sm text-muted-foreground w-full py-0.5">
                     {selectedPeriodParsed ? (
                       <span className="flex items-center gap-2 truncate">
                         <span className="font-bold text-primary">P{selectedPeriodParsed.periodNum}</span>
                         <span className="font-mono text-xs text-muted-foreground">{selectedPeriodParsed.timeRange}</span>
                       </span>
                     ) : (
-                      <SelectValue placeholder="Select period slot" />
+                      <span className="truncate">Select period slot</span>
                     )}
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-md min-w-64">
-                    {periodOptions.map((opt) => {
-                      const parsed = parsePeriodLabel(opt.label)
-                      return (
-                        <SelectItem key={opt.value} value={opt.value} className="py-2.5">
-                          <div className="flex items-center justify-between w-full gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex size-6 items-center justify-center rounded-md bg-primary/15 text-primary text-xs font-black">
-                                P{parsed.periodNum || opt.label[0]}
-                              </span>
-                              <span className="font-bold text-xs text-foreground">
-                                {parsed.periodText}
-                              </span>
+                    <ChevronDown className="size-4 opacity-50 shrink-0 ml-auto" />
+                  </div>
+                ) : (
+                  <Select value={selectedPeriod} onValueChange={onPeriodChange}>
+                    <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                      {selectedPeriodParsed ? (
+                        <span className="flex items-center gap-2 truncate">
+                          <span className="font-bold text-primary">P{selectedPeriodParsed.periodNum}</span>
+                          <span className="font-mono text-xs text-muted-foreground">{selectedPeriodParsed.timeRange}</span>
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Select period slot" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-border shadow-md min-w-64">
+                      {periodOptions.map((opt) => {
+                        const parsed = parsePeriodLabel(opt.label)
+                        return (
+                          <SelectItem key={opt.value} value={opt.value} className="py-2.5">
+                            <div className="flex items-center justify-between w-full gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex size-6 items-center justify-center rounded-md bg-primary/15 text-primary text-xs font-black">
+                                  P{parsed.periodNum || opt.label[0]}
+                                </span>
+                                <span className="font-bold text-xs text-foreground">
+                                  {parsed.periodText}
+                                </span>
+                              </div>
+                              {parsed.timeRange && (
+                                <span className="font-mono text-[11px] text-muted-foreground rounded border border-border/60 bg-muted/40 px-2 py-0.5">
+                                  {parsed.timeRange}
+                                </span>
+                              )}
                             </div>
-                            {parsed.timeRange && (
-                              <span className="font-mono text-[11px] text-muted-foreground rounded border border-border/60 bg-muted/40 px-2 py-0.5">
-                                {parsed.timeRange}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </div>
@@ -372,19 +409,26 @@ export function QRSetupState({
               {/* Class Filter Dropdown */}
               <div className="flex items-center h-8.5 rounded-xl border border-border bg-card px-2.5 shadow-2xs">
                 <Users className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
-                <Select value={classFilterLocal} onValueChange={setClassFilterLocal}>
-                  <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
-                    <SelectValue placeholder="All Cohorts" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-md">
-                    <SelectItem value="all" className="text-xs font-semibold">All Cohorts</SelectItem>
-                    {uniqueClasses.map((c) => (
-                      <SelectItem key={c} value={c} className="text-xs font-semibold">
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!mounted ? (
+                  <div className="h-full border-0 bg-transparent p-0 text-xs font-semibold flex items-center justify-between w-full text-foreground">
+                    <span>{classFilterLocal === "all" ? "All Cohorts" : classFilterLocal}</span>
+                    <ChevronDown className="size-4 opacity-50 shrink-0 ml-1" />
+                  </div>
+                ) : (
+                  <Select value={classFilterLocal} onValueChange={setClassFilterLocal}>
+                    <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
+                      <SelectValue placeholder="All Cohorts" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-border shadow-md">
+                      <SelectItem value="all" className="text-xs font-semibold">All Cohorts</SelectItem>
+                      {uniqueClasses.map((c) => (
+                        <SelectItem key={c} value={c} className="text-xs font-semibold">
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </div>
