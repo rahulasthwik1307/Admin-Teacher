@@ -17,10 +17,43 @@ interface EligibleAbsence {
   periodAttendanceId: string; studentId: string; studentName: string; rollNumber: string; year: string
   className: string; contactEmail: string | null; alreadyNotified: boolean
   subjectId: string; subjectName: string; periodNumber: number; startTime: string; endTime: string; date: string
+  overallAttendancePct: number
 }
 
 function fmtDate(d: string) { return new Date(d + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) }
 function fmtDateTime(iso: string) { return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) }
+
+function severityBadge(pct: number) {
+  if (pct < 65) return { label: `${pct}% — Critical`, className: "bg-rose-50 text-rose-700 border-rose-200" }
+  if (pct < 75) return { label: `${pct}% — Low`, className: "bg-amber-50 text-amber-700 border-amber-200" }
+  return { label: `${pct}%`, className: "bg-emerald-50 text-emerald-700 border-emerald-200" }
+}
+
+function exportPendingCSV(groups: any[]) {
+  const rows = [["Student", "Roll No", "Year", "Section", "Overall %", "Pending Absences"]]
+  for (const g of groups) {
+    const pending = Array.from(g.subjects.values()).flat().filter((a: any) => !a.alreadyNotified).length
+    rows.push([g.studentName, g.rollNumber, g.year, g.className, `${g.overallAttendancePct}%`, String(pending)])
+  }
+  const csv = rows.map(r => r.map((c: string) => `"${c}"`).join(",")).join("\n")
+  const blob = new Blob([csv], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url; a.download = `pending-absences-${new Date().toISOString().split("T")[0]}.csv`
+  a.click(); URL.revokeObjectURL(url)
+}
+
+async function openPreview(studentId: string, ids: string[], setLoading: (b: boolean) => void, setData: (d: any) => void, setOpen: (b: boolean) => void) {
+  setOpen(true); setLoading(true)
+  try {
+    const res = await fetch("/api/teacher/absence-notifications/preview", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ studentId, periodAttendanceIds: ids }),
+    })
+    const data = await res.json()
+    if (res.ok) setData(data)
+  } finally { setLoading(false) }
+}
 
 export default function AbsenceNotificationsPage() {
   const [tab, setTab] = useState<"send" | "history">("send")
@@ -31,6 +64,11 @@ export default function AbsenceNotificationsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState<any>(null)
+
+  const [sortBy, setSortBy] = useState<"name" | "attendance">("attendance")
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewData, setPreviewData] = useState<{ subject: string; html: string } | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   const [search, setSearch] = useState("")
   const [filterSubject, setFilterSubject] = useState("all")
@@ -91,17 +129,20 @@ export default function AbsenceNotificationsPage() {
 
   // Student → Subject grouping
   const studentGroups = useMemo(() => {
-    const map = new Map<string, { studentId: string; studentName: string; rollNumber: string; year: string; className: string; contactEmail: string | null; subjects: Map<string, EligibleAbsence[]> }>()
+    const map = new Map<string, { studentId: string; studentName: string; rollNumber: string; year: string; className: string; contactEmail: string | null; overallAttendancePct: number; subjects: Map<string, EligibleAbsence[]> }>()
     for (const a of filtered) {
       if (!map.has(a.studentId)) {
-        map.set(a.studentId, { studentId: a.studentId, studentName: a.studentName, rollNumber: a.rollNumber, year: a.year, className: a.className, contactEmail: a.contactEmail, subjects: new Map() })
+        map.set(a.studentId, { studentId: a.studentId, studentName: a.studentName, rollNumber: a.rollNumber, year: a.year, className: a.className, contactEmail: a.contactEmail, overallAttendancePct: a.overallAttendancePct, subjects: new Map() })
       }
       const g = map.get(a.studentId)!
       if (!g.subjects.has(a.subjectId)) g.subjects.set(a.subjectId, [])
       g.subjects.get(a.subjectId)!.push(a)
     }
-    return Array.from(map.values()).sort((a, b) => a.studentName.localeCompare(b.studentName))
-  }, [filtered])
+    const groups = Array.from(map.values())
+    return sortBy === "attendance"
+      ? groups.sort((a, b) => a.overallAttendancePct - b.overallAttendancePct) // lowest attendance first
+      : groups.sort((a, b) => a.studentName.localeCompare(b.studentName))
+  }, [filtered, sortBy])
 
   useEffect(() => {
     // Auto expand/collapse threshold
@@ -177,6 +218,19 @@ export default function AbsenceNotificationsPage() {
             <Input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="h-9 w-36 text-xs shrink-0" placeholder="To" />
           </div>
 
+          {!loading && studentGroups.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                <SelectTrigger className="h-9 w-48 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="attendance">Sort: Lowest Attendance First</SelectItem>
+                  <SelectItem value="name">Sort: Name (A–Z)</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={() => exportPendingCSV(studentGroups)}>Export CSV</Button>
+            </div>
+          )}
+
           {!loading && !loadError && filtered.length > 0 && (
             <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-background/95 backdrop-blur px-4 py-3 shadow-sm">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -232,18 +286,29 @@ export default function AbsenceNotificationsPage() {
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <Badge variant="secondary">{pendingCount} pending</Badge>
+                          <Badge variant="outline" className={`text-[10px] ${severityBadge(group.overallAttendancePct).className}`}>{severityBadge(group.overallAttendancePct).label}</Badge>
                           {!group.contactEmail && <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200"><MailX className="size-2.5 mr-1" />No contact email</Badge>}
                         </div>
                       </div>
 
                       {!isCollapsed && (
                         <div className="flex flex-col gap-3 pl-6 mt-3">
-                          {groupIds.length > 0 && (
-                            <label className="flex items-center gap-2 cursor-pointer w-fit">
-                              <Checkbox checked={groupAllSelected} onCheckedChange={c => toggleGroup(groupIds, !!c)} />
-                              <span className="text-xs font-medium">Select student</span>
-                            </label>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {groupIds.length > 0 && (
+                              <label className="flex items-center gap-2 cursor-pointer w-fit">
+                                <Checkbox checked={groupAllSelected} onCheckedChange={c => toggleGroup(groupIds, !!c)} />
+                                <span className="text-xs font-medium">Select student</span>
+                              </label>
+                            )}
+                            {groupIds.length > 0 && selectedIds.size > 0 && (
+                              <Button variant="ghost" size="sm" className="w-fit h-7 text-xs gap-1" onClick={() => {
+                                const studentSelectedIds = Array.from(group.subjects.values()).flat().filter(a => selectedIds.has(a.periodAttendanceId)).map(a => a.periodAttendanceId)
+                                if (studentSelectedIds.length > 0) openPreview(group.studentId, studentSelectedIds, setPreviewLoading, setPreviewData, setPreviewOpen)
+                              }}>
+                                Preview Email
+                              </Button>
+                            )}
+                          </div>
                           {Array.from(group.subjects.entries()).map(([subjId, records]) => {
                             const subjIds = records.filter(r => !r.alreadyNotified).map(r => r.periodAttendanceId)
                             const subjAllSelected = subjIds.length > 0 && subjIds.every(id => selectedIds.has(id))
@@ -352,6 +417,18 @@ export default function AbsenceNotificationsPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
+        <SheetContent className="sm:max-w-xl overflow-y-auto">
+          <SheetHeader><SheetTitle>Email Preview</SheetTitle>{previewData && <SheetDescription>{previewData.subject}</SheetDescription>}</SheetHeader>
+          <div className="p-4">
+            {previewLoading ? <Loader2 className="animate-spin" /> : previewData && (
+              <div className="border border-border rounded-lg overflow-hidden" dangerouslySetInnerHTML={{ __html: previewData.html }} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
+

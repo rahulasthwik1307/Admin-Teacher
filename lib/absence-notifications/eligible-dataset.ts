@@ -18,6 +18,7 @@ export interface EligibleAbsence {
   startTime: string
   endTime: string
   date: string
+  overallAttendancePct: number
 }
 
 /**
@@ -61,6 +62,29 @@ export async function getEligibleAbsences(
   }
   const winningSessionIds = new Set(Array.from(sessionByKey.values()).map(v => v.sessionId))
 
+  // Compute overall attendance % per unique student — used for the severity badge.
+  // Joined via FK relation (not .in(sessionIds)) to avoid the same header-overflow
+  // issue fixed in the send route.
+  const uniqueStudentClassPairs = new Map<string, string>() // studentId -> classId
+  for (const row of data) {
+    const student: any = row.student
+    if (student?.id && student?.class_id) uniqueStudentClassPairs.set(student.id, student.class_id)
+  }
+
+  const attendancePctByStudent = new Map<string, number>()
+  for (const [studentId, classId] of uniqueStudentClassPairs.entries()) {
+    const { data: att } = await supabase
+      .from("period_attendance")
+      .select("status, session:attendance_sessions!inner(class_id, status)")
+      .eq("student_id", studentId)
+      .eq("session.class_id", classId)
+      .eq("session.status", "finalized")
+      .in("status", ["present", "absent"])
+    const total = att?.length ?? 0
+    const present = (att ?? []).filter((a: any) => a.status === "present").length
+    attendancePctByStudent.set(studentId, total > 0 ? Math.round((present / total) * 100) : 100)
+  }
+
   const result: EligibleAbsence[] = []
   for (const row of data) {
     const s: any = row.session
@@ -84,6 +108,7 @@ export async function getEligibleAbsences(
       startTime: (s.period?.start_time ?? "").substring(0, 5),
       endTime: (s.period?.end_time ?? "").substring(0, 5),
       date: s.session_date,
+      overallAttendancePct: attendancePctByStudent.get(row.student_id) ?? 100,
     })
   }
   return result
