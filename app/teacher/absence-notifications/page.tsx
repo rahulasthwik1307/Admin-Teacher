@@ -232,7 +232,7 @@ export default function AbsenceNotificationsPage() {
           )}
 
           {!loading && !loadError && filtered.length > 0 && (
-            <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-background/95 backdrop-blur px-4 py-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-card px-4 py-3 shadow-sm">
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox checked={allSelected} onCheckedChange={c => toggleGroup(selectableIds, !!c)} />
                 <span className="text-xs font-semibold">Select all pending</span>
