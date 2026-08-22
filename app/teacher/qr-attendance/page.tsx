@@ -11,6 +11,21 @@ import { QRSummaryState } from "@/components/teacher/qr-summary-state"
 
 type PageState = "setup" | "active" | "summary"
 
+function getOrdinalSuffix(n: number): string {
+  const mod100 = n % 100
+  if (mod100 >= 11 && mod100 <= 13) return "th"
+  switch (n % 10) {
+    case 1:
+      return "st"
+    case 2:
+      return "nd"
+    case 3:
+      return "rd"
+    default:
+      return "th"
+  }
+}
+
 export default function QRAttendancePage() {
   const [pageState, setPageState] = useState<PageState>("setup")
   const [selectedClass, setSelectedClass] = useState("")
@@ -207,10 +222,7 @@ export default function QRAttendancePage() {
 
         const processedRecent = recent.map((r: any) => {
           const n = r.period.period_number
-          const suffix =
-            n >= 11 && n <= 13
-              ? "th"
-              : ["th", "st", "nd", "rd"][Math.min(n % 10, 3)] ?? "th"
+          const suffix = getOrdinalSuffix(n)
           return {
             subject: r.subject.name,
             class: `${r.class.department.code}-${r.class.section}`,

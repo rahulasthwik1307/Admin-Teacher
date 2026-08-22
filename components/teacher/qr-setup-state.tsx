@@ -297,9 +297,9 @@ export function QRSetupState({
                 {!mounted ? (
                   <div className="flex items-center justify-between font-semibold text-xs sm:text-sm text-muted-foreground w-full py-0.5">
                     {selectedPeriodParsed ? (
-                      <span className="flex items-center gap-2 truncate">
-                        <span className="font-bold text-primary">P{selectedPeriodParsed.periodNum}</span>
-                        <span className="font-mono text-xs text-muted-foreground">{selectedPeriodParsed.timeRange}</span>
+                      <span className="flex items-center gap-2.5 truncate">
+                        <span className="font-bold text-primary text-xs sm:text-sm">P{selectedPeriodParsed.periodNum}</span>
+                        <span className="font-mono text-xs sm:text-sm font-semibold text-foreground/90 tracking-tight">{selectedPeriodParsed.timeRange}</span>
                       </span>
                     ) : (
                       <span className="truncate">Select period slot</span>
@@ -310,9 +310,9 @@ export function QRSetupState({
                   <Select value={selectedPeriod} onValueChange={onPeriodChange}>
                     <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
                       {selectedPeriodParsed ? (
-                        <span className="flex items-center gap-2 truncate">
-                          <span className="font-bold text-primary">P{selectedPeriodParsed.periodNum}</span>
-                          <span className="font-mono text-xs text-muted-foreground">{selectedPeriodParsed.timeRange}</span>
+                        <span className="flex items-center gap-2.5 truncate">
+                          <span className="font-bold text-primary text-xs sm:text-sm">P{selectedPeriodParsed.periodNum}</span>
+                          <span className="font-mono text-xs sm:text-sm font-semibold text-foreground/90 tracking-tight">{selectedPeriodParsed.timeRange}</span>
                         </span>
                       ) : (
                         <SelectValue placeholder="Select period slot" />
@@ -333,7 +333,7 @@ export function QRSetupState({
                                 </span>
                               </div>
                               {parsed.timeRange && (
-                                <span className="font-mono text-[11px] text-muted-foreground rounded border border-border/60 bg-muted/40 px-2 py-0.5">
+                                <span className="font-mono text-xs font-semibold text-foreground/80 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
                                   {parsed.timeRange}
                                 </span>
                               )}

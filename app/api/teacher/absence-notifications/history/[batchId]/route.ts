@@ -8,21 +8,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ batc
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { batchId } = await params
-
     const { data: batch, error: batchError } = await supabase
       .from("notification_batches")
-      .select(`
-        id, sent_at, teacher_id, selected_count, sent_count, failed_count, no_email_count,
-        teacher:teachers ( user:users ( full_name ) ),
-        session:attendance_sessions (
-          session_date,
-          subject:subjects ( name ),
-          class:classes ( name, section ),
-          period:periods ( period_number )
-        )
-      `)
-      .eq("id", batchId)
-      .maybeSingle()
+      .select(`id, sent_at, teacher_id, selected_count, student_count, sent_count, failed_count, no_email_count, teacher:teachers ( user:users ( full_name ) )`)
+      .eq("id", batchId).maybeSingle()
 
     if (batchError || !batch) return NextResponse.json({ error: "Batch not found" }, { status: 404 })
     if ((batch as any).teacher_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -30,29 +19,33 @@ export async function GET(request: Request, { params }: { params: Promise<{ batc
     const { data: recipients } = await supabase
       .from("notification_batch_recipients")
       .select(`
-        id, recipient_email, status, failure_reason,
-        student:students ( roll_number, user:users ( full_name ) )
+        student_id, recipient_email, status, failure_reason,
+        student:students ( roll_number, user:users ( full_name ) ),
+        period_attendance:period_attendance_id ( session:attendance_sessions ( session_date, subject:subjects ( name ), period:periods ( period_number ) ) )
       `)
       .eq("batch_id", batchId)
-      .order("id")
+
+    const byStudent = new Map<string, any>()
+    for (const r of (recipients ?? [])) {
+      const st: any = r.student
+      if (!byStudent.has(r.student_id)) {
+        byStudent.set(r.student_id, {
+          studentName: st?.user?.full_name ?? "Unknown", rollNumber: st?.roll_number ?? "",
+          email: r.recipient_email, status: r.status, failureReason: r.failure_reason, records: [],
+        })
+      }
+      const pa: any = r.period_attendance
+      const s = pa?.session
+      byStudent.get(r.student_id)!.records.push({
+        subjectName: s?.subject?.name ?? "Unknown", date: s?.session_date, periodNumber: s?.period?.period_number ?? 0,
+      })
+    }
 
     const b: any = batch
     return NextResponse.json({
-      batchId: b.id,
-      sentAt: b.sent_at,
-      sentBy: b.teacher?.user?.full_name ?? "Unknown",
-      subjectName: b.session?.subject?.name ?? "Unknown",
-      className: b.session?.class ? `${b.session.class.name}-${b.session.class.section}` : "Unknown",
-      periodNumber: b.session?.period?.period_number ?? 0,
-      date: b.session?.session_date,
-      selectedCount: b.selected_count, sentCount: b.sent_count, failedCount: b.failed_count, noEmailCount: b.no_email_count,
-      recipients: (recipients ?? []).map((r: any) => ({
-        studentName: r.student?.user?.full_name ?? "Unknown",
-        rollNumber: r.student?.roll_number ?? "",
-        email: r.recipient_email,
-        status: r.status,
-        failureReason: r.failure_reason,
-      })),
+      batchId: b.id, sentAt: b.sent_at, sentBy: b.teacher?.user?.full_name ?? "Unknown",
+      selectedCount: b.selected_count, studentCount: b.student_count, sentCount: b.sent_count, failedCount: b.failed_count, noEmailCount: b.no_email_count,
+      students: Array.from(byStudent.values()),
     })
   } catch (e) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

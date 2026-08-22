@@ -7,39 +7,45 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { data, error } = await supabase
+    const { data: batches, error } = await supabase
       .from("notification_batches")
-      .select(`
-        id, sent_at, selected_count, sent_count, failed_count, no_email_count,
-        teacher:teachers ( user:users ( full_name ) ),
-        session:attendance_sessions (
-          session_date,
-          subject:subjects ( name ),
-          class:classes ( name, section ),
-          period:periods ( period_number )
-        )
-      `)
+      .select(`id, sent_at, selected_count, student_count, sent_count, failed_count, no_email_count, teacher:teachers ( user:users ( full_name ) )`)
       .eq("teacher_id", user.id)
       .order("sent_at", { ascending: false })
       .limit(50)
 
     if (error) return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 })
+    const batchIds = (batches ?? []).map((b: any) => b.id)
 
-    const batches = (data ?? []).map((b: any) => ({
-      batchId: b.id,
-      sentAt: b.sent_at,
-      selectedCount: b.selected_count,
-      sentCount: b.sent_count,
-      failedCount: b.failed_count,
-      noEmailCount: b.no_email_count,
-      sentBy: b.teacher?.user?.full_name ?? "Unknown",
-      subjectName: b.session?.subject?.name ?? "Unknown",
-      className: b.session?.class ? `${b.session.class.name}-${b.session.class.section}` : "Unknown",
-      periodNumber: b.session?.period?.period_number ?? 0,
-      date: b.session?.session_date,
-    }))
+    const { data: recipients } = batchIds.length > 0
+      ? await supabase.from("notification_batch_recipients")
+          .select(`batch_id, period_attendance:period_attendance_id ( session:attendance_sessions ( session_date, subject:subjects ( name ) ) )`)
+          .in("batch_id", batchIds)
+      : { data: [] }
 
-    return NextResponse.json(batches)
+    const aggMap = new Map<string, { subjects: Set<string>; dates: string[] }>()
+    for (const r of (recipients ?? [])) {
+      const pa: any = r.period_attendance
+      const s = pa?.session
+      if (!aggMap.has(r.batch_id)) aggMap.set(r.batch_id, { subjects: new Set(), dates: [] })
+      const entry = aggMap.get(r.batch_id)!
+      if (s?.subject?.name) entry.subjects.add(s.subject.name)
+      if (s?.session_date) entry.dates.push(s.session_date)
+    }
+
+    const result = (batches ?? []).map((b: any) => {
+      const agg = aggMap.get(b.id) ?? { subjects: new Set(), dates: [] }
+      const sortedDates = [...agg.dates].sort()
+      return {
+        batchId: b.id, sentAt: b.sent_at, selectedCount: b.selected_count, studentCount: b.student_count,
+        sentCount: b.sent_count, failedCount: b.failed_count, noEmailCount: b.no_email_count,
+        sentBy: b.teacher?.user?.full_name ?? "Unknown",
+        subjects: Array.from(agg.subjects),
+        dateFrom: sortedDates[0] ?? null, dateTo: sortedDates[sortedDates.length - 1] ?? null,
+      }
+    })
+
+    return NextResponse.json(result)
   } catch (e) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
