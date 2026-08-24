@@ -244,7 +244,17 @@ export default function AdminStudentsPage() {
         const hasEmbedding = !!s.face_embedding
         const isApproved = s.is_approved === true
         const isRejected = s.is_rejected === true
-        const faceStatus: Student["faceStatus"] = !hasEmbedding ? "None" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"
+        // Check rejection FIRST — reject-face clears face_embedding, so a rejected
+        // student would otherwise incorrectly fall through to "Not Registered".
+        // is_rejected is the authoritative signal that a registration was
+        // submitted-then-rejected, independent of whether the embedding still exists.
+        const faceStatus: Student["faceStatus"] = isRejected
+          ? "Rejected"
+          : !hasEmbedding
+          ? "None"
+          : isApproved
+          ? "Approved"
+          : "Pending"
         return {
           id: s.id,
           name: s.user?.full_name ?? "Unknown",

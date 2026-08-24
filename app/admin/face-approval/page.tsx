@@ -177,11 +177,8 @@ export default function AdminFaceApprovalPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Face Registration Approval</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Review and approve student face registrations across all classes</p>
-        </div>
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-sm text-muted-foreground">Review and approve student face registrations across all classes</p>
         <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} className="shrink-0 gap-2">
           <RefreshCw className={cn("size-4", loading && "animate-spin")} />Refresh
         </Button>
