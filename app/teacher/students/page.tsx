@@ -186,7 +186,13 @@ export default function TeacherStudentsPage() {
         const hasEmbedding = !!s.embedding_a
         const isApproved = s.is_approved === true
         const isRejected = s.is_rejected === true
-        const faceStatus: Student["faceStatus"] = !hasEmbedding ? "None" : isApproved ? "Approved" : isRejected ? "Rejected" : "Pending"
+        const faceStatus: Student["faceStatus"] = isRejected
+          ? "Rejected"
+          : !hasEmbedding
+          ? "None"
+          : isApproved
+          ? "Approved"
+          : "Pending"
         return {
           id: s.id,
           name: s.user?.full_name ?? "Unknown",
