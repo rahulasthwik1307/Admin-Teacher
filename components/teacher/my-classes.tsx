@@ -83,7 +83,7 @@ export function MyClasses() {
                       </td>
                       <td className="px-5 py-3.5">
                         <span className="font-mono text-xs font-semibold rounded-md border border-border/70 bg-muted/40 px-2 py-0.5 text-muted-foreground">
-                          {row.className}-{row.section}
+                          {row.className}-{row.section}{row.year ? ` · ${row.year}` : ""}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-center">
@@ -132,7 +132,7 @@ export function MyClasses() {
                         <span className="font-bold text-xs text-foreground truncate">{row.subject}</span>
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
                           <GraduationCap className="size-3 shrink-0" />
-                          <span className="font-mono">{row.className}-{row.section}</span>
+                          <span className="font-mono">{row.className}-{row.section}{row.year ? ` · ${row.year}` : ""}</span>
                         </div>
                       </div>
                     </div>

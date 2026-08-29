@@ -151,28 +151,73 @@ export default function TeacherStudentsPage() {
     try {
       const supabase = createClient()
 
-      // Get classes this teacher teaches via timetables
-      const { data: timetableRows } = await supabase
-        .from("timetables")
-        .select("class_id")
+      // 1. Get assignments directly assigned to this teacher
+      const { data: assignmentRows } = await supabase
+        .from("teacher_assignments")
+        .select("id, class_id, year, class:classes ( year )")
         .eq("teacher_id", teacherId)
 
-      if (!timetableRows || timetableRows.length === 0) {
+      // 2. Get timetables for this teacher (including linked teacher_assignment)
+      const { data: timetableRows } = await supabase
+        .from("timetables")
+        .select(`
+          class_id,
+          teacher_assignment_id,
+          class:classes ( year ),
+          teacher_assignment:teacher_assignments (
+            id,
+            class_id,
+            year,
+            class:classes ( year )
+          )
+        `)
+        .eq("teacher_id", teacherId)
+
+      // Collect all assigned (class_id, year) academic groups
+      const assignedPairs: { classId: string; year: string }[] = []
+
+      for (const a of assignmentRows || []) {
+        const yr = a.year ?? (a.class as any)?.year
+        if (a.class_id && yr) {
+          assignedPairs.push({ classId: a.class_id, year: yr })
+        }
+      }
+
+      for (const t of timetableRows || []) {
+        const ta = t.teacher_assignment as any
+        const taYr = ta?.year ?? ta?.class?.year
+        if (ta?.class_id && taYr) {
+          assignedPairs.push({ classId: ta.class_id, year: taYr })
+        } else if (t.class_id) {
+          const tYr = (t.class as any)?.year
+          if (tYr) assignedPairs.push({ classId: t.class_id, year: tYr })
+        }
+      }
+
+      // Deduplicate unique (class_id, year) pairs
+      const uniquePairs = Array.from(
+        new Set(assignedPairs.map((p) => `${p.classId}:::${p.year}`))
+      ).map((key) => {
+        const [classId, year] = key.split(":::")
+        return { classId, year }
+      })
+
+      if (uniquePairs.length === 0) {
         setStudents([])
         setIsLoading(false)
         return
       }
 
-      // Unique class IDs
-      const classIds = [...new Set(timetableRows.map((r: any) => r.class_id as string))]
+      // Unique class IDs to query
+      const classIds = [...new Set(uniquePairs.map((p) => p.classId))]
 
       // Fetch students in those classes
       const { data, error } = await supabase
         .from("students")
         .select(`
           id, roll_number, year, is_active, embedding_a, is_approved, is_rejected,
-          registration_photo_url,
-          class:classes ( name, section, department:departments ( code ) ),
+          registration_photo_url, class_id,
+          class:classes ( name, section, year, department:departments ( code ) ),
           user:users ( full_name )
         `)
         .in("class_id", classIds)
@@ -180,9 +225,14 @@ export default function TeacherStudentsPage() {
 
       if (error) { setFetchError("Failed to load students."); return }
 
-      const mapped: Student[] = (data || []).map((s: any) => {
+      // Strictly match students that belong to the teacher's assigned (class_id, year) groups
+      const matchingStudents = (data || []).filter((s: any) =>
+        uniquePairs.some((p) => p.classId === s.class_id && p.year === s.year)
+      )
+
+      const mapped: Student[] = matchingStudents.map((s: any) => {
         const classData = s.class
-        const className = classData ? `${classData.department?.code ?? ""}-${classData.section}` : "—"
+        const className = classData ? `${classData.department?.code ?? classData.name}-${classData.section}` : "—"
         const hasEmbedding = !!s.embedding_a
         const isApproved = s.is_approved === true
         const isRejected = s.is_rejected === true
@@ -227,7 +277,7 @@ export default function TeacherStudentsPage() {
     if (!isGrouped) return null
     const map = new Map<string, Student[]>()
     for (const s of filtered) {
-      const key = s.class === "—" ? "Unassigned" : s.class
+      const key = s.class === "—" ? "Unassigned" : s.year ? `${s.class} · ${s.year}` : s.class
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(s)
     }

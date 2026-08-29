@@ -75,13 +75,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Failed to create user record: ${userInsertError.message}` }, { status: 500 })
     }
 
+    // Verify class and sync student year
+    const { data: classRow } = await admin
+      .from("classes")
+      .select("id, year")
+      .eq("id", class_id)
+      .maybeSingle()
+
+    const finalYear = classRow?.year || year
+
     // Insert into students table
     const { error: studentInsertError } = await admin.from("students").insert({
       id: newUserId,
       roll_number: cleanRoll,
       department_id,
       class_id,
-      year,
+      year: finalYear,
       is_active: true,
       // created_by is intentionally null for admin-created students
       // The column references the teachers table, not the users table

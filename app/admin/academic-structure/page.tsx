@@ -35,6 +35,7 @@ import {
   ChevronDown,
   ChevronRight,
   AlignJustify,
+  CalendarDays,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -42,7 +43,7 @@ import { motion, AnimatePresence } from "framer-motion"
 
 /* ---------- Interfaces ---------- */
 interface Department { id: string; name: string; code: string; classes: number; subjects: number }
-interface ClassItem { id: string; name: string; section: string; department: string; departmentFull: string; displayName: string }
+interface ClassItem { id: string; name: string; section: string; year: string; department: string; departmentFull: string; displayName: string }
 interface Subject { id: string; name: string; code: string; department: string; departmentFull: string }
 interface Period { id: string; number: number; start: string; end: string; duration: string }
 
@@ -104,6 +105,7 @@ export default function AcademicStructurePage() {
   const [className, setClassName] = useState("")
   const [classSection, setClassSection] = useState("")
   const [classDept, setClassDept] = useState("")
+  const [classYear, setClassYear] = useState("1st Year")
   const [subjName, setSubjName] = useState("")
   const [subjCode, setSubjCode] = useState("")
   const [subjDept, setSubjDept] = useState("")
@@ -170,18 +172,23 @@ export default function AcademicStructurePage() {
   }
 
   async function handleAddClass() {
-    if (!className || !classSection || !classDept) { toast.error("Please fill all fields"); return }
+    if (!className || !classSection || !classDept || !classYear) { toast.error("Please fill all fields"); return }
     setIsSubmitting(true)
     try {
       const supabase = createClient()
       const selectedDept = departments.find(d => d.code === classDept)
       if (!selectedDept) { toast.error("Department not found"); return }
-      const { error } = await supabase.from("classes").insert({ name: className.toUpperCase(), section: classSection.toUpperCase(), department_id: selectedDept.id })
+      const { error } = await supabase.from("classes").insert({ 
+        name: className.toUpperCase(), 
+        section: classSection.toUpperCase(), 
+        department_id: selectedDept.id,
+        year: classYear
+      })
       if (error) { toast.error(`Failed: ${error.message}`); return }
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Class added: ${className.toUpperCase()}-${classSection.toUpperCase()} (${classDept})` })
-      toast.success(`Class "${className.toUpperCase()}-${classSection.toUpperCase()}" added`)
-      setClassDialog(false); setClassName(""); setClassSection(""); setClassDept("")
+      if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Class added: ${className.toUpperCase()}-${classSection.toUpperCase()} · ${classYear} (${classDept})` })
+      toast.success(`Class "${className.toUpperCase()}-${classSection.toUpperCase()} (${classYear})" added`)
+      setClassDialog(false); setClassName(""); setClassSection(""); setClassDept(""); setClassYear("1st Year")
       queryClient.invalidateQueries({ queryKey: ["admin-academic-structure"] })
     } finally { setIsSubmitting(false) }
   }
@@ -838,10 +845,22 @@ export default function AcademicStructurePage() {
                 <SelectContent>{departments.map(d => <SelectItem key={d.id} value={d.code}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {className && classSection && (
-              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center gap-2">
-                <GraduationCap className="size-4 text-emerald-600 shrink-0" />
-                <span className="text-xs text-emerald-700 font-medium">Will be created as <span className="font-bold">{className.toUpperCase()}-{classSection.toUpperCase()}</span></span>
+            <div className="flex flex-col gap-2">
+              <Label className="flex items-center gap-1.5 text-sm font-medium"><CalendarDays className="size-3.5 text-muted-foreground" /> Academic Year</Label>
+              <Select value={classYear} onValueChange={setClassYear}>
+                <SelectTrigger><SelectValue placeholder="Select academic year" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1st Year">1st Year</SelectItem>
+                  <SelectItem value="2nd Year">2nd Year</SelectItem>
+                  <SelectItem value="3rd Year">3rd Year</SelectItem>
+                  <SelectItem value="4th Year">4th Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {className && classSection && classYear && (
+              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 flex items-center gap-2">
+                <GraduationCap className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">Will be created as <span className="font-bold">{className.toUpperCase()}-{classSection.toUpperCase()} · {classYear}</span></span>
               </div>
             )}
             <Button onClick={handleAddClass} disabled={isSubmitting}>

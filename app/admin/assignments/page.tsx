@@ -44,9 +44,14 @@ import {
   ChevronDown,
   ChevronRight,
   X,
+  CalendarDays,
+  AlertTriangle,
+  Pencil,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { motion } from "framer-motion"
+
+/* ---------- Constants ---------- */
+const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
 
 /* ---------- Interfaces ---------- */
 interface Assignment {
@@ -55,13 +60,15 @@ interface Assignment {
   teacherId: string
   subject: string
   classSection: string
+  classSectionOnly: string
   department: string
+  year: string | null
   date: string
 }
 
 interface TeacherOption { id: string; name: string }
-interface SubjectOption { id: string; name: string; deptCode: string }
-interface ClassOption { id: string; label: string; deptCode: string }
+interface SubjectOption { id: string; name: string; code?: string; deptCode: string }
+interface ClassOption { id: string; label: string; fullLabel: string; name: string; section: string; year: string; classSection: string; deptCode: string }
 interface DeptOption { code: string; name: string }
 
 /* ---------- Helpers ---------- */
@@ -133,6 +140,7 @@ export default function TeacherAssignmentsPage() {
   const [filterClass, setFilterClass] = useState("all")
   const [filterDept, setFilterDept] = useState("all")
   const [filterTeacher, setFilterTeacher] = useState("all")
+  const [filterYear, setFilterYear] = useState("all")
 
   const [sheetOpen, setSheetOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<Assignment | null>(null)
@@ -142,22 +150,42 @@ export default function TeacherAssignmentsPage() {
   const [formSubjectId, setFormSubjectId] = useState("")
   const [formClassId, setFormClassId] = useState("")
   const [formDeptCode, setFormDeptCode] = useState("")
+  const [formYear, setFormYear] = useState("")
+
+  const [editTarget, setEditTarget] = useState<Assignment | null>(null)
+  const [editYear, setEditYear] = useState("")
+  const [editSheetOpen, setEditSheetOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   /* ---------- Fetch ---------- */
   const fetchDropdownData = useCallback(async () => {
     const supabase = createClient()
     const [teachersRes, subjectsRes, classesRes] = await Promise.all([
       supabase.from("teachers").select("id, user:users ( full_name )").eq("is_active", true),
-      supabase.from("subjects").select("id, name, department:departments ( code )").order("name"),
-      supabase.from("classes").select("id, name, section, department:departments ( code, name )").order("name"),
+      supabase.from("subjects").select("id, name, code, department:departments ( code )").order("name"),
+      supabase.from("classes").select("id, name, section, year, department:departments ( code, name )").order("name"),
     ])
     if (teachersRes.data) setTeacherOptions(teachersRes.data.map((t: any) => ({ id: t.id, name: t.user?.full_name ?? "Unknown" })))
     if (subjectsRes.data) {
-      setSubjectOptions(subjectsRes.data.map((s: any) => ({ id: s.id, name: s.name, deptCode: s.department?.code ?? "" })))
+      setSubjectOptions(subjectsRes.data.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        code: s.code ?? "",
+        deptCode: s.department?.code ?? "",
+      })))
       setTotalSubjectsInSystem(subjectsRes.data.length)
     }
     if (classesRes.data) {
-      setClassOptions(classesRes.data.map((c: any) => ({ id: c.id, label: `${c.name}-${c.section}`, deptCode: c.department?.code ?? "" })))
+      setClassOptions(classesRes.data.map((c: any) => ({
+        id: c.id,
+        label: `${c.name}-${c.section}`,
+        fullLabel: `${c.name}-${c.section} · ${c.year}`,
+        name: c.name,
+        section: c.section,
+        year: c.year,
+        classSection: `${c.name}-${c.section}`,
+        deptCode: c.department?.code ?? "",
+      })))
       const deptMap = new Map<string, string>()
       for (const c of classesRes.data as any[]) { if (c.department?.code) deptMap.set(c.department.code, c.department.name) }
       setDeptOptions(Array.from(deptMap.entries()).map(([code, name]) => ({ code, name })))
@@ -170,7 +198,7 @@ export default function TeacherAssignmentsPage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from("teacher_assignments")
-        .select(`id, assigned_at, teacher:teachers ( id, user:users ( full_name ) ), subject:subjects ( name ), class:classes ( name, section, department:departments ( code ) )`)
+        .select(`id, assigned_at, year, teacher:teachers ( id, user:users ( full_name ) ), subject:subjects ( name ), class:classes ( name, section, year, department:departments ( code ) )`)
         .order("assigned_at", { ascending: false })
       if (error) { setFetchError("Failed to load assignments."); return }
       setAssignments((data || []).map((a: any) => ({
@@ -178,8 +206,10 @@ export default function TeacherAssignmentsPage() {
         teacher: a.teacher?.user?.full_name ?? "Unknown",
         teacherId: a.teacher?.id ?? "",
         subject: a.subject?.name ?? "—",
-        classSection: a.class ? `${a.class.name}-${a.class.section}` : "—",
+        classSection: a.class ? `${a.class.name}-${a.class.section} · ${a.class.year}` : "—",
+        classSectionOnly: a.class ? `${a.class.name}-${a.class.section}` : "—",
         department: a.class?.department?.code ?? "—",
+        year: a.year ?? a.class?.year ?? null,
         date: a.assigned_at ? new Date(a.assigned_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
       })))
     } catch { setFetchError("An unexpected error occurred.") }
@@ -195,13 +225,32 @@ export default function TeacherAssignmentsPage() {
     init()
   }, [fetchDropdownData, fetchAssignments])
 
+  const availableClassFilterOptions = useMemo(() => {
+    let list = classOptions
+    if (filterDept !== "all") {
+      list = list.filter(c => c.deptCode === filterDept)
+    }
+    if (filterYear !== "all") {
+      list = list.filter(c => c.year === filterYear)
+    }
+    const unique = Array.from(new Set(list.map(c => c.classSection).filter(Boolean)))
+    return unique.sort()
+  }, [classOptions, filterDept, filterYear])
+
+  useEffect(() => {
+    if (filterClass !== "all" && !availableClassFilterOptions.includes(filterClass)) {
+      setFilterClass("all")
+    }
+  }, [availableClassFilterOptions, filterClass])
+
   /* ---------- Filtered & grouped ---------- */
   const filtered = useMemo(() => assignments.filter(a => {
-    if (filterClass !== "all" && a.classSection !== filterClass) return false
+    if (filterClass !== "all" && a.classSectionOnly !== filterClass) return false
     if (filterDept !== "all" && a.department !== filterDept) return false
     if (filterTeacher !== "all" && a.teacher !== filterTeacher) return false
+    if (filterYear !== "all" && a.year !== filterYear) return false
     return true
-  }), [assignments, filterClass, filterDept, filterTeacher])
+  }), [assignments, filterClass, filterDept, filterTeacher, filterYear])
 
   const groupedByClass = useMemo(() => {
     const groups: Record<string, Assignment[]> = {}
@@ -211,6 +260,9 @@ export default function TeacherAssignmentsPage() {
     }
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
   }, [filtered])
+
+  /* ---------- Legacy Assignments Count ---------- */
+  const legacyAssignmentsCount = useMemo(() => assignments.filter(a => !a.year).length, [assignments])
 
   /* ---------- Assignment Overview per teacher ---------- */
   const teacherOverview = useMemo(() => {
@@ -235,8 +287,13 @@ export default function TeacherAssignmentsPage() {
   function handleSubjectChange(subjectId: string) {
     setFormSubjectId(subjectId)
     const found = subjectOptions.find(s => s.id === subjectId)
-    if (found) setFormDeptCode(found.deptCode)
+    setFormDeptCode(found?.deptCode ?? "")
   }
+
+  const formAvailableClasses = useMemo(() => {
+    if (!formYear) return []
+    return classOptions.filter(c => c.year === formYear)
+  }, [classOptions, formYear])
 
   /* ---------- Stat cards ---------- */
   const teachersWithAssignments = new Set(assignments.map(a => a.teacher)).size
@@ -291,22 +348,90 @@ export default function TeacherAssignmentsPage() {
 
   /* ---------- Handlers ---------- */
   async function handleAssign() {
-    if (!formTeacherId || !formSubjectId || !formClassId) { toast.error("Please fill all fields"); return }
+    if (!formTeacherId || !formSubjectId || !formClassId || !formYear) {
+      toast.error("Please fill all required fields including Academic Year")
+      return
+    }
     setIsSubmitting(true)
     try {
       const supabase = createClient()
-      const { error } = await supabase.from("teacher_assignments").insert({ teacher_id: formTeacherId, subject_id: formSubjectId, class_id: formClassId })
-      if (error) { toast.error(`Failed: ${error.message}`); return }
+      const { error } = await supabase.from("teacher_assignments").insert({
+        teacher_id: formTeacherId,
+        subject_id: formSubjectId,
+        class_id: formClassId,
+        year: formYear,
+      })
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("This faculty member is already assigned to this subject, class section, and academic year.")
+        } else {
+          toast.error(`Failed: ${error.message}`)
+        }
+        return
+      }
       const { data: { user } } = await supabase.auth.getUser()
       const teacherName = teacherOptions.find(t => t.id === formTeacherId)?.name ?? ""
       const subjectName = subjectOptions.find(s => s.id === formSubjectId)?.name ?? ""
       const className = classOptions.find(c => c.id === formClassId)?.label ?? ""
-      if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "assign", description: `Teacher ${teacherName} assigned to ${subjectName} — ${className}` })
-      toast.success(`${teacherName} assigned to ${subjectName} — ${className}`)
-      setSheetOpen(false); setFormTeacherId(""); setFormSubjectId(""); setFormClassId(""); setFormDeptCode("")
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "assign",
+          description: `Teacher ${teacherName} assigned to ${subjectName} — ${className} (${formYear})`,
+        })
+      }
+      toast.success(`${teacherName} assigned to ${subjectName} — ${className} (${formYear})`)
+      setSheetOpen(false)
+      setFormTeacherId("")
+      setFormSubjectId("")
+      setFormClassId("")
+      setFormDeptCode("")
+      setFormYear("")
       fetchAssignments()
     } catch { toast.error("An unexpected error occurred.") }
     finally { setIsSubmitting(false) }
+  }
+
+  async function handleUpdateYear() {
+    if (!editTarget || !editYear) {
+      toast.error("Please select an academic year")
+      return
+    }
+    setIsEditing(true)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("teacher_assignments")
+        .update({ year: editYear })
+        .eq("id", editTarget.id)
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("An assignment for this teacher, subject, class, and year already exists.")
+        } else {
+          toast.error(`Failed to update year: ${error.message}`)
+        }
+        return
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "update",
+          description: `Updated academic year to ${editYear} for assignment: ${editTarget.teacher} — ${editTarget.subject} (${editTarget.classSection})`,
+        })
+      }
+      toast.success(`Updated academic year to ${editYear}`)
+      setEditSheetOpen(false)
+      setEditTarget(null)
+      setEditYear("")
+      fetchAssignments()
+    } catch {
+      toast.error("An unexpected error occurred.")
+    } finally {
+      setIsEditing(false)
+    }
   }
 
   const [affectedSlots, setAffectedSlots] = useState<{ day: string; period: number; subject: string; classLabel: string }[]>([])
@@ -345,10 +470,11 @@ export default function TeacherAssignmentsPage() {
   }
 
   /* ---------- Preview card ---------- */
+  const selectedFormClass = classOptions.find(c => c.id === formClassId)
   const previewTeacher = teacherOptions.find(t => t.id === formTeacherId)?.name
   const previewSubject = subjectOptions.find(s => s.id === formSubjectId)?.name
-  const previewClass = classOptions.find(c => c.id === formClassId)?.label
-  const showPreview = previewTeacher && previewSubject && previewClass
+  const previewClass = selectedFormClass?.classSection
+  const showPreview = previewTeacher && previewSubject && previewClass && formYear
 
   return (
     <div className="flex flex-col gap-6">
@@ -394,7 +520,7 @@ export default function TeacherAssignmentsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Classes</SelectItem>
-              {uniqueClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              {availableClassFilterOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -428,12 +554,27 @@ export default function TeacherAssignmentsPage() {
             </SelectContent>
           </Select>
 
-          {(filterClass !== "all" || filterDept !== "all" || filterTeacher !== "all") && (
+          <Select value={filterYear} onValueChange={setFilterYear}>
+            <SelectTrigger className="w-38 h-10 rounded-xl border-border bg-card shadow-2xs hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-xs font-semibold">
+              <div className="flex items-center gap-2 overflow-hidden w-full">
+                <CalendarDays className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate flex-1 text-left">
+                  <SelectValue placeholder="All Years" />
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {YEAR_OPTIONS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {(filterClass !== "all" || filterDept !== "all" || filterTeacher !== "all" || filterYear !== "all") && (
             <Button
               variant="ghost"
               size="sm"
               className="h-10 px-3 rounded-xl border border-border/70 bg-muted/40 hover:bg-muted font-semibold text-xs text-muted-foreground hover:text-foreground cursor-pointer gap-1.5"
-              onClick={() => { setFilterClass("all"); setFilterDept("all"); setFilterTeacher("all") }}
+              onClick={() => { setFilterClass("all"); setFilterDept("all"); setFilterTeacher("all"); setFilterYear("all") }}
             >
               <X className="size-3.5" /> Clear
             </Button>
@@ -447,6 +588,25 @@ export default function TeacherAssignmentsPage() {
           <Plus className="size-4" /> Add Assignment
         </Button>
       </div>
+
+      {/* ── Legacy Warning Alert Banner ── */}
+      {!isLoading && !fetchError && legacyAssignmentsCount > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-300/80 bg-linear-to-r from-amber-500/15 via-amber-500/10 to-amber-500/5 p-3.5 text-xs text-amber-900 dark:text-amber-200 dark:border-amber-800/70 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold">
+              <AlertTriangle className="size-4" />
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="font-bold text-amber-950 dark:text-amber-100">
+                {legacyAssignmentsCount} Legacy Assignment{legacyAssignmentsCount !== 1 ? "s" : ""} Require Academic Year
+              </span>
+              <span className="text-amber-800/90 dark:text-amber-300/90 text-[11px] truncate">
+                Assignments created without an Academic Year are hidden from teacher views until updated. Click &quot;Edit Year&quot; on any record to assign it.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Error ── */}
       {fetchError && (
@@ -501,8 +661,9 @@ export default function TeacherAssignmentsPage() {
                               <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Teacher</th>
                               <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Subject</th>
                               <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Department</th>
+                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Academic Year</th>
                               <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Assigned Date</th>
-                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">Action</th>
+                              <th className="px-5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -529,16 +690,41 @@ export default function TeacherAssignmentsPage() {
                                     {a.department}
                                   </span>
                                 </td>
+                                <td className="px-5 py-3">
+                                  {a.year ? (
+                                    <Badge variant="outline" className="text-xs font-semibold px-2 py-0.5 border-primary/30 text-primary bg-primary/5">
+                                      {a.year}
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 text-xs font-semibold px-2 py-0.5 gap-1 inline-flex items-center">
+                                      <AlertTriangle className="size-3" /> Year not set — update required
+                                    </Badge>
+                                  )}
+                                </td>
                                 <td className="px-5 py-3 text-xs text-muted-foreground font-medium">{a.date}</td>
                                 <td className="px-5 py-3 text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 rounded-lg px-2.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold gap-1.5 cursor-pointer"
-                                    onClick={() => openRemoveDialog(a)}
-                                  >
-                                    <Trash2 className="size-3.5" /> Remove
-                                  </Button>
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 rounded-lg px-2.5 text-xs text-primary hover:text-primary hover:bg-primary/10 font-semibold gap-1.5 cursor-pointer"
+                                      onClick={() => {
+                                        setEditTarget(a)
+                                        setEditYear(a.year || "")
+                                        setEditSheetOpen(true)
+                                      }}
+                                    >
+                                      <Pencil className="size-3.5" /> Edit Year
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 rounded-lg px-2.5 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 font-semibold gap-1.5 cursor-pointer"
+                                      onClick={() => openRemoveDialog(a)}
+                                    >
+                                      <Trash2 className="size-3.5" /> Remove
+                                    </Button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -553,7 +739,7 @@ export default function TeacherAssignmentsPage() {
                             key={a.id}
                             className="flex items-center justify-between p-3 rounded-xl border border-border bg-card shadow-2xs"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
                               <Avatar className="size-8.5 ring-1 ring-border shrink-0">
                                 <AvatarFallback className={`text-xs font-bold ${getAvatarColor(a.teacher)}`}>
                                   {getInitials(a.teacher)}
@@ -566,16 +752,41 @@ export default function TeacherAssignmentsPage() {
                                   <span>•</span>
                                   <span className="font-mono">{a.department}</span>
                                 </div>
+                                <div className="mt-1">
+                                  {a.year ? (
+                                    <Badge variant="outline" className="text-[10px] font-semibold px-1.5 py-0.2 border-primary/30 text-primary bg-primary/5">
+                                      {a.year}
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive" className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-semibold px-1.5 py-0.2 gap-1 inline-flex items-center">
+                                      <AlertTriangle className="size-2.5" /> Year not set — update required
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="size-8 p-0 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
-                              onClick={() => openRemoveDialog(a)}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="size-8 p-0 rounded-lg text-primary hover:bg-primary/10 cursor-pointer shrink-0"
+                                onClick={() => {
+                                  setEditTarget(a)
+                                  setEditYear(a.year || "")
+                                  setEditSheetOpen(true)
+                                }}
+                              >
+                                <Pencil className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="size-8 p-0 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer shrink-0"
+                                onClick={() => openRemoveDialog(a)}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -732,26 +943,47 @@ export default function TeacherAssignmentsPage() {
                   {subjectOptions.map(s => (
                     <SelectItem key={s.id} value={s.id}>
                       <span className="font-medium">{s.name}</span>
-                      <span className="text-xs text-muted-foreground ml-1">({s.deptCode})</span>
+                      {s.code && <span className="text-xs text-muted-foreground ml-1">({s.code})</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Class & Section Select */}
+            {/* Academic Year Select (Required - Selected First) */}
             <div className="flex flex-col gap-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
-                <GraduationCap className="size-3.5 text-muted-foreground" /> Class & Section
+                <CalendarDays className="size-3.5 text-muted-foreground" /> Academic Year <span className="text-destructive">*</span>
               </Label>
-              <Select value={formClassId} onValueChange={setFormClassId}>
+              <Select value={formYear} onValueChange={(y) => { setFormYear(y); setFormClassId("") }}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select class section" />
+                  <SelectValue placeholder="Select academic year" />
                 </SelectTrigger>
                 <SelectContent>
-                  {classOptions.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                  {YEAR_OPTIONS.map(y => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Class & Section Select (Dependent on Academic Year) */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <GraduationCap className="size-3.5 text-muted-foreground" /> Class & Section <span className="text-destructive">*</span>
+              </Label>
+              <Select value={formClassId} onValueChange={setFormClassId} disabled={!formYear}>
+                <SelectTrigger className="w-full" disabled={!formYear}>
+                  <SelectValue placeholder={!formYear ? "Select academic year first" : formAvailableClasses.length === 0 ? "No classes found" : "Select class & section"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {formAvailableClasses.length === 0 ? (
+                    <SelectItem value="none" disabled>No classes found for {formYear}</SelectItem>
+                  ) : (
+                    formAvailableClasses.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.classSection}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -788,7 +1020,7 @@ export default function TeacherAssignmentsPage() {
                     <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5 truncate">
                       <span className="font-semibold text-foreground/90">{previewSubject}</span>
                       <span className="text-primary font-bold">→</span>
-                      <span className="font-bold text-primary">{previewClass}</span>
+                      <span className="font-bold text-primary">{previewClass} · {formYear}</span>
                     </div>
                   </div>
                 </div>
@@ -815,6 +1047,58 @@ export default function TeacherAssignmentsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* ── Edit Year Dialog ── */}
+      <AlertDialog open={editSheetOpen} onOpenChange={(open) => { if (!open) { setEditTarget(null); setEditYear("") } setEditSheetOpen(open) }}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Academic Year</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-3 pt-1">
+                <span className="text-xs text-muted-foreground">
+                  Select the correct academic year for this faculty assignment so students are properly grouped.
+                </span>
+                {editTarget && (
+                  <div className="flex flex-col gap-1.5 rounded-xl border border-border/70 bg-muted/40 p-3 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-foreground">{editTarget.teacher}</span>
+                      <span className="font-mono text-muted-foreground">{editTarget.department}</span>
+                    </div>
+                    <div className="text-muted-foreground font-medium">
+                      {editTarget.subject} <span className="font-bold text-foreground">({editTarget.classSection})</span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-col gap-1.5 mt-2">
+                  <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <CalendarDays className="size-3.5 text-muted-foreground" /> Academic Year <span className="text-destructive">*</span>
+                  </Label>
+                  <Select value={editYear} onValueChange={setEditYear}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select academic year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEAR_OPTIONS.map(y => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel className="rounded-xl" disabled={isEditing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUpdateYear}
+              className="rounded-xl font-semibold gap-2"
+              disabled={isEditing || !editYear}
+            >
+              {isEditing ? <><Loader2 className="size-4 animate-spin" /> Updating...</> : "Save Year"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Remove Dialog (Polished) ── */}
       <AlertDialog open={!!removeTarget} onOpenChange={() => { setRemoveTarget(null); setAffectedSlots([]) }}>

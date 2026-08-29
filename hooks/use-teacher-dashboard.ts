@@ -13,6 +13,7 @@ export interface TeacherDashboardData {
     subject: string
     className: string
     section: string
+    year?: string
     students: number
     lastAttendance: string
   }[]

@@ -26,8 +26,10 @@ interface Student {
   name: string
   roll: string
   class: string
+  classSection: string
   classId: string
   departmentId: string
+  departmentCode: string
   year: string
   faceStatus: "Approved" | "Pending" | "Rejected" | "None"
   isActive: boolean
@@ -40,6 +42,8 @@ interface ClassOption {
   label: string
   name: string
   section: string
+  year: string
+  classSection: string
   deptName: string
   deptCode: string
   deptId: string
@@ -183,6 +187,8 @@ export default function AdminStudentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [search, setSearch] = useState("")
+  const [deptFilter, setDeptFilter] = useState("all")
+  const [yearFilter, setYearFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
   const [page, setPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null)
@@ -211,14 +217,14 @@ export default function AdminStudentsPage() {
   const [editContactEmail, setEditContactEmail] = useState("")
 
   const filteredClassOptions = useMemo(() => {
-    if (!formDeptId) return []
-    return classOptions.filter((c) => c.deptId === formDeptId)
-  }, [formDeptId, classOptions])
+    if (!formDeptId || !formYear) return []
+    return classOptions.filter((c) => c.deptId === formDeptId && c.year === formYear)
+  }, [formDeptId, formYear, classOptions])
 
   const editFilteredClassOptions = useMemo(() => {
-    if (!editDeptId) return []
-    return classOptions.filter((c) => c.deptId === editDeptId)
-  }, [editDeptId, classOptions])
+    if (!editDeptId || !editYear) return []
+    return classOptions.filter((c) => c.deptId === editDeptId && c.year === editYear)
+  }, [editDeptId, editYear, classOptions])
 
   const fetchStudents = useCallback(async () => {
     setIsLoading(true)
@@ -231,7 +237,7 @@ export default function AdminStudentsPage() {
         .select(`
           id, roll_number, year, is_active, face_embedding, is_approved, is_rejected,
           registration_photo_url, class_id, department_id,
-          class:classes ( name, section, department:departments ( code, id ) ),
+          class:classes ( name, section, year, department:departments ( code, id ) ),
           user:users ( full_name, contact_email )
         `)
         .order("created_at", { ascending: false })
@@ -240,7 +246,8 @@ export default function AdminStudentsPage() {
 
       const mapped: Student[] = (data || []).map((s: any) => {
         const classData = s.class
-        const className = classData ? `${classData.department?.code ?? ""}-${classData.section}` : "—"
+        const classSection = classData ? `${classData.department?.code ?? classData.name}-${classData.section}` : "—"
+        const className = classData ? `${classData.department?.code ?? classData.name}-${classData.section} · ${s.year}` : "—"
         const hasEmbedding = !!s.face_embedding
         const isApproved = s.is_approved === true
         const isRejected = s.is_rejected === true
@@ -260,8 +267,10 @@ export default function AdminStudentsPage() {
           name: s.user?.full_name ?? "Unknown",
           roll: s.roll_number,
           class: className,
+          classSection,
           classId: s.class_id ?? "",
           departmentId: s.department_id ?? classData?.department?.id ?? "",
+          departmentCode: classData?.department?.code ?? "",
           year: s.year,
           faceStatus,
           isActive: s.is_active ?? true,
@@ -280,13 +289,14 @@ export default function AdminStudentsPage() {
   const fetchDropdownData = useCallback(async () => {
     const supabase = createClient()
     const [classesRes, deptsRes] = await Promise.all([
-      supabase.from("classes").select("id, name, section, department:departments ( id, name, code )").order("name"),
+      supabase.from("classes").select("id, name, section, year, department:departments ( id, name, code )").order("name"),
       supabase.from("departments").select("id, name, code").order("name"),
     ])
     if (classesRes.data) {
       setClassOptions(classesRes.data.map((c: any) => ({
-        id: c.id, label: `${c.department?.code ?? c.name}-${c.section}`,
-        name: c.name, section: c.section,
+        id: c.id, label: `${c.department?.code ?? c.name}-${c.section} · ${c.year}`,
+        name: c.name, section: c.section, year: c.year,
+        classSection: `${c.department?.code ?? c.name}-${c.section}`,
         deptName: c.department?.name ?? "", deptCode: c.department?.code ?? "", deptId: c.department?.id ?? "",
       })))
     }
@@ -296,15 +306,41 @@ export default function AdminStudentsPage() {
   useEffect(() => { fetchStudents() }, [fetchStudents])
   useEffect(() => { fetchDropdownData() }, [fetchDropdownData])
 
+  const availableClassSectionOptions = useMemo(() => {
+    let list = classOptions
+    if (deptFilter !== "all") {
+      list = list.filter((c) => c.deptId === deptFilter || c.deptCode === deptFilter)
+    }
+    if (yearFilter !== "all") {
+      list = list.filter((c) => c.year === yearFilter)
+    }
+    const unique = Array.from(
+      new Set(
+        list
+          .map((c) => c.classSection || `${c.deptCode || c.name}-${c.section}`)
+          .filter(Boolean)
+      )
+    )
+    return unique.sort()
+  }, [classOptions, deptFilter, yearFilter])
+
+  useEffect(() => {
+    if (classFilter !== "all" && !availableClassSectionOptions.includes(classFilter)) {
+      setClassFilter("all")
+    }
+  }, [availableClassSectionOptions, classFilter])
+
   const filtered = useMemo(() => {
     return students.filter((s) => {
       const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.roll.toLowerCase().includes(search.toLowerCase())
-      const matchesClass = classFilter === "all" || s.class === classFilter
-      return matchesSearch && matchesClass
+      const matchesDept = deptFilter === "all" || s.departmentId === deptFilter || s.departmentCode === deptFilter
+      const matchesYear = yearFilter === "all" || s.year === yearFilter
+      const matchesClass = classFilter === "all" || s.classSection === classFilter
+      return matchesSearch && matchesDept && matchesYear && matchesClass
     })
-  }, [students, search, classFilter])
+  }, [students, search, deptFilter, yearFilter, classFilter])
 
-  const isGrouped = classFilter === "all" && search === ""
+  const isGrouped = deptFilter === "all" && yearFilter === "all" && classFilter === "all" && search === ""
 
   const groupedStudents = useMemo(() => {
     if (!isGrouped) return null
@@ -325,8 +361,6 @@ export default function AdminStudentsPage() {
     active: students.filter((s) => s.isActive).length,
     pending: students.filter((s) => s.faceStatus === "Pending").length,
   }), [students])
-
-  const uniqueClasses = Array.from(new Set(students.map((s) => s.class))).filter((c) => c !== "—")
 
   async function handleAddStudent() {
     if (!formName || !formRoll || !formClassId || !formYear || !formDeptId) {
@@ -491,25 +525,60 @@ export default function AdminStudentsPage() {
 
       {/* Toolbar */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border flex-1 max-w-xl">
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-62.5">
+        <div className="flex flex-col sm:flex-row sm:items-center rounded-2xl border border-border bg-card shadow-sm w-full lg:w-auto overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border flex-1 max-w-4xl">
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-45">
             <Search className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Search</span>
               <Input placeholder="Search by name or roll..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="border-0 bg-transparent p-0 h-auto shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 font-medium w-full outline-none placeholder:text-muted-foreground/60 focus:bg-transparent" />
             </div>
           </div>
-          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:w-55">
-            <Users className="size-4 text-muted-foreground shrink-0" />
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-36">
+            <Building2 className="size-4 text-muted-foreground shrink-0" />
             <div className="flex flex-col flex-1 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class</span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Department</span>
+              <Select value={deptFilter} onValueChange={(v) => { setDeptFilter(v); setPage(1) }}>
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {deptOptions.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-32">
+            <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Year</span>
+              <Select value={yearFilter} onValueChange={(v) => { setYearFilter(v); setPage(1) }}>
+                <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
+                  <SelectValue placeholder="All Years" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  <SelectItem value="1st Year">1st Year</SelectItem>
+                  <SelectItem value="2nd Year">2nd Year</SelectItem>
+                  <SelectItem value="3rd Year">3rd Year</SelectItem>
+                  <SelectItem value="4th Year">4th Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3 sm:py-2 flex-1 sm:min-w-36">
+            <GraduationCap className="size-4 text-muted-foreground shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">Class & Section</span>
               <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
                 <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
                   <SelectValue placeholder="All Classes" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Classes</SelectItem>
-                  {uniqueClasses.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {availableClassSectionOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -741,24 +810,24 @@ export default function AdminStudentsPage() {
                     <SelectContent>{deptOptions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
                   </Select>
                 </FormField>
-                <FormField icon={GraduationCap} label="Class & Section" htmlFor="student-class">
-                  <Select value={formClassId} onValueChange={setFormClassId}>
-                    <SelectTrigger id="student-class" disabled={!formDeptId} className="w-full">
-                      <SelectValue placeholder={formDeptId ? "Select class" : "Select department first"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredClassOptions.length === 0 ? <SelectItem value="none" disabled>No classes found</SelectItem> : filteredClassOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-                <FormField icon={CalendarDays} label="Year" htmlFor="student-year">
-                  <Select value={formYear} onValueChange={setFormYear}>
-                    <SelectTrigger id="student-year" className="w-full"><SelectValue placeholder="Select year" /></SelectTrigger>
+                <FormField icon={CalendarDays} label="Academic Year" htmlFor="student-year">
+                  <Select value={formYear} onValueChange={(v) => { setFormYear(v); setFormClassId("") }}>
+                    <SelectTrigger id="student-year" className="w-full"><SelectValue placeholder="Select academic year" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1st Year">1st Year</SelectItem>
                       <SelectItem value="2nd Year">2nd Year</SelectItem>
                       <SelectItem value="3rd Year">3rd Year</SelectItem>
                       <SelectItem value="4th Year">4th Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
+                <FormField icon={GraduationCap} label="Class & Section" htmlFor="student-class">
+                  <Select value={formClassId} onValueChange={setFormClassId} disabled={!formDeptId || !formYear}>
+                    <SelectTrigger id="student-class" disabled={!formDeptId || !formYear} className="w-full">
+                      <SelectValue placeholder={!formDeptId ? "Select department first" : !formYear ? "Select academic year first" : filteredClassOptions.length === 0 ? "No classes found" : "Select class & section"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredClassOptions.length === 0 ? <SelectItem value="none" disabled>No classes found</SelectItem> : filteredClassOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.classSection}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </FormField>
@@ -811,24 +880,24 @@ export default function AdminStudentsPage() {
                 <SelectContent>{deptOptions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>)}</SelectContent>
               </Select>
             </FormField>
-            <FormField icon={GraduationCap} label="Class & Section" htmlFor="edit-class">
-              <Select value={editClassId} onValueChange={setEditClassId}>
-                <SelectTrigger id="edit-class" disabled={!editDeptId} className="w-full">
-                  <SelectValue placeholder={editDeptId ? "Select class" : "Select department first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {editFilteredClassOptions.length === 0 ? <SelectItem value="none" disabled>No classes found</SelectItem> : editFilteredClassOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField icon={CalendarDays} label="Year" htmlFor="edit-year">
-              <Select value={editYear} onValueChange={setEditYear}>
-                <SelectTrigger id="edit-year" className="w-full"><SelectValue placeholder="Select year" /></SelectTrigger>
+            <FormField icon={CalendarDays} label="Academic Year" htmlFor="edit-year">
+              <Select value={editYear} onValueChange={(v) => { setEditYear(v); setEditClassId("") }}>
+                <SelectTrigger id="edit-year" className="w-full"><SelectValue placeholder="Select academic year" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1st Year">1st Year</SelectItem>
                   <SelectItem value="2nd Year">2nd Year</SelectItem>
                   <SelectItem value="3rd Year">3rd Year</SelectItem>
                   <SelectItem value="4th Year">4th Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField icon={GraduationCap} label="Class & Section" htmlFor="edit-class">
+              <Select value={editClassId} onValueChange={setEditClassId} disabled={!editDeptId || !editYear}>
+                <SelectTrigger id="edit-class" disabled={!editDeptId || !editYear} className="w-full">
+                  <SelectValue placeholder={!editDeptId ? "Select department first" : !editYear ? "Select academic year first" : editFilteredClassOptions.length === 0 ? "No classes found" : "Select class & section"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {editFilteredClassOptions.length === 0 ? <SelectItem value="none" disabled>No classes found</SelectItem> : editFilteredClassOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.classSection}</SelectItem>)}
                 </SelectContent>
               </Select>
             </FormField>

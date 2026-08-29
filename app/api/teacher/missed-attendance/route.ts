@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         .select(`
           day_of_week, subject_id, class_id, period_id, created_at,
           subject:subjects ( id, name, code ),
-          class:classes ( id, name, section ),
+          class:classes ( id, name, section, year ),
           period:periods ( id, period_number, start_time, end_time )
         `)
         .eq("teacher_id", user.id),
@@ -87,13 +87,15 @@ export async function GET(request: Request) {
           else if (dateMidnight.getTime() === yesterdayMidnight.getTime()) dateLabel = `Yesterday — ${months[date.getMonth()]} ${date.getDate()}`
           else dateLabel = `${days[date.getDay()]} — ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 
+          const classYear = (slot as any).class?.year ? ` · ${(slot as any).class.year}` : ""
+
           missed.push({
             date: dateStr, dateLabel,
             subjectId: slot.subject_id,
             subjectName: (slot as any).subject?.name ?? "Unknown",
             subjectCode: (slot as any).subject?.code ?? "",
             classId: slot.class_id,
-            className: `${(slot as any).class?.name ?? ""}-${(slot as any).class?.section ?? ""}`,
+            className: `${(slot as any).class?.name ?? ""}-${(slot as any).class?.section ?? ""}${classYear}`,
             periodId: slot.period_id,
             periodNumber: (slot as any).period?.period_number ?? 0,
             startTime: ((slot as any).period?.start_time ?? "").substring(0, 5),

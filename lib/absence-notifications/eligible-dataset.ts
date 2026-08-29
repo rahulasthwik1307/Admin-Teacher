@@ -39,7 +39,7 @@ export async function getEligibleAbsences(
       session:attendance_sessions!inner (
         id, session_date, status, teacher_id, opened_at, subject_id, class_id, period_id,
         subject:subjects ( id, name ),
-        class:classes ( id, name, section ),
+        class:classes ( id, name, section, year ),
         period:periods ( id, period_number, start_time, end_time )
       )
     `)
@@ -95,8 +95,8 @@ export async function getEligibleAbsences(
       studentId: row.student_id,
       studentName: student?.user?.full_name ?? "Unknown",
       rollNumber: student?.roll_number ?? "",
-      year: student?.year ?? "",
-      className: s.class ? `${s.class.name}-${s.class.section}` : "Unknown",
+      year: student?.year ?? s.class?.year ?? "",
+      className: s.class ? `${s.class.name}-${s.class.section} · ${s.class.year ?? student?.year}` : "Unknown",
       contactEmail: student?.user?.contact_email ?? null,
       alreadyNotified: row.notified_at !== null,
       sessionId: s.id,

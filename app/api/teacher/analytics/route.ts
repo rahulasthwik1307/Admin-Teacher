@@ -37,7 +37,7 @@ export async function GET(request: Request) {
         .select(`
           id, subject_id, class_id,
           subjects ( id, name ),
-          classes ( id, name, section )
+          classes ( id, name, section, year )
         `)
         .eq("teacher_id", teacherId),
       supabase
@@ -61,6 +61,7 @@ export async function GET(request: Request) {
     }
 
     const sessionIds = (allSessions ?? []).map((s: any) => s.id)
+    const uniqueClassIds = Array.from(new Set(assignments.map((a: any) => a.class_id)))
 
     // Fetch attendance + student counts in parallel
     const [{ data: allAttendance }, ...studentCountResults] = await Promise.all([
@@ -68,18 +69,17 @@ export async function GET(request: Request) {
         ? supabase
             .from("period_attendance")
             .select(`
-              session_id, student_id, status,
-              students ( id, roll_number, class_id, users ( full_name ) )
+              session_id, status, student_id,
+              student:students ( roll_number, year, user:users ( full_name ) )
             `)
             .in("session_id", sessionIds)
             .in("status", ["present", "absent"])
         : Promise.resolve({ data: [] }),
-      // Get student counts per class in one shot
-      ...assignments.map((asgn: any) =>
+      ...uniqueClassIds.map((cid: string) =>
         supabase
           .from("students")
           .select("id", { count: "exact", head: true })
-          .eq("class_id", asgn.class_id)
+          .eq("class_id", cid)
           .eq("is_active", true)
       ),
     ])
@@ -88,8 +88,8 @@ export async function GET(request: Request) {
 
     // Build student count map
     const studentCountMap = new Map<string, number>()
-    assignments.forEach((asgn: any, idx: number) => {
-      studentCountMap.set(asgn.class_id, (studentCountResults[idx] as any).count ?? 0)
+    uniqueClassIds.forEach((cid: string, i: number) => {
+      studentCountMap.set(cid, (studentCountResults[i] as any).count ?? 0)
     })
 
     // Subject cards
@@ -147,7 +147,7 @@ export async function GET(request: Request) {
         subjectId,
         subjectName: sub?.name ?? "Unknown",
         classId,
-        className: cls ? `${cls.name}-${cls.section}` : "Unknown",
+        className: cls ? `${cls.name}-${cls.section}${cls.year ? ` · ${cls.year}` : ""}` : "Unknown",
         percentage,
         totalStudents: studentCount,
         totalClasses,
@@ -215,8 +215,9 @@ export async function GET(request: Request) {
       for (const row of rows) {
         const sid = row.student_id
         if (!byStudent[sid]) {
-          const st = row.students as any
-          byStudent[sid] = { name: st?.users?.full_name ?? "Unknown", roll: st?.roll_number ?? "—", present: 0, total: 0 }
+          const st = (row as any).student
+          const userObj = Array.isArray(st?.user) ? st.user[0] : st?.user
+          byStudent[sid] = { name: userObj?.full_name ?? "Unknown", roll: st?.roll_number ?? "—", present: 0, total: 0 }
         }
         byStudent[sid].total++
         if (row.status === "present") byStudent[sid].present++

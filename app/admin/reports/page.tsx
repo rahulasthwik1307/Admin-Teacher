@@ -14,12 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Download, UserPlus, MapPin, Link2, KeyRound,
-  Trash2, Settings, Shield, Loader2, Activity,
+  Download, UserPlus, Link2, KeyRound,
+  Trash2, Settings, Activity,
   TrendingUp, Users, BookOpen, BarChart3, Calendar,
   CheckCircle2, AlertTriangle, X, Pencil, Mail,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TableSkeleton, ListSkeleton, CardSkeleton, ChartSkeleton } from "@/components/ui/skeletons"
@@ -27,18 +26,58 @@ import { motion, AnimatePresence } from "framer-motion"
 
 /* ── Types ── */
 interface TeacherActivityRow {
-  id: string; name: string; dept: string
-  sessions: number; assigned: number; rate: number; lastSession: string
+  id: string
+  name: string
+  dept: string
+  sessions: number
+  assigned: number
+  rate: number
+  lastSession: string
 }
 
-interface SubjectAttendanceRow {
-  subject: string; dept: string; avg: number; sessions: number; below75: number
+interface SubjectCohortAttendanceRow {
+  key: string
+  subject: string
+  code: string
+  cohort: string
+  classSection: string
+  year: string
+  dept: string
+  avg: number
+  sessions: number
+  totalAttendance: number
+  below75: number
+}
+
+interface DeptCohortAttendanceRow {
+  dept: string
+  year: string
+  label: string
+  avg: number
+  sessions: number
+}
+
+interface StudentBelow75Row {
+  studentId: string
+  name: string
+  roll: string
+  dept: string
+  year: string
+  classSection: string
+  present: number
+  total: number
+  pct: number
 }
 
 interface OverviewStats {
+  hasData: boolean
   overallPct: number
-  highestSubject: string; highestPct: number
-  lowestSubject: string; lowestPct: number
+  totalSessions: number
+  totalRecords: number
+  highestSubject: string
+  highestPct: number
+  lowestSubject: string
+  lowestPct: number
   studentsBelow75: number
 }
 
@@ -49,7 +88,45 @@ interface LogEntry {
   performedBy: string; details: string; type: LogType
 }
 
+/* ── Constants ── */
+const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
+
+const DATE_RANGES = [
+  { value: "all", label: "All Time" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "semester", label: "This Semester" },
+]
+
 /* ── Helpers ── */
+function isDateInRange(dateStr: string, range: string): boolean {
+  if (range === "all") return true
+  const now = new Date()
+  const sessionDate = new Date(dateStr + "T00:00:00")
+
+  if (range === "today") {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    return sessionDate.getTime() === today.getTime()
+  }
+  if (range === "week") {
+    const day = now.getDay()
+    const diffToMon = day === 0 ? -6 : 1 - day
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMon)
+    monday.setHours(0, 0, 0, 0)
+    return sessionDate >= monday
+  }
+  if (range === "month") {
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    return sessionDate >= firstOfMonth
+  }
+  if (range === "semester") {
+    const semesterStart = new Date(now.getFullYear(), now.getMonth() >= 6 ? 6 : 0, 1)
+    return sessionDate >= semesterStart
+  }
+  return true
+}
+
 function getRateColor(rate: number) {
   if (rate >= 80) return { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500", badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20" }
   if (rate >= 60) return { text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500", badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20" }
@@ -116,6 +193,28 @@ function exportTeacherCSV(rows: TeacherActivityRow[]) {
   a.click(); URL.revokeObjectURL(url)
 }
 
+function exportAttendanceCSV(rows: SubjectCohortAttendanceRow[]) {
+  const headers = ["Subject", "Subject Code", "Cohort", "Department", "Academic Year", "Class & Section", "Attendance %", "Sessions Conducted", "Total Attendance Records", "Students Below 75%"]
+  const csvRows = rows.map(r => [r.subject, r.code, r.cohort, r.dept, r.year, r.classSection, `${r.avg}%`, r.sessions, r.totalAttendance, r.below75])
+  const csv = [headers, ...csvRows].map(r => r.join(",")).join("\n")
+  const blob = new Blob([csv], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a"); a.href = url
+  a.download = `attendance-report-${new Date().toISOString().split("T")[0]}.csv`
+  a.click(); URL.revokeObjectURL(url)
+}
+
+function exportBelow75CSV(rows: StudentBelow75Row[]) {
+  const headers = ["Student Name", "Roll Number", "Department", "Academic Year", "Class & Section", "Present Sessions", "Total Sessions", "Attendance %"]
+  const csvRows = rows.map(r => [r.name, r.roll, r.dept, r.year, r.classSection, r.present, r.total, `${r.pct}%`])
+  const csv = [headers, ...csvRows].map(r => r.join(",")).join("\n")
+  const blob = new Blob([csv], { type: "text/csv" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a"); a.href = url
+  a.download = `below-75-students-${new Date().toISOString().split("T")[0]}.csv`
+  a.click(); URL.revokeObjectURL(url)
+}
+
 const TABS = ["teacher-activity", "attendance-overview", "system-logs"] as const
 type Tab = typeof TABS[number]
 
@@ -139,25 +238,36 @@ export default function ReportsPage() {
   const loadingOverview = reportsLoading
   const loadingLogs = reportsLoading
 
+  // Teacher Activity filters
   const [teacherDeptFilter, setTeacherDeptFilter] = useState("all")
+
+  // Attendance Overview filters
+  const [filterYear, setFilterYear] = useState("all")
+  const [filterDept, setFilterDept] = useState("all")
+  const [filterClassSection, setFilterClassSection] = useState("all")
+  const [filterSubject, setFilterSubject] = useState("all")
+  const [filterDateRange, setFilterDateRange] = useState("all")
+
+  // System Logs filters
   const [logFilterPerformer, setLogFilterPerformer] = useState("all")
   const [logFilterAction, setLogFilterAction] = useState("all")
   const [logFilterRange, setLogFilterRange] = useState("all")
 
+  /* ── Teacher Activity memo ── */
   const teacherActivity = useMemo<TeacherActivityRow[]>(() => {
     if (!reportsData) return []
     const { teachers, sessions, assignments } = reportsData
     const sessionsByTeacher: Record<string, { count: number; latest: string }> = {}
-    for (const s of sessions) {
+    for (const s of sessions ?? []) {
       if (!sessionsByTeacher[s.teacher_id]) sessionsByTeacher[s.teacher_id] = { count: 0, latest: "" }
       sessionsByTeacher[s.teacher_id].count++
       if (!sessionsByTeacher[s.teacher_id].latest || s.session_date > sessionsByTeacher[s.teacher_id].latest)
         sessionsByTeacher[s.teacher_id].latest = s.session_date
     }
     const assignmentsByTeacher: Record<string, number> = {}
-    for (const a of assignments) assignmentsByTeacher[a.teacher_id] = (assignmentsByTeacher[a.teacher_id] || 0) + 1
+    for (const a of assignments ?? []) assignmentsByTeacher[a.teacher_id] = (assignmentsByTeacher[a.teacher_id] || 0) + 1
 
-    return teachers.map((t: any) => {
+    return (teachers ?? []).map((t: any) => {
       const sessData = sessionsByTeacher[t.id]
       const sessionCount = sessData?.count || 0
       const assigned = assignmentsByTeacher[t.id] || 0
@@ -167,58 +277,366 @@ export default function ReportsPage() {
         const d = new Date(sessData.latest + "T00:00:00")
         lastSession = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       }
-      return { id: t.id, name: `${t.title}. ${t.user?.full_name ?? "Unknown"}`, dept: t.department?.code ?? "—", sessions: sessionCount, assigned, rate, lastSession }
+      return {
+        id: t.id,
+        name: `${t.title}. ${t.user?.full_name ?? "Unknown"}`,
+        dept: t.department?.code ?? "—",
+        sessions: sessionCount,
+        assigned,
+        rate,
+        lastSession,
+      }
     }).sort((a: any, b: any) => b.sessions - a.sessions)
   }, [reportsData])
 
-  const { subjectAttendance, overviewStats } = useMemo(() => {
-    if (!reportsData) return { subjectAttendance: [], overviewStats: null }
+  /* ── Dynamic Attendance Filter Options ── */
+  const availableDepartments = useMemo(() => {
+    if (reportsData?.departments?.length) {
+      return reportsData.departments.map((d: any) => d.code).filter(Boolean).sort()
+    }
+    const depts = new Set<string>()
+    for (const s of reportsData?.sessions ?? []) {
+      if (s.class?.department?.code) depts.add(s.class.department.code)
+    }
+    return Array.from(depts).sort()
+  }, [reportsData])
+
+  const availableClassSections = useMemo(() => {
+    if (reportsData?.classes?.length) {
+      const filtered = reportsData.classes.filter((c: any) => {
+        if (filterYear !== "all" && c.year !== filterYear) return false
+        if (filterDept !== "all" && c.department?.code !== filterDept && c.name !== filterDept) return false
+        return true
+      })
+      return Array.from(new Set(filtered.map((c: any) => `${c.name}-${c.section}`))).sort()
+    }
+    const cls = new Set<string>()
+    for (const s of reportsData?.sessions ?? []) {
+      if (s.class) {
+        const matchYear = filterYear === "all" || s.class.year === filterYear
+        const matchDept = filterDept === "all" || s.class.department?.code === filterDept || s.class.name === filterDept
+        if (matchYear && matchDept) cls.add(`${s.class.name}-${s.class.section}`)
+      }
+    }
+    return Array.from(cls).sort()
+  }, [reportsData, filterYear, filterDept])
+
+  const availableSubjects = useMemo(() => {
+    if (reportsData?.subjects?.length) {
+      const filtered = reportsData.subjects.filter((s: any) => {
+        if (filterDept !== "all" && s.department?.code !== filterDept) {
+          const taughtToDept = (reportsData.sessions ?? []).some(
+            (sess: any) => sess.subject_id === s.id && (sess.class?.department?.code === filterDept || sess.class?.name === filterDept)
+          )
+          if (!taughtToDept) return false
+        }
+        return true
+      })
+      return Array.from(new Set(filtered.map((s: any) => s.name))).sort()
+    }
+    const subs = new Set<string>()
+    for (const s of reportsData?.sessions ?? []) {
+      if (s.subject?.name) subs.add(s.subject.name)
+    }
+    return Array.from(subs).sort()
+  }, [reportsData, filterDept])
+
+  const handleYearFilterChange = (val: string) => {
+    setFilterYear(val)
+    if (val !== "all" && filterClassSection !== "all") {
+      const remaining = (reportsData?.classes ?? [])
+        .filter((c: any) => c.year === val && (filterDept === "all" || c.department?.code === filterDept || c.name === filterDept))
+        .map((c: any) => `${c.name}-${c.section}`)
+      if (!remaining.includes(filterClassSection)) {
+        setFilterClassSection("all")
+      }
+    }
+  }
+
+  const handleDeptFilterChange = (val: string) => {
+    setFilterDept(val)
+    if (val !== "all") {
+      if (filterClassSection !== "all") {
+        const remaining = (reportsData?.classes ?? [])
+          .filter((c: any) => (filterYear === "all" || c.year === filterYear) && (c.department?.code === val || c.name === val))
+          .map((c: any) => `${c.name}-${c.section}`)
+        if (!remaining.includes(filterClassSection)) {
+          setFilterClassSection("all")
+        }
+      }
+      if (filterSubject !== "all") {
+        const matchSub = (reportsData?.subjects ?? []).some(
+          (s: any) => s.name === filterSubject && (s.department?.code === val || (reportsData?.sessions ?? []).some((sess: any) => sess.subject_id === s.id && (sess.class?.department?.code === val || sess.class?.name === val)))
+        )
+        if (!matchSub) {
+          setFilterSubject("all")
+        }
+      }
+    }
+  }
+
+  const isAnyAttendanceFilterActive = filterYear !== "all" || filterDept !== "all" || filterClassSection !== "all" || filterSubject !== "all" || filterDateRange !== "all"
+
+  const clearAttendanceFilters = () => {
+    setFilterYear("all")
+    setFilterDept("all")
+    setFilterClassSection("all")
+    setFilterSubject("all")
+    setFilterDateRange("all")
+  }
+
+  /* ── Comprehensive Cohort-Aware Attendance Calculation ── */
+  const {
+    subjectCohortAttendance,
+    deptCohortAttendance,
+    overviewStats,
+    below75Students,
+  } = useMemo(() => {
+    if (!reportsData) {
+      return {
+        subjectCohortAttendance: [],
+        deptCohortAttendance: [],
+        overviewStats: null,
+        below75Students: [],
+      }
+    }
+
     const { sessions, attendance } = reportsData
-    if (!sessions.length) return { subjectAttendance: [], overviewStats: { overallPct: 0, highestSubject: "—", highestPct: 0, lowestSubject: "—", lowestPct: 0, studentsBelow75: 0 } }
 
-    const sessionSubject: Record<string, string> = {}
-    const subjectMeta: Record<string, { name: string; dept: string; sessionIds: Set<string> }> = {}
-    for (const s of sessions) {
-      sessionSubject[s.id] = s.subject_id
-      if (!subjectMeta[s.subject_id]) subjectMeta[s.subject_id] = { name: s.subject?.name ?? "Unknown", dept: s.subject?.department?.code ?? "—", sessionIds: new Set() }
-      subjectMeta[s.subject_id].sessionIds.add(s.id)
+    // 1. Filter sessions by active filters
+    const validSessions = (sessions ?? []).filter((s: any) => {
+      const cohortDept = s.class?.department?.code ?? s.class?.name ?? ""
+      const cohortYear = s.class?.year ?? ""
+      const classSection = s.class ? `${s.class.name}-${s.class.section}` : ""
+      const subjectName = s.subject?.name ?? ""
+      const subjectId = s.subject_id
+
+      if (filterYear !== "all" && cohortYear !== filterYear) return false
+      if (filterDept !== "all" && cohortDept !== filterDept && s.class?.department_id !== filterDept && s.class?.name !== filterDept) return false
+      if (filterClassSection !== "all" && classSection !== filterClassSection) return false
+      if (filterSubject !== "all" && subjectName !== filterSubject && subjectId !== filterSubject) return false
+      if (!isDateInRange(s.session_date, filterDateRange)) return false
+
+      return true
+    })
+
+    const validSessionIds = new Set(validSessions.map((s: any) => s.id))
+    const sMap = new Map<string, any>()
+    for (const s of validSessions) {
+      sMap.set(s.id, s)
     }
 
-    const subjectStats: Record<string, { present: number; total: number; studentPresent: Record<string, number>; studentTotal: Record<string, number> }> = {}
-    for (const a of attendance.filter((a: any) => a.status === "present" || a.status === "absent")) {
-      const subId = sessionSubject[a.session_id]
-      if (!subId) continue
-      if (!subjectStats[subId]) subjectStats[subId] = { present: 0, total: 0, studentPresent: {}, studentTotal: {} }
-      subjectStats[subId].total++
-      if (a.status === "present") subjectStats[subId].present++
-      if (!subjectStats[subId].studentTotal[a.student_id]) { subjectStats[subId].studentTotal[a.student_id] = 0; subjectStats[subId].studentPresent[a.student_id] = 0 }
-      subjectStats[subId].studentTotal[a.student_id]++
-      if (a.status === "present") subjectStats[subId].studentPresent[a.student_id]++
+    // 2. Filter attendance records belonging strictly to valid sessions
+    const validAttendance = (attendance ?? []).filter((a: any) =>
+      validSessionIds.has(a.session_id) && (a.status === "present" || a.status === "absent")
+    )
+
+    const totalRecords = validAttendance.length
+    const totalPresent = validAttendance.filter((a: any) => a.status === "present").length
+    const hasData = totalRecords > 0
+    const overallPct = hasData ? Math.round((totalPresent / totalRecords) * 100) : 0
+
+    // 3. Subject + Cohort Calculation (distinct key: `${subject_id}__${class_id}`)
+    const subjectCohortMap: Record<string, {
+      subjectId: string
+      subjectName: string
+      subjectCode: string
+      classId: string
+      classSection: string
+      classYear: string
+      cohortDept: string
+      cohortLabel: string
+      sessionIds: Set<string>
+      present: number
+      total: number
+      studentStats: Record<string, { present: number; total: number }>
+    }> = {}
+
+    for (const s of validSessions) {
+      const cohortDept = s.class?.department?.code ?? s.class?.name ?? "—"
+      const cohortYear = s.class?.year ?? "—"
+      const section = s.class?.section ?? "—"
+      const classSection = s.class ? `${s.class.name}-${s.class.section}` : "—"
+      const cohortLabel = s.class ? `${cohortDept} · ${cohortYear} · Sec ${section}` : "—"
+      const key = `${s.subject_id}__${s.class_id}`
+
+      if (!subjectCohortMap[key]) {
+        subjectCohortMap[key] = {
+          subjectId: s.subject_id,
+          subjectName: s.subject?.name ?? "Unknown",
+          subjectCode: s.subject?.code ?? "",
+          classId: s.class_id,
+          classSection,
+          classYear: cohortYear,
+          cohortDept,
+          cohortLabel,
+          sessionIds: new Set(),
+          present: 0,
+          total: 0,
+          studentStats: {},
+        }
+      }
+      subjectCohortMap[key].sessionIds.add(s.id)
     }
 
-    const subjectRows = Object.entries(subjectMeta).map(([subId, meta]) => {
-      const stats = subjectStats[subId] ?? { present: 0, total: 0, studentPresent: {}, studentTotal: {} }
-      const avg = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0
-      const below75 = Object.keys(stats.studentTotal).filter(sid => (stats.studentTotal[sid] > 0 ? stats.studentPresent[sid] / stats.studentTotal[sid] : 0) < 0.75).length
-      return { subject: meta.name, dept: meta.dept, avg, sessions: meta.sessionIds.size, below75 }
+    for (const a of validAttendance) {
+      const sess = sMap.get(a.session_id)
+      if (!sess) continue
+      const key = `${sess.subject_id}__${sess.class_id}`
+      const item = subjectCohortMap[key]
+      if (!item) continue
+
+      item.total++
+      if (a.status === "present") item.present++
+
+      if (!item.studentStats[a.student_id]) {
+        item.studentStats[a.student_id] = { present: 0, total: 0 }
+      }
+      item.studentStats[a.student_id].total++
+      if (a.status === "present") {
+        item.studentStats[a.student_id].present++
+      }
+    }
+
+    const subjectRows: SubjectCohortAttendanceRow[] = Object.values(subjectCohortMap).map(item => {
+      const avg = item.total > 0 ? Math.round((item.present / item.total) * 100) : 0
+      const below75Count = Object.values(item.studentStats).filter(st => st.total > 0 && (st.present / st.total) < 0.75).length
+      return {
+        key: `${item.subjectId}__${item.classId}`,
+        subject: item.subjectName,
+        code: item.subjectCode,
+        cohort: item.cohortLabel,
+        classSection: item.classSection,
+        year: item.classYear,
+        dept: item.cohortDept,
+        avg,
+        sessions: item.sessionIds.size,
+        totalAttendance: item.total,
+        below75: below75Count,
+      }
+    }).sort((a, b) => b.avg - a.avg || b.sessions - a.sessions)
+
+    // 4. Department / Cohort Breakdown
+    const deptCohortMap: Record<string, {
+      dept: string
+      year: string
+      label: string
+      sessionIds: Set<string>
+      present: number
+      total: number
+    }> = {}
+
+    for (const s of validSessions) {
+      const cohortDept = s.class?.department?.code ?? s.class?.name ?? "—"
+      const cohortYear = s.class?.year ?? "—"
+      const key = `${cohortDept}__${cohortYear}`
+
+      if (!deptCohortMap[key]) {
+        deptCohortMap[key] = {
+          dept: cohortDept,
+          year: cohortYear,
+          label: `${cohortDept} (${cohortYear})`,
+          sessionIds: new Set(),
+          present: 0,
+          total: 0,
+        }
+      }
+      deptCohortMap[key].sessionIds.add(s.id)
+    }
+
+    for (const a of validAttendance) {
+      const sess = sMap.get(a.session_id)
+      if (!sess) continue
+      const cohortDept = sess.class?.department?.code ?? sess.class?.name ?? "—"
+      const cohortYear = sess.class?.year ?? "—"
+      const key = `${cohortDept}__${cohortYear}`
+      const item = deptCohortMap[key]
+      if (!item) continue
+
+      item.total++
+      if (a.status === "present") item.present++
+    }
+
+    const deptRows: DeptCohortAttendanceRow[] = Object.values(deptCohortMap).map(item => {
+      const avg = item.total > 0 ? Math.round((item.present / item.total) * 100) : 0
+      return {
+        dept: item.dept,
+        year: item.year,
+        label: item.label,
+        avg,
+        sessions: item.sessionIds.size,
+      }
     }).sort((a, b) => b.avg - a.avg)
 
-    const filteredAtt = attendance.filter((a: any) => a.status === "present" || a.status === "absent")
-    const totalPresent = filteredAtt.filter((a: any) => a.status === "present").length
-    const overallPct = filteredAtt.length > 0 ? Math.round((totalPresent / filteredAtt.length) * 100) : 0
-    const studentPct: Record<string, { p: number; t: number }> = {}
-    for (const a of filteredAtt) {
-      if (!studentPct[a.student_id]) studentPct[a.student_id] = { p: 0, t: 0 }
-      studentPct[a.student_id].t++
-      if (a.status === "present") studentPct[a.student_id].p++
+    // 5. Students Below 75% list
+    const studentAgg: Record<string, {
+      studentId: string
+      name: string
+      roll: string
+      dept: string
+      year: string
+      classSection: string
+      present: number
+      total: number
+    }> = {}
+
+    for (const a of validAttendance) {
+      const sess = sMap.get(a.session_id)
+      const st = a.student
+      const studentId = a.student_id
+      if (!studentAgg[studentId]) {
+        const studentName = st?.user?.full_name ?? "Unknown Student"
+        const roll = st?.roll_number ?? "—"
+        const dept = st?.class?.department?.code ?? st?.department?.code ?? sess?.class?.department?.code ?? "—"
+        const year = st?.class?.year ?? st?.year ?? sess?.class?.year ?? "—"
+        const classSection = st?.class ? `${st.class.name}-${st.class.section}` : sess?.class ? `${sess.class.name}-${sess.class.section}` : "—"
+
+        studentAgg[studentId] = {
+          studentId,
+          name: studentName,
+          roll,
+          dept,
+          year,
+          classSection,
+          present: 0,
+          total: 0,
+        }
+      }
+      studentAgg[studentId].total++
+      if (a.status === "present") studentAgg[studentId].present++
     }
-    const studentsBelow75 = Object.values(studentPct).filter(v => v.t > 0 && (v.p / v.t) < 0.75).length
+
+    const below75List: StudentBelow75Row[] = Object.values(studentAgg)
+      .map(s => {
+        const pct = s.total > 0 ? Math.round((s.present / s.total) * 100) : 0
+        return {
+          ...s,
+          pct,
+        }
+      })
+      .filter(s => s.total > 0 && s.pct < 75)
+      .sort((a, b) => a.pct - b.pct)
+
+    const highestSubjectObj = subjectRows.length > 0 ? subjectRows[0] : null
+    const lowestSubjectObj = subjectRows.length > 0 ? subjectRows[subjectRows.length - 1] : null
 
     return {
-      subjectAttendance: subjectRows,
-      overviewStats: { overallPct, highestSubject: subjectRows[0]?.subject ?? "—", highestPct: subjectRows[0]?.avg ?? 0, lowestSubject: subjectRows[subjectRows.length - 1]?.subject ?? "—", lowestPct: subjectRows[subjectRows.length - 1]?.avg ?? 0, studentsBelow75 },
+      subjectCohortAttendance: subjectRows,
+      deptCohortAttendance: deptRows,
+      overviewStats: {
+        hasData,
+        overallPct,
+        totalSessions: validSessions.length,
+        totalRecords,
+        highestSubject: highestSubjectObj ? `${highestSubjectObj.subject} (${highestSubjectObj.classSection})` : "—",
+        highestPct: highestSubjectObj ? highestSubjectObj.avg : 0,
+        lowestSubject: lowestSubjectObj ? `${lowestSubjectObj.subject} (${lowestSubjectObj.classSection})` : "—",
+        lowestPct: lowestSubjectObj ? lowestSubjectObj.avg : 0,
+        studentsBelow75: below75List.length,
+      },
+      below75Students: below75List,
     }
-  }, [reportsData])
+  }, [reportsData, filterYear, filterDept, filterClassSection, filterSubject, filterDateRange])
 
   const systemLogs = useMemo<LogEntry[]>(() => {
     if (!reportsData?.logs) return []
@@ -230,7 +648,7 @@ export default function ReportsPage() {
     }))
   }, [reportsData])
 
-  /* ── Derived data ── */
+  /* ── Derived data for Teacher Activity & Logs ── */
   const uniqueDepts = useMemo(() => Array.from(new Set(teacherActivity.map(t => t.dept))).sort(), [teacherActivity])
 
   const filteredTeachers = useMemo(() => teacherDeptFilter === "all" ? teacherActivity : teacherActivity.filter(t => t.dept === teacherDeptFilter), [teacherActivity, teacherDeptFilter])
@@ -448,7 +866,7 @@ export default function ReportsPage() {
                   <CardHeader className="pb-2 pt-4 border-b border-border/60 bg-muted/20">
                     <div className="flex items-center gap-2">
                       <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <TrendingUp className="size-3.5" />
+                        <Activity className="size-3.5" />
                       </div>
                       <CardTitle className="text-sm font-bold text-foreground">Completion Overview</CardTitle>
                     </div>
@@ -466,37 +884,37 @@ export default function ReportsPage() {
                             endAngle={-270}
                             stroke="none"
                           >
-                            <Cell fill="#3b82f6" />
+                            <Cell fill="#0ea5e9" />
                             <Cell fill="#e2e8f0" />
                           </Pie>
                           <Tooltip />
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-3xl font-black text-primary">{avgRate}%</span>
-                        <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Avg Completion</span>
+                        <span className="text-3xl font-black text-foreground">{avgRate}%</span>
+                        <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Avg Rate</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/70 bg-muted/20 px-3.5">
                       <div className="flex justify-between items-center py-2.5">
-                        <span className="text-xs text-muted-foreground font-medium">Total Teachers</span>
-                        <span className="text-xs font-bold text-foreground">{teacherActivity.length}</span>
+                        <span className="text-xs text-muted-foreground font-medium">Top Performer</span>
+                        <span className="text-xs font-bold text-foreground truncate max-w-36">{topTeacher?.name ?? "—"}</span>
                       </div>
                       <div className="flex justify-between items-center py-2.5">
-                        <span className="text-xs text-muted-foreground font-medium">Active Teachers</span>
-                        <span className="text-xs font-bold text-foreground">{teacherActivity.filter(t => t.sessions > 0).length}</span>
+                        <span className="text-xs text-muted-foreground font-medium">High Performers (≥80%)</span>
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{teacherActivity.filter(t => t.rate >= 80).length}</span>
                       </div>
                       <div className="flex justify-between items-center py-2.5">
-                        <span className="text-xs text-muted-foreground font-medium">Avg Completion Rate</span>
-                        <span className="text-xs font-bold text-primary">{avgRate}%</span>
+                        <span className="text-xs text-muted-foreground font-medium">Needs Attention (&lt;60%)</span>
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{teacherActivity.filter(t => t.rate < 60).length}</span>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="flex flex-col gap-5 min-w-0 h-full">
-                  {/* Desktop table */}
+                {/* Teachers table card */}
+                <div className="flex flex-col gap-3 min-w-0">
                   <Card className="hidden md:flex flex-col h-full overflow-hidden">
                     <CardContent className="p-0 flex-1 flex flex-col">
                       <div className="overflow-x-auto flex-1">
@@ -596,6 +1014,112 @@ export default function ReportsPage() {
             transition={{ duration: 0.15 }}
             className="flex flex-col gap-5"
           >
+            {/* Intelligent Cascading Filter Bar */}
+            <div className="flex flex-wrap items-center gap-2.5 justify-between bg-card p-3 rounded-xl border border-border/80 shadow-2xs">
+              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+                {/* 1. Academic Year Filter */}
+                <div className="w-36">
+                  <Select value={filterYear} onValueChange={handleYearFilterChange}>
+                    <SelectTrigger className="h-9 text-xs font-medium w-full">
+                      <SelectValue placeholder="Academic Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Years</SelectItem>
+                      {YEAR_OPTIONS.map(y => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 2. Department Filter */}
+                <div className="w-38">
+                  <Select value={filterDept} onValueChange={handleDeptFilterChange}>
+                    <SelectTrigger className="h-9 text-xs font-medium w-full">
+                      <SelectValue placeholder="Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {availableDepartments.map(d => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 3. Class & Section Filter (Clean label without Year) */}
+                <div className="w-36">
+                  <Select value={filterClassSection} onValueChange={setFilterClassSection}>
+                    <SelectTrigger className="h-9 text-xs font-medium w-full">
+                      <SelectValue placeholder="Class & Section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Classes</SelectItem>
+                      {availableClassSections.map(cs => (
+                        <SelectItem key={cs} value={cs}>{cs}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 4. Subject Filter */}
+                <div className="w-44">
+                  <Select value={filterSubject} onValueChange={setFilterSubject}>
+                    <SelectTrigger className="h-9 text-xs font-medium w-full">
+                      <div className="truncate text-left w-full">
+                        <SelectValue placeholder="All Subjects" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Subjects</SelectItem>
+                      {availableSubjects.map(sub => (
+                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 5. Date Range Filter */}
+                <div className="w-36">
+                  <Select value={filterDateRange} onValueChange={setFilterDateRange}>
+                    <SelectTrigger className="h-9 text-xs font-medium w-full">
+                      <SelectValue placeholder="Date Range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DATE_RANGES.map(dr => (
+                        <SelectItem key={dr.value} value={dr.value}>{dr.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Clear Active Filters */}
+                {isAnyAttendanceFilterActive && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-xl border border-rose-200/80 bg-rose-50/60 dark:border-rose-900/50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300 hover:bg-rose-100/80 dark:hover:bg-rose-950/40 text-xs font-semibold px-3 gap-1.5 shadow-2xs transition-all cursor-pointer"
+                    onClick={clearAttendanceFilters}
+                  >
+                    <X className="size-3.5" /> Clear Filters
+                  </Button>
+                )}
+              </div>
+
+              {/* Export Action */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-9 rounded-xl font-semibold shadow-2xs hover:shadow transition-all cursor-pointer"
+                  disabled={loadingOverview || subjectCohortAttendance.length === 0}
+                  onClick={() => exportAttendanceCSV(subjectCohortAttendance)}
+                >
+                  <Download className="size-4" /> Export Report
+                </Button>
+              </div>
+            </div>
+
             {loadingOverview ? (
               <div className="flex flex-col gap-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
@@ -608,19 +1132,23 @@ export default function ReportsPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-5">
-                {/* Stat cards */}
+                {/* Headline Stat cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {/* Card 1: Overall Campus */}
+                  {/* Card 1: Overall Campus/Cohort Attendance */}
                   <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-sky-800/60">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex flex-col gap-1 min-w-0">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-                          Campus Attendance
+                          {isAnyAttendanceFilterActive ? "Filtered Attendance" : "Campus Attendance"}
                         </span>
                         <div className="text-2xl lg:text-3xl font-black tracking-tight text-foreground mt-0.5">
-                          {overviewStats?.overallPct ?? 0}%
+                          {overviewStats?.hasData ? `${overviewStats.overallPct}%` : "No Data"}
                         </div>
-                        <span className="text-xs text-muted-foreground font-medium">All Subjects Combined</span>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {overviewStats?.hasData
+                            ? `${overviewStats.totalRecords} attendance marks in ${overviewStats.totalSessions} sessions`
+                            : "No sessions in selection"}
+                        </span>
                       </div>
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
                         <BarChart3 className="size-4.5" />
@@ -635,10 +1163,12 @@ export default function ReportsPage() {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                           Top Attendance
                         </span>
-                        <div className="text-xl lg:text-2xl font-black tracking-tight text-foreground mt-0.5 truncate">
-                          {overviewStats?.highestSubject ?? "—"}
+                        <div className="text-base sm:text-lg font-bold tracking-tight text-foreground mt-0.5 truncate" title={overviewStats?.highestSubject}>
+                          {overviewStats?.hasData ? overviewStats.highestSubject : "—"}
                         </div>
-                        <span className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold">{overviewStats?.highestPct ?? 0}% average</span>
+                        <span className="text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
+                          {overviewStats?.hasData ? `${overviewStats.highestPct}% average` : "No sessions"}
+                        </span>
                       </div>
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                         <TrendingUp className="size-4.5" />
@@ -653,10 +1183,12 @@ export default function ReportsPage() {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
                           Attention Required
                         </span>
-                        <div className="text-xl lg:text-2xl font-black tracking-tight text-foreground mt-0.5 truncate">
-                          {overviewStats?.lowestSubject ?? "—"}
+                        <div className="text-base sm:text-lg font-bold tracking-tight text-foreground mt-0.5 truncate" title={overviewStats?.lowestSubject}>
+                          {overviewStats?.hasData ? overviewStats.lowestSubject : "—"}
                         </div>
-                        <span className="text-xs text-rose-700 dark:text-rose-300 font-semibold">{overviewStats?.lowestPct ?? 0}% lowest average</span>
+                        <span className="text-xs text-rose-700 dark:text-rose-300 font-semibold">
+                          {overviewStats?.hasData ? `${overviewStats.lowestPct}% lowest average` : "No sessions"}
+                        </span>
                       </div>
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                         <AlertTriangle className="size-4.5" />
@@ -672,7 +1204,7 @@ export default function ReportsPage() {
                           At Risk
                         </span>
                         <div className="text-2xl lg:text-3xl font-black tracking-tight text-foreground mt-0.5">
-                          {overviewStats?.studentsBelow75 ?? 0}
+                          {overviewStats?.hasData ? overviewStats.studentsBelow75 : 0}
                         </div>
                         <span className="text-xs text-muted-foreground font-medium">Students Below 75% Criteria</span>
                       </div>
@@ -684,14 +1216,16 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-[320px_1fr] items-stretch">
-                  {/* Left Overview card */}
+                  {/* Left Overview & Cohort Breakdown card */}
                   <Card className="h-full flex flex-col overflow-hidden">
                     <CardHeader className="pb-2 pt-4 border-b border-border/60 bg-muted/20">
                       <div className="flex items-center gap-2">
                         <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
                           <BarChart3 className="size-3.5" />
                         </div>
-                        <CardTitle className="text-sm font-bold text-foreground">Overall Attendance</CardTitle>
+                        <CardTitle className="text-sm font-bold text-foreground">
+                          {isAnyAttendanceFilterActive ? "Filtered Attendance" : "Overall Attendance"}
+                        </CardTitle>
                       </div>
                     </CardHeader>
                     <CardContent className="flex flex-col justify-between flex-1 p-5 gap-4">
@@ -699,7 +1233,10 @@ export default function ReportsPage() {
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie
-                              data={[{ name: "Completed", value: overviewStats?.overallPct ?? 0 }, { name: "Remaining", value: Math.max(0, 100 - (overviewStats?.overallPct ?? 0)) }]}
+                              data={[
+                                { name: "Present", value: overviewStats?.hasData ? overviewStats.overallPct : 0 },
+                                { name: "Absent", value: overviewStats?.hasData ? Math.max(0, 100 - overviewStats.overallPct) : 100 },
+                              ]}
                               innerRadius={68}
                               outerRadius={95}
                               dataKey="value"
@@ -707,43 +1244,59 @@ export default function ReportsPage() {
                               endAngle={-270}
                               stroke="none"
                             >
-                              <Cell fill="#10b981" />
+                              <Cell fill={overviewStats?.hasData ? (overviewStats.overallPct >= 75 ? "#10b981" : "#f59e0b") : "#cbd5e1"} />
                               <Cell fill="#e2e8f0" />
                             </Pie>
                             <Tooltip />
                           </PieChart>
                         </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{overviewStats?.overallPct ?? 0}%</span>
-                          <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Campus Wide</span>
+                          <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                            {overviewStats?.hasData ? `${overviewStats.overallPct}%` : "—"}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">
+                            {isAnyAttendanceFilterActive ? "Filtered" : "Campus Wide"}
+                          </span>
                         </div>
                       </div>
-                      
+
+                      {/* Cohort-aware department breakdown summary */}
                       <div className="flex flex-col divide-y divide-border/70 rounded-xl border border-border/70 bg-muted/20 px-3.5">
-                        <div className="flex justify-between items-center py-2.5">
-                          <span className="text-xs text-muted-foreground font-medium truncate max-w-36">Top: {overviewStats?.highestSubject ?? "—"}</span>
-                          <span className="text-xs font-bold text-foreground">{overviewStats?.highestPct ?? 0}%</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2.5">
-                          <span className="text-xs text-muted-foreground font-medium truncate max-w-36">Lowest: {overviewStats?.lowestSubject ?? "—"}</span>
-                          <span className="text-xs font-bold text-foreground">{overviewStats?.lowestPct ?? 0}%</span>
-                        </div>
+                        {deptCohortAttendance.length > 0 ? (
+                          deptCohortAttendance.slice(0, 4).map(d => (
+                            <div key={d.label} className="flex justify-between items-center py-2.5">
+                              <span className="text-xs text-muted-foreground font-medium truncate max-w-36">{d.label}</span>
+                              <span className={`text-xs font-bold ${getAttendanceColor(d.avg).text}`}>{d.avg}%</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-3 text-center text-xs text-muted-foreground">
+                            {overviewStats?.hasData ? "No cohort breakdown available" : "No attendance records"}
+                          </div>
+                        )}
                         <div className="flex justify-between items-center py-2.5">
                           <span className="text-xs text-muted-foreground font-medium">Below 75% Students</span>
-                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400">{overviewStats?.studentsBelow75 ?? 0}</span>
+                          <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                            {overviewStats?.studentsBelow75 ?? 0}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Subject table card */}
+                  {/* Subject-wise Attendance Distribution Card */}
                   <Card className="min-w-0 h-full flex flex-col overflow-hidden">
                     <CardHeader className="pb-3 pt-4 border-b border-border/60 bg-muted/20">
-                      <div className="flex items-center gap-2">
-                        <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <BookOpen className="size-3.5" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <BookOpen className="size-3.5" />
+                          </div>
+                          <CardTitle className="text-sm font-bold text-foreground">Subject & Cohort Attendance Distribution</CardTitle>
                         </div>
-                        <CardTitle className="text-sm font-bold text-foreground">Subject-wise Attendance Distribution</CardTitle>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {subjectCohortAttendance.length} Subject Cohort{subjectCohortAttendance.length !== 1 ? "s" : ""}
+                        </span>
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 flex-1 flex flex-col">
@@ -752,7 +1305,7 @@ export default function ReportsPage() {
                           <thead>
                             <tr className="border-b border-border bg-muted/30 text-left">
                               <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subject</th>
-                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground hidden sm:table-cell">Dept</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cohort</th>
                               <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</th>
                               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Visual</th>
                               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center hidden md:table-cell">Sessions</th>
@@ -760,15 +1313,26 @@ export default function ReportsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {subjectAttendance.length === 0 ? (
-                              <tr><td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">No attendance data available.</td></tr>
-                            ) : subjectAttendance.map(s => {
+                            {subjectCohortAttendance.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="px-5 py-12 text-center text-sm text-muted-foreground">
+                                  No attendance data matches the selected filters.
+                                </td>
+                              </tr>
+                            ) : subjectCohortAttendance.map(s => {
                               const color = getAttendanceColor(s.avg)
                               return (
-                                <tr key={s.subject} className="border-t border-border hover:bg-muted/20 transition-colors">
-                                  <td className="px-5 py-3 text-xs font-bold text-foreground">{s.subject}</td>
-                                  <td className="px-4 py-3 hidden sm:table-cell">
-                                    <span className="font-mono text-xs font-bold rounded-md bg-muted px-2 py-0.5 text-muted-foreground">{s.dept}</span>
+                                <tr key={s.key} className="border-t border-border hover:bg-muted/20 transition-colors">
+                                  <td className="px-5 py-3">
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-xs font-bold text-foreground">{s.subject}</span>
+                                      {s.code && <span className="text-[10px] font-mono text-muted-foreground font-semibold">{s.code}</span>}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Badge variant="outline" className="font-mono text-[11px] font-semibold bg-muted/60 text-foreground px-2 py-0.5">
+                                      {s.cohort}
+                                    </Badge>
                                   </td>
                                   <td className="px-5 py-3">
                                     <div className="flex items-center gap-2.5">
@@ -815,6 +1379,118 @@ export default function ReportsPage() {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Below 75% Students Section */}
+                <Card className="overflow-hidden">
+                  <CardHeader className="pb-3 pt-4 border-b border-border/60 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex size-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
+                          <AlertTriangle className="size-3.5" />
+                        </div>
+                        <CardTitle className="text-sm font-bold text-foreground">Students Below 75% Attendance Requirement</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5 bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20">
+                          {below75Students.length} Students At Risk
+                        </Badge>
+                        {below75Students.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs font-semibold text-muted-foreground hover:text-foreground gap-1.5 cursor-pointer"
+                            onClick={() => exportBelow75CSV(below75Students)}
+                          >
+                            <Download className="size-3.5" /> Export List
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-muted/30 text-left">
+                            <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Roll Number</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cohort</th>
+                            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Attended</th>
+                            <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance %</th>
+                            <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {below75Students.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                                {overviewStats?.hasData
+                                  ? "Excellent! No students are below 75% attendance in this selection."
+                                  : "No attendance records available for this selection."}
+                              </td>
+                            </tr>
+                          ) : (
+                            below75Students.map(st => {
+                              const isCritical = st.pct < 65
+                              return (
+                                <tr key={st.studentId} className="border-t border-border hover:bg-muted/20 transition-colors">
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <Avatar className="size-7 ring-1 ring-border">
+                                        <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+                                          {getInitials(st.name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs font-bold text-foreground">{st.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span className="font-mono text-xs font-bold bg-muted px-2 py-0.5 rounded-md text-muted-foreground">
+                                      {st.roll}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span className="text-xs text-muted-foreground font-medium">
+                                      {st.dept} · {st.year} · {st.classSection}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center text-xs font-medium text-foreground">
+                                    {st.present} / {st.total} <span className="text-muted-foreground text-[11px]">classes</span>
+                                  </td>
+                                  <td className="px-5 py-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="h-2 w-24 overflow-hidden rounded-full bg-muted">
+                                        <div
+                                          className={`h-full rounded-full ${isCritical ? "bg-rose-500" : "bg-amber-500"} transition-all`}
+                                          style={{ width: `${st.pct}%` }}
+                                        />
+                                      </div>
+                                      <span className={`text-xs font-bold ${isCritical ? "text-rose-600 dark:text-rose-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                        {st.pct}%
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-3 text-center">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                        isCritical
+                                          ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
+                                          : "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20"
+                                      }`}
+                                    >
+                                      {isCritical ? "Critical (<65%)" : "At Risk (65-74%)"}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </motion.div>

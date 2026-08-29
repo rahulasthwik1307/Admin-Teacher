@@ -52,6 +52,8 @@ import {
 import { createClient } from "@/lib/supabase/client"
 
 /* ---------- Constants ---------- */
+const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
+
 const DAYS = [
   { value: 1, label: "Monday", short: "Mon" },
   { value: 2, label: "Tuesday", short: "Tue" },
@@ -90,16 +92,31 @@ interface TimetableEntry {
   periodStart: string
   periodEnd: string
   subject: string
+  subjectCode?: string
   teacher: string
   classSection: string
 }
 
-interface ClassOption { id: string; label: string }
+interface ClassOption {
+  id: string
+  name: string
+  section: string
+  year: string
+  label: string
+  fullLabel: string
+}
 interface PeriodOption { id: string; label: string; number: number; start: string; end: string }
 interface AssignmentOption {
-  teacherId: string; teacherName: string
-  subjectId: string; subjectName: string
-  classId: string; classLabel: string
+  id: string
+  teacherId: string
+  teacherName: string
+  subjectId: string
+  subjectName: string
+  subjectCode?: string
+  classId: string
+  classLabel: string
+  classSection: string
+  year: string | null
 }
 
 /* ---------- Component ---------- */
@@ -129,12 +146,14 @@ export default function TimetablePage() {
   const [removeTarget, setRemoveTarget] = useState<TimetableEntry | null>(null)
 
   // Single add form
+  const [formYear, setFormYear] = useState("")
   const [formClassId, setFormClassId] = useState("")
   const [formAssignmentKey, setFormAssignmentKey] = useState("")
   const [formPeriodId, setFormPeriodId] = useState("")
   const [formDay, setFormDay] = useState("")
 
   // Bulk add form: { "dayValue__periodId": assignmentKey }
+  const [bulkYear, setBulkYear] = useState("")
   const [bulkClassId, setBulkClassId] = useState("")
   const [bulkSlots, setBulkSlots] = useState<Record<string, string>>({})
 
@@ -163,27 +182,47 @@ export default function TimetablePage() {
       const { assignments, periods, classes, timetable } = timetablePageData
 
       setAssignmentOptions(assignments.map((a: any) => ({
-        teacherId: a.teacher_id, teacherName: a.teacher?.user?.full_name ?? "Unknown",
-        subjectId: a.subject_id, subjectName: a.subject?.name ?? "—",
-        classId: a.class_id, classLabel: a.class ? `${a.class.name}-${a.class.section}` : "—",
+        id: a.id ?? "",
+        teacherId: a.teacher_id,
+        teacherName: a.teacher?.user?.full_name ?? "Unknown",
+        subjectId: a.subject_id,
+        subjectName: a.subject?.name ?? "—",
+        subjectCode: a.subject?.code ?? "",
+        classId: a.class_id,
+        classLabel: a.class ? `${a.class.name}-${a.class.section} · ${a.class.year ?? a.year}` : "—",
+        classSection: a.class ? `${a.class.name}-${a.class.section}` : "—",
+        year: a.year ?? a.class?.year ?? null,
       })))
 
       setPeriodOptions(periods.map((p: any) => ({
-        id: p.id, number: p.period_number,
-        start: p.start_time.slice(0, 5), end: p.end_time.slice(0, 5),
+        id: p.id,
+        number: p.period_number,
+        start: p.start_time.slice(0, 5),
+        end: p.end_time.slice(0, 5),
         label: `Period ${p.period_number} (${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)})`,
       })))
 
-      setClassOptions(classes.map((c: any) => ({ id: c.id, label: `${c.name}-${c.section}` })))
+      setClassOptions(classes.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        section: c.section,
+        year: c.year,
+        label: `${c.name}-${c.section}`,
+        fullLabel: `${c.name}-${c.section} · ${c.year}`,
+      })))
 
       const mapped: TimetableEntry[] = timetable.map((t: any) => ({
-        id: t.id, day: t.day_of_week, dayLabel: getDayLabel(t.day_of_week),
+        id: t.id,
+        day: t.day_of_week,
+        dayLabel: getDayLabel(t.day_of_week),
         periodNumber: t.period?.period_number ?? 0,
         periodStart: t.period?.start_time?.slice(0, 5) ?? "",
         periodEnd: t.period?.end_time?.slice(0, 5) ?? "",
         period: t.period ? `Period ${t.period.period_number} (${t.period.start_time.slice(0, 5)} - ${t.period.end_time.slice(0, 5)})` : "—",
-        subject: t.subject?.name ?? "—", teacher: t.teacher?.user?.full_name ?? "Unassigned",
-        classSection: t.class ? `${t.class.name}-${t.class.section}` : "—",
+        subject: t.subject?.name ?? "—",
+        subjectCode: t.subject?.code ?? "",
+        teacher: t.teacher?.user?.full_name ?? "Unassigned",
+        classSection: t.class ? `${t.class.name}-${t.class.section} · ${t.class.year}` : "—",
       }))
       mapped.sort((a, b) => a.day - b.day || a.periodNumber - b.periodNumber)
       setEntries(mapped)
@@ -241,13 +280,60 @@ export default function TimetablePage() {
     setCollapsedGroups(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
   }
 
-  const filteredAssignments = formClassId
-    ? assignmentOptions.filter(a => a.classId === formClassId)
-    : []
+  const formAvailableClasses = useMemo(() => {
+    if (!formYear) return []
+    return classOptions.filter(c => c.year === formYear)
+  }, [classOptions, formYear])
 
-  const bulkFilteredAssignments = bulkClassId
-    ? assignmentOptions.filter(a => a.classId === bulkClassId)
-    : []
+  const bulkAvailableClasses = useMemo(() => {
+    if (!bulkYear) return []
+    return classOptions.filter(c => c.year === bulkYear)
+  }, [classOptions, bulkYear])
+
+  const filteredAssignments = useMemo(() => {
+    if (!formClassId) return []
+    return assignmentOptions.filter(a => a.classId === formClassId)
+  }, [formClassId, assignmentOptions])
+
+  const bulkFilteredAssignments = useMemo(() => {
+    if (!bulkClassId) return []
+    return assignmentOptions.filter(a => a.classId === bulkClassId)
+  }, [bulkClassId, assignmentOptions])
+
+  function handleFormYearChange(year: string) {
+    setFormYear(year)
+    setFormClassId("")
+    setFormAssignmentKey("")
+  }
+
+  function handleFormClassChange(classId: string) {
+    setFormClassId(classId)
+    if (!classId) {
+      setFormAssignmentKey("")
+      return
+    }
+    const matchingAssignments = assignmentOptions.filter(a => a.classId === classId)
+    if (matchingAssignments.length === 1) {
+      const single = matchingAssignments[0]
+      setFormAssignmentKey(`${single.teacherId}__${single.subjectId}__${single.classId}__${single.year ?? ""}`)
+    } else {
+      setFormAssignmentKey("")
+    }
+  }
+
+  function resetForm() {
+    setFormYear("")
+    setFormClassId("")
+    setFormAssignmentKey("")
+    setFormPeriodId("")
+    setFormDay("")
+  }
+
+  function resetBulkForm() {
+    setBulkYear("")
+    setBulkClassId("")
+    setBulkSlots({})
+  }
 
   /* ---------- Stats ---------- */
   const totalSlots = entries.length
@@ -264,18 +350,52 @@ export default function TimetablePage() {
 
   /* ---------- Handlers ---------- */
   async function handleAdd() {
-    if (!formClassId || !formAssignmentKey || !formPeriodId || !formDay) {
-      toast.error("Please fill all fields"); return
+    if (!formYear || !formClassId || !formAssignmentKey || !formPeriodId || !formDay) {
+      toast.error("Please fill all required fields including Academic Year"); return
     }
-    const assignment = assignmentOptions.find(a => `${a.teacherId}__${a.subjectId}__${a.classId}` === formAssignmentKey)
-    if (!assignment) { toast.error("Invalid assignment selected"); return }
+    const selectedClass = classOptions.find(c => c.id === formClassId)
+    if (!selectedClass || selectedClass.year !== formYear) {
+      toast.error("Selected class does not match the chosen academic year"); return
+    }
+    const assignment = assignmentOptions.find(a =>
+      (`${a.teacherId}__${a.subjectId}__${a.classId}__${a.year ?? ""}` === formAssignmentKey ||
+       `${a.teacherId}__${a.subjectId}__${a.classId}` === formAssignmentKey) &&
+      a.classId === formClassId
+    )
+    if (!assignment) { toast.error("Invalid assignment selected for this class"); return }
+
+    const selectedPeriod = periodOptions.find(p => p.id === formPeriodId)
+    if (!selectedPeriod) { toast.error("Invalid period selected"); return }
+
+    // Check conflict
+    const conflictKey = `${assignment.teacherName}__${formDay}__${selectedPeriod.number}`
+    const conflict = conflictMap[conflictKey]
+    if (conflict && conflict.classSection !== selectedClass.fullLabel) {
+      toast.error(`Teacher conflict: ${assignment.teacherName} is already teaching ${conflict.classSection} at this time`)
+      return
+    }
+
+    // Check same subject on same day
+    const isSameSubjectSameDay = entries.some(e =>
+      e.classSection === selectedClass.fullLabel &&
+      e.day === parseInt(formDay) &&
+      e.subject === assignment.subjectName &&
+      e.periodNumber !== selectedPeriod.number
+    )
+    if (isSameSubjectSameDay) {
+      toast.error(`${assignment.subjectName} is already scheduled for ${selectedClass.label} on ${getDayLabel(parseInt(formDay))}`)
+      return
+    }
 
     setIsSubmitting(true)
     try {
       const supabase = createClient()
       const { error } = await supabase.from("timetables").insert({
-        class_id: assignment.classId, subject_id: assignment.subjectId,
-        teacher_id: assignment.teacherId, period_id: formPeriodId,
+        class_id: assignment.classId,
+        subject_id: assignment.subjectId,
+        teacher_id: assignment.teacherId,
+        teacher_assignment_id: assignment.id || undefined,
+        period_id: formPeriodId,
         day_of_week: parseInt(formDay),
       })
       if (error) {
@@ -284,16 +404,26 @@ export default function TimetablePage() {
         return
       }
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Timetable entry added: ${assignment.subjectName} — ${assignment.classLabel} — ${getDayLabel(parseInt(formDay))}` })
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "create",
+          description: `Timetable entry added: ${assignment.subjectName} — ${assignment.classLabel} — ${getDayLabel(parseInt(formDay))}`
+        })
+      }
       toast.success(`Added: ${assignment.subjectName} on ${getDayLabel(parseInt(formDay))}`)
-      setSheetOpen(false); setFormClassId(""); setFormAssignmentKey(""); setFormPeriodId(""); setFormDay("")
+      setSheetOpen(false)
+      resetForm()
       queryClient.invalidateQueries({ queryKey: ["admin-timetable"] })
     } finally { setIsSubmitting(false) }
   }
 
   async function handleBulkAdd() {
     const slots = Object.entries(bulkSlots).filter(([, v]) => v && v !== "" && v !== "__skip__")
-    if (!bulkClassId || slots.length === 0) { toast.error("Please select a class and fill at least one slot"); return }
+    if (!bulkYear || !bulkClassId || slots.length === 0) {
+      toast.error("Please select an academic year, target class, and fill at least one slot")
+      return
+    }
 
     setIsSubmitting(true)
     let added = 0; let failed = 0
@@ -303,23 +433,37 @@ export default function TimetablePage() {
 
       for (const [key, assignmentKey] of slots) {
         const [dayStr, periodId] = key.split("__")
-        const assignment = assignmentOptions.find(a => `${a.teacherId}__${a.subjectId}__${a.classId}` === assignmentKey)
+        const assignment = assignmentOptions.find(a =>
+          (`${a.teacherId}__${a.subjectId}__${a.classId}__${a.year ?? ""}` === assignmentKey ||
+           `${a.teacherId}__${a.subjectId}__${a.classId}` === assignmentKey) &&
+          a.classId === bulkClassId
+        )
         if (!assignment) continue
 
         const { error } = await supabase.from("timetables").insert({
-          class_id: assignment.classId, subject_id: assignment.subjectId,
-          teacher_id: assignment.teacherId, period_id: periodId,
+          class_id: assignment.classId,
+          subject_id: assignment.subjectId,
+          teacher_id: assignment.teacherId,
+          teacher_assignment_id: assignment.id || undefined,
+          period_id: periodId,
           day_of_week: parseInt(dayStr),
         })
         if (error) { failed++; continue }
         added++
-        if (user) await supabase.from("system_logs").insert({ performed_by: user.id, action_type: "create", description: `Timetable entry added: ${assignment.subjectName} — ${assignment.classLabel} — ${getDayLabel(parseInt(dayStr))}` })
+        if (user) {
+          await supabase.from("system_logs").insert({
+            performed_by: user.id,
+            action_type: "create",
+            description: `Timetable entry added: ${assignment.subjectName} — ${assignment.classLabel} — ${getDayLabel(parseInt(dayStr))}`
+          })
+        }
       }
 
       if (added > 0) toast.success(`${added} slot${added !== 1 ? "s" : ""} added successfully${failed > 0 ? ` (${failed} failed/duplicate)` : ""}`)
       else toast.error("No slots were added. They may already exist.")
 
-      setBulkSheetOpen(false); setBulkClassId(""); setBulkSlots({})
+      setBulkSheetOpen(false)
+      resetBulkForm()
       queryClient.invalidateQueries({ queryKey: ["admin-timetable"] })
     } finally { setIsSubmitting(false) }
   }
@@ -702,7 +846,7 @@ export default function TimetablePage() {
       {/* ══════════════════════════════════════
           ADD SINGLE SLOT SHEET
       ══════════════════════════════════════ */}
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={v => { setSheetOpen(v); if (!v) resetForm() }}>
         <SheetContent className="overflow-y-auto sm:max-w-md p-0 flex flex-col gap-0 border-l border-border bg-background">
           <SheetHeader className="p-6 border-b border-border/80 bg-muted/20">
             <div className="flex items-center gap-3">
@@ -718,56 +862,143 @@ export default function TimetablePage() {
             </div>
           </SheetHeader>
           <div className="flex flex-col gap-4.5 p-6 overflow-y-auto flex-1">
+            {/* 1. Academic Year */}
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <CalendarDays className="size-3.5 text-muted-foreground" /> Academic Year <span className="text-destructive">*</span>
+              </Label>
+              <Select value={formYear} onValueChange={handleFormYearChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {YEAR_OPTIONS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 2. Class & Section */}
             <div className="flex flex-col gap-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <GraduationCap className="size-3.5 text-muted-foreground" /> Class & Section
               </Label>
-              <Select value={formClassId} onValueChange={v => { setFormClassId(v); setFormAssignmentKey("") }}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select class" />
+              <Select value={formClassId} onValueChange={handleFormClassChange} disabled={!formYear}>
+                <SelectTrigger className="w-full" disabled={!formYear}>
+                  <SelectValue placeholder={!formYear ? "Select academic year first" : formAvailableClasses.length === 0 ? "No classes found" : "Select class & section"} />
                 </SelectTrigger>
-                <SelectContent>{classOptions.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {formAvailableClasses.length === 0 ? (
+                    <SelectItem value="none" disabled>No classes found for {formYear}</SelectItem>
+                  ) : (
+                    formAvailableClasses.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)
+                  )}
+                </SelectContent>
               </Select>
             </div>
+
+            {/* 3. Subject & Teacher */}
             <div className="flex flex-col gap-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <BookOpen className="size-3.5 text-muted-foreground" /> Subject & Teacher
               </Label>
-              <Select value={formAssignmentKey} onValueChange={setFormAssignmentKey} disabled={!formClassId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={formClassId ? "Select subject curriculum" : "Select class first"} />
+              <Select value={formAssignmentKey} onValueChange={setFormAssignmentKey} disabled={!formClassId || filteredAssignments.length === 0}>
+                <SelectTrigger className="w-full" disabled={!formClassId || filteredAssignments.length === 0}>
+                  <SelectValue placeholder={!formYear ? "Select academic year first" : !formClassId ? "Select class first" : filteredAssignments.length === 0 ? "No assignments available" : "Select subject & teacher"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {filteredAssignments.map(a => <SelectItem key={`${a.teacherId}__${a.subjectId}__${a.classId}`} value={`${a.teacherId}__${a.subjectId}__${a.classId}`}>{a.subjectName} — {a.teacherName}</SelectItem>)}
-                  {filteredAssignments.length === 0 && formClassId && <SelectItem value="none" disabled>No assignments found for this class</SelectItem>}
+                  {filteredAssignments.length === 0 && formClassId ? (
+                    <SelectItem value="none" disabled>No teacher assignments available for this class</SelectItem>
+                  ) : (
+                    filteredAssignments.map(a => {
+                      const key = `${a.teacherId}__${a.subjectId}__${a.classId}__${a.year ?? ""}`
+                      const currentClass = classOptions.find(c => c.id === formClassId)
+                      const currentClassFullLabel = currentClass?.fullLabel ?? currentClass?.label ?? ""
+                      const selectedPeriod = periodOptions.find(p => p.id === formPeriodId)
+
+                      let isTeacherBusy = false
+                      let busyConflictLabel = ""
+                      let isAlreadyScheduledSameDay = false
+
+                      if (formDay && selectedPeriod) {
+                        const conflictKey = `${a.teacherName}__${formDay}__${selectedPeriod.number}`
+                        const conflictEntry = conflictMap[conflictKey]
+                        if (conflictEntry && conflictEntry.classSection !== currentClassFullLabel) {
+                          isTeacherBusy = true
+                          busyConflictLabel = conflictEntry.classSection
+                        }
+
+                        isAlreadyScheduledSameDay = entries.some(e =>
+                          e.classSection === currentClassFullLabel &&
+                          e.day === parseInt(formDay) &&
+                          e.subject === a.subjectName &&
+                          e.periodNumber !== selectedPeriod.number
+                        )
+                      }
+
+                      const isDisabled = isTeacherBusy || isAlreadyScheduledSameDay
+                      const subjectDisplay = a.subjectCode ? `${a.subjectName} (${a.subjectCode})` : a.subjectName
+
+                      return (
+                        <SelectItem
+                          key={key}
+                          value={key}
+                          disabled={isDisabled}
+                          className={isDisabled ? "opacity-60 text-muted-foreground" : ""}
+                        >
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{subjectDisplay} — {a.teacherName}</span>
+                            {isTeacherBusy && (
+                              <span className="text-[11px] font-semibold text-destructive">
+                                ⚠ Busy — {busyConflictLabel}
+                              </span>
+                            )}
+                            {!isTeacherBusy && isAlreadyScheduledSameDay && (
+                              <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                                ⚠ Already on {getDayLabel(parseInt(formDay))}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      )
+                    })
+                  )}
                 </SelectContent>
               </Select>
+              {formClassId && filteredAssignments.length === 0 && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  No teacher assignments available for this class and academic year. Create a faculty assignment first.
+                </p>
+              )}
             </div>
+
+            {/* 4. Day of Week */}
             <div className="flex flex-col gap-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <CalendarDays className="size-3.5 text-muted-foreground" /> Day of Week
               </Label>
-              <Select value={formDay} onValueChange={setFormDay}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select day" />
+              <Select value={formDay} onValueChange={setFormDay} disabled={!formClassId}>
+                <SelectTrigger className="w-full" disabled={!formClassId}>
+                  <SelectValue placeholder={!formClassId ? "Select class first" : "Select day"} />
                 </SelectTrigger>
                 <SelectContent>{DAYS.map(d => <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+
+            {/* 5. Class Period */}
             <div className="flex flex-col gap-1.5">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
                 <Clock className="size-3.5 text-muted-foreground" /> Class Period
               </Label>
-              <Select value={formPeriodId} onValueChange={setFormPeriodId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select period" />
+              <Select value={formPeriodId} onValueChange={setFormPeriodId} disabled={!formClassId}>
+                <SelectTrigger className="w-full" disabled={!formClassId}>
+                  <SelectValue placeholder={!formClassId ? "Select class first" : "Select period"} />
                 </SelectTrigger>
                 <SelectContent>{periodOptions.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             {(() => {
               if (formAssignmentKey && formDay && formPeriodId && formClassId) {
-                const selectedAssignment = assignmentOptions.find(a => `${a.teacherId}__${a.subjectId}__${a.classId}` === formAssignmentKey);
+                const selectedAssignment = assignmentOptions.find(a => `${a.teacherId}__${a.subjectId}__${a.classId}__${a.year ?? ""}` === formAssignmentKey || `${a.teacherId}__${a.subjectId}__${a.classId}` === formAssignmentKey);
                 const selectedPeriod = periodOptions.find(p => p.id === formPeriodId);
                 const selectedClassLabel = classOptions.find(c => c.id === formClassId)?.label;
                 if (selectedAssignment && selectedPeriod && selectedClassLabel) {
@@ -835,7 +1066,7 @@ export default function TimetablePage() {
       {/* ══════════════════════════════════════
           BULK FILL WEEK SHEET
       ══════════════════════════════════════ */}
-      <Sheet open={bulkSheetOpen} onOpenChange={v => { setBulkSheetOpen(v); if (!v) { setBulkClassId(""); setBulkSlots({}) } }}>
+      <Sheet open={bulkSheetOpen} onOpenChange={v => { setBulkSheetOpen(v); if (!v) resetBulkForm() }}>
         <SheetContent className="overflow-y-auto max-w-[100vw] w-full sm:max-w-4xl p-0 flex flex-col gap-0 border-l border-border bg-background">
           <SheetHeader className="p-6 border-b border-border/80 bg-muted/20">
             <div className="flex items-center gap-3">
@@ -851,16 +1082,31 @@ export default function TimetablePage() {
             </div>
           </SheetHeader>
           <div className="flex flex-col gap-5 p-6 overflow-y-auto flex-1">
-            {/* Class selector */}
+            {/* Academic Year selector */}
             <div className="flex flex-col gap-1.5 max-w-sm">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
-                <GraduationCap className="size-3.5 text-muted-foreground" /> Target Class & Section
+                <CalendarDays className="size-3.5 text-muted-foreground" /> Academic Year <span className="text-destructive">*</span>
               </Label>
-              <Select value={bulkClassId} onValueChange={v => { setBulkClassId(v); setBulkSlots({}) }}>
+              <Select value={bulkYear} onValueChange={v => { setBulkYear(v); setBulkClassId(""); setBulkSlots({}) }}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select class cohort" />
+                  <SelectValue placeholder="Select academic year" />
                 </SelectTrigger>
-                <SelectContent>{classOptions.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {YEAR_OPTIONS.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Target Class selector */}
+            <div className="flex flex-col gap-1.5 max-w-sm">
+              <Label className="flex items-center gap-1.5 text-xs font-semibold text-foreground/90">
+                <GraduationCap className="size-3.5 text-muted-foreground" /> Target Class & Section <span className="text-destructive">*</span>
+              </Label>
+              <Select value={bulkClassId} onValueChange={v => { setBulkClassId(v); setBulkSlots({}) }} disabled={!bulkYear}>
+                <SelectTrigger className="w-full" disabled={!bulkYear}>
+                  <SelectValue placeholder={!bulkYear ? "Select academic year first" : bulkAvailableClasses.length === 0 ? "No classes found" : "Select class & section"} />
+                </SelectTrigger>
+                <SelectContent>{bulkAvailableClasses.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
@@ -900,7 +1146,9 @@ export default function TimetablePage() {
                           {DAYS.map(d => {
                             const key = `${d.value}__${p.id}`
                             const val = bulkSlots[key] || ""
-                            const existingEntry = entries.find(e => e.classSection === classOptions.find(c => c.id === bulkClassId)?.label && e.day === d.value && e.periodNumber === p.number)
+                            const targetClassObj = classOptions.find(c => c.id === bulkClassId)
+                            const currentBulkClassFullLabel = targetClassObj?.fullLabel ?? targetClassObj?.label ?? ""
+                            const existingEntry = entries.find(e => e.classSection === currentBulkClassFullLabel && e.day === d.value && e.periodNumber === p.number)
 
                             return (
                               <td key={d.value} className={`px-1 py-1.5 border-r border-border last:border-r-0 ${d.value === todayValue ? "bg-primary/3" : ""}`}>
@@ -916,12 +1164,11 @@ export default function TimetablePage() {
                                     <SelectContent>
                                       <SelectItem value="__skip__">— Skip —</SelectItem>
                                       {bulkFilteredAssignments.map(a => {
-                                        const currentBulkClassLabel = classOptions.find(c => c.id === bulkClassId)?.label;
                                         const conflictEntry = conflictMap[`${a.teacherName}__${d.value}__${p.number}`];
-                                        const isConflict = conflictEntry && conflictEntry.classSection !== currentBulkClassLabel;
+                                        const isConflict = conflictEntry && conflictEntry.classSection !== currentBulkClassFullLabel;
 
                                         const isAlreadySavedForDay = entries.some(e =>
-                                          e.classSection === currentBulkClassLabel &&
+                                          e.classSection === currentBulkClassFullLabel &&
                                           e.day === d.value &&
                                           e.subject === a.subjectName
                                         );
@@ -933,21 +1180,22 @@ export default function TimetablePage() {
                                           if (parseInt(slotDay) !== d.value) return false
                                           if (slotKey === key) return false // skip current cell
                                           const slotAssignment = assignmentOptions.find(
-                                            sa => `${sa.teacherId}__${sa.subjectId}__${sa.classId}` === slotVal
+                                            sa => `${sa.teacherId}__${sa.subjectId}__${sa.classId}__${sa.year ?? ""}` === slotVal || `${sa.teacherId}__${sa.subjectId}__${sa.classId}` === slotVal
                                           )
                                           return slotAssignment?.subjectId === a.subjectId
                                         });
 
                                         const isDisabled = !!isConflict || isAlreadySelectedForDay || isAlreadySavedForDay;
+                                        const subjectDisplay = a.subjectCode ? `${a.subjectName} (${a.subjectCode})` : a.subjectName;
 
                                         return (
                                           <SelectItem 
-                                            key={`${a.teacherId}__${a.subjectId}__${a.classId}`} 
-                                            value={`${a.teacherId}__${a.subjectId}__${a.classId}`}
+                                            key={`${a.teacherId}__${a.subjectId}__${a.classId}__${a.year ?? ""}`} 
+                                            value={`${a.teacherId}__${a.subjectId}__${a.classId}__${a.year ?? ""}`}
                                             disabled={isDisabled}
                                             className={isDisabled ? "opacity-50 text-destructive" : ""}
                                           >
-                                            {a.subjectName} — {a.teacherName}
+                                            {subjectDisplay} — {a.teacherName}
                                             {isConflict && ` ⚠ busy in ${conflictEntry!.classSection}`}
                                             {!isConflict && (isAlreadySelectedForDay || isAlreadySavedForDay) && ` ⚠ already on ${DAYS.find(day => day.value === d.value)?.label}`}
                                           </SelectItem>

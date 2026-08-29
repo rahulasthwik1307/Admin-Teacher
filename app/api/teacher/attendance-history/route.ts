@@ -30,7 +30,7 @@ export async function GET() {
       .select(`
         id, session_date, finalized_at, subject_id, class_id, period_id,
         subjects ( id, name ),
-        classes ( id, name, section ),
+        classes ( id, name, section, year ),
         periods ( period_number, start_time, end_time )
       `)
       .eq("teacher_id", teacherId)
@@ -80,7 +80,7 @@ export async function GET() {
         rawDate: s.session_date,
         subject: s.subjects?.name ?? "Unknown Subject",
         subjectId: s.subject_id ?? "",
-        class: s.classes ? `${s.classes.name}-${s.classes.section}` : "Unknown",
+        class: s.classes ? `${s.classes.name}-${s.classes.section}${s.classes.year ? ` · ${s.classes.year}` : ""}` : "Unknown",
         classId: s.class_id ?? "",
         period: `${periodShort}${periodTime ? ` · ${periodTime}` : ""}`,
         periodShort,

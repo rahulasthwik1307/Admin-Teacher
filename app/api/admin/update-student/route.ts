@@ -54,9 +54,18 @@ export async function POST(request: Request) {
     // Update students table
     const studentUpdate: any = {}
     if (cleanRoll) studentUpdate.roll_number = cleanRoll
-    if (class_id) studentUpdate.class_id = class_id
     if (department_id) studentUpdate.department_id = department_id
-    if (year) studentUpdate.year = year
+    if (class_id) {
+      studentUpdate.class_id = class_id
+      const { data: classRow } = await admin
+        .from("classes")
+        .select("id, year")
+        .eq("id", class_id)
+        .maybeSingle()
+      if (classRow?.year) studentUpdate.year = classRow.year
+    } else if (year) {
+      studentUpdate.year = year
+    }
 
     if (Object.keys(studentUpdate).length > 0) {
       const { error: studentError } = await admin

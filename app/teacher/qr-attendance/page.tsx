@@ -93,7 +93,7 @@ export default function QRAttendancePage() {
           .select(`
             class_id,
             subject_id,
-            class:classes(id, name, section, department:departments(code)),
+            class:classes(id, name, section, year, department:departments(code)),
             subject:subjects(id, name)
           `)
           .eq("teacher_id", uid),
@@ -106,7 +106,7 @@ export default function QRAttendancePage() {
           .select(`
             id, session_date, finalized_at, status,
             subject:subjects(name),
-            class:classes(section, department:departments(code)),
+            class:classes(name, section, year, department:departments(code)),
             period:periods(period_number),
             present_count:period_attendance(count),
             total_count:period_attendance(count)
@@ -135,7 +135,7 @@ export default function QRAttendancePage() {
         setClassOptions(
           Array.from(uniqueClasses.values()).map((c: any) => ({
             value: c.id,
-            label: `${c.name}-${c.section}`,
+            label: `${c.name}-${c.section} · ${c.year}`,
           }))
         )
       }

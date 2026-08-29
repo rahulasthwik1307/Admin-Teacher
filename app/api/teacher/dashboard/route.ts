@@ -14,9 +14,9 @@ export async function GET() {
     const { data: assignments } = await supabase
       .from("teacher_assignments")
       .select(`
-        id, subject_id, class_id,
+        id, subject_id, class_id, year,
         subjects ( name ),
-        classes ( name, section )
+        classes ( name, section, year )
       `)
       .eq("teacher_id", teacherId)
 
@@ -49,7 +49,7 @@ export async function GET() {
         .select(`
           id, subject_id, class_id, status, opened_at,
           subjects ( name ),
-          classes ( name, section )
+          classes ( name, section, year )
         `)
         .eq("teacher_id", teacherId)
         .eq("session_date", today),
@@ -73,7 +73,7 @@ export async function GET() {
       // Recent finalized sessions for activity feed
       supabase
         .from("attendance_sessions")
-        .select(`id, finalized_at, subjects ( name ), classes ( name, section )`)
+        .select(`id, finalized_at, subjects ( name ), classes ( name, section, year )`)
         .eq("teacher_id", teacherId)
         .eq("status", "finalized")
         .not("finalized_at", "is", null)
@@ -83,7 +83,7 @@ export async function GET() {
       // Recent opened sessions for activity feed
       supabase
         .from("attendance_sessions")
-        .select(`id, opened_at, subjects ( name ), classes ( name, section )`)
+        .select(`id, opened_at, subjects ( name ), classes ( name, section, year )`)
         .eq("teacher_id", teacherId)
         .not("opened_at", "is", null)
         .order("opened_at", { ascending: false })
@@ -100,7 +100,7 @@ export async function GET() {
       // Recent absence notification batches
       supabase
         .from("notification_batches")
-        .select(`id, sent_at, sent_count, failed_count, session:attendance_sessions ( subjects ( name ), classes ( name, section ) )`)
+        .select(`id, sent_at, sent_count, failed_count, session:attendance_sessions ( subjects ( name ), classes ( name, section, year ) )`)
         .eq("teacher_id", teacherId)
         .order("sent_at", { ascending: false })
         .limit(5),
@@ -159,6 +159,7 @@ export async function GET() {
         subject: asgn.subjects?.name ?? "Unknown",
         className: asgn.classes?.name ?? "Unknown",
         section: asgn.classes?.section ?? "",
+        year: asgn.classes?.year ?? asgn.year ?? "",
         students: studentsByClass.get(asgn.class_id) ?? 0,
         lastAttendance,
       }
@@ -186,7 +187,8 @@ export async function GET() {
     }
 
     const todayAttendance = Array.from(dedupeMap.values()).map((sess: any) => {
-      const sectionName = sess.classes ? `${sess.classes.name}-${sess.classes.section}` : "Unknown"
+      const classYear = sess.classes?.year ? ` · ${sess.classes.year}` : ""
+      const sectionName = sess.classes ? `${sess.classes.name}-${sess.classes.section}${classYear}` : "Unknown"
       const subjectName = sess.subjects?.name ?? "Unknown"
       return {
         id: sess.id,

@@ -7,6 +7,9 @@ export interface ReportsData {
   sessions: any[]
   assignments: any[]
   attendance: any[]
+  departments: any[]
+  classes: any[]
+  subjects: any[]
   logs: any[]
 }
 

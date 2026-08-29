@@ -140,10 +140,16 @@ export default function AdminFaceApprovalPage() {
     }
   }
 
+function getGroupKey(s: PendingStudent) {
+  if (!s.class || s.class === "N/A") return "Unassigned"
+  if (s.year && s.year !== "N/A") return `${s.class} · ${s.year}`
+  return s.class
+}
+
   const pendingGrouped = useMemo(() => {
     const map = new Map<string, PendingStudent[]>()
     for (const s of pending) {
-      const key = s.class || "Unassigned"
+      const key = getGroupKey(s)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(s)
     }
@@ -153,7 +159,7 @@ export default function AdminFaceApprovalPage() {
   const approvedGrouped = useMemo(() => {
     const map = new Map<string, PendingStudent[]>()
     for (const s of approved) {
-      const key = s.class || "Unassigned"
+      const key = getGroupKey(s)
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(s)
     }

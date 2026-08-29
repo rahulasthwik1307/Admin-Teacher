@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
       .from("students")
       .select(`
         id, roll_number, registration_photo_url, created_at, year,
-        class:classes ( section, department:departments ( code ) ),
+        class:classes ( name, section, year, department:departments ( code ) ),
         user:users ( full_name )
       `)
       .eq("is_approved", false)
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       .from("students")
       .select(`
         id, roll_number, registration_photo_url, created_at, year,
-        class:classes ( section, department:departments ( code ) ),
+        class:classes ( name, section, year, department:departments ( code ) ),
         user:users ( full_name )
       `)
       .eq("is_approved", true)
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     function mapStudent(student: any) {
       const classData = student.class as any
       const section = classData?.section ?? "N/A"
-      const deptCode = classData?.department?.code ?? "N/A"
+      const deptCode = classData?.department?.code ?? classData?.name ?? "N/A"
       const classLabel = deptCode !== "N/A" && section !== "N/A"
         ? `${deptCode}-${section}` : "N/A"
 
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         name: student.user?.full_name || "Unknown",
         roll: student.roll_number,
         class: classLabel,
-        year: student.year ?? "N/A",
+        year: student.year ?? classData?.year ?? "N/A",
         registration_photo: student.registration_photo_url,
         created_at: student.created_at,
       }
