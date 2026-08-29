@@ -33,19 +33,7 @@ export default function QRAttendancePage() {
   const [selectedPeriod, setSelectedPeriod] = useState("")
   const [isTransitioning, setIsTransitioning] = useState(false)
 
-  // Auth session tracking
-  const sessionRef = useRef<any>(null)
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      sessionRef.current = session
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      sessionRef.current = session
-    })
-    return () => subscription.unsubscribe()
-  }, [])
 
   // Data State
   const [teacherId, setTeacherId] = useState<string | null>(null)
@@ -415,12 +403,14 @@ export default function QRAttendancePage() {
 
       if (sessionErr) throw sessionErr
 
-      await supabase.from("qr_tokens").insert({
+      const { error: tokenErr } = await supabase.from("qr_tokens").insert({
         session_id: session.id,
         token: token,
         expires_at: expiry,
         is_used: false,
       })
+
+      if (tokenErr) throw tokenErr
 
       setActiveSessionId(session.id)
       setActiveSessionOpenedAt(session.opened_at || null)
@@ -443,15 +433,32 @@ export default function QRAttendancePage() {
       const supabase = createClient()
       const newToken = crypto.randomUUID()
       const expiry = new Date(Date.now() + 15000).toISOString()
-      setCurrentQrToken(newToken)
 
-      await supabase
+      // 1. Mark existing tokens as used
+      const { error: markErr } = await supabase
         .from("qr_tokens")
         .update({ is_used: true })
         .eq("session_id", activeSessionId)
         .eq("is_used", false)
 
-      await supabase
+      if (markErr) {
+        console.warn("Failed to mark previous tokens used:", markErr)
+      }
+
+      // 2. Insert new token into qr_tokens table first
+      const { error: insertErr } = await supabase.from("qr_tokens").insert({
+        session_id: activeSessionId,
+        token: newToken,
+        expires_at: expiry,
+        is_used: false,
+      })
+
+      if (insertErr) {
+        throw new Error(`Token persistence failed: ${insertErr.message}`)
+      }
+
+      // 3. Update attendance_sessions with current_qr_token
+      const { error: sessionUpdateErr } = await supabase
         .from("attendance_sessions")
         .update({
           current_qr_token: newToken,
@@ -459,14 +466,17 @@ export default function QRAttendancePage() {
         })
         .eq("id", activeSessionId)
 
-      await supabase.from("qr_tokens").insert({
-        session_id: activeSessionId,
-        token: newToken,
-        expires_at: expiry,
-        is_used: false,
+      if (sessionUpdateErr) {
+        throw new Error(`Session update failed: ${sessionUpdateErr.message}`)
+      }
+
+      // 4. ONLY update React state with confirmed persisted token
+      setCurrentQrToken(newToken)
+    } catch (err: any) {
+      console.error("Failed to rotate QR:", err)
+      toast.error("Failed to refresh QR token", {
+        description: err?.message || "Database write error. Retrying on next interval...",
       })
-    } catch (err) {
-      console.error("Failed to rotate QR", err)
     }
   }
 

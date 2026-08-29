@@ -34,11 +34,14 @@ export function LoginForm({ onRoleChange }: LoginFormProps) {
     if (onRoleChange) onRoleChange(newRole)
   }
 
-  // Read error param from URL (e.g. ?error=disabled set by middleware)
+  // Read error param from URL (e.g. ?error=disabled or ?error=session_superseded)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get("error") === "disabled") {
+    const err = params.get("error")
+    if (err === "disabled") {
       setAuthError("Your account has been disabled. Please contact the admin.")
+    } else if (err === "session_superseded") {
+      setAuthError("Your previous session was signed out because this account logged in from another location.")
     }
   }, [])
 
@@ -102,8 +105,8 @@ export function LoginForm({ onRoleChange }: LoginFormProps) {
             ? "These credentials are not for an admin account."
             : "These credentials are not for a teacher account."
         )
-        await supabase.auth.signOut()
-        localStorage.removeItem("fa_user_role")
+        const { clearTabSession } = await import("@/lib/auth/session-manager")
+        await clearTabSession()
         setIsLoading(false)
         return
       }
@@ -118,21 +121,23 @@ export function LoginForm({ onRoleChange }: LoginFormProps) {
 
         if (teacherRecord && teacherRecord.is_active === false) {
           setAuthError("Your account has been disabled. Please contact the admin.")
-          await supabase.auth.signOut()
+          const { clearTabSession } = await import("@/lib/auth/session-manager")
+          await clearTabSession()
           setIsLoading(false)
           return
         }
       }
 
+      // Register this session as the authoritative active session for this account
+      const { registerActiveSession } = await import("@/lib/auth/session-manager")
+      await registerActiveSession(data.user.id, role)
+
       // Role-based redirect
       if (userRecord.role === "admin") {
-        localStorage.setItem("fa_user_role", "admin")
         router.push("/admin/dashboard")
       } else if (userRecord.role === "teacher" && userRecord.must_change_password) {
-        localStorage.setItem("fa_user_role", "teacher")
         router.push("/change-password")
       } else {
-        localStorage.setItem("fa_user_role", "teacher")
         router.push("/teacher/dashboard")
       }
     } catch {

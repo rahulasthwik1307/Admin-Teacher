@@ -117,7 +117,11 @@ export function QRSummaryState({
   const turnoutPct = total > 0 ? Math.round((presentCount / total) * 100) : 0
 
   async function handleOverride(studentId: string, newStatus: "present" | "absent") {
-    const studentName = students.find((s) => s.id === studentId)?.name || "Student"
+    const targetStudent = students.find((s) => s.id === studentId)
+    const studentName = targetStudent?.name || "Student"
+    const previousStatus = targetStudent?.status || "absent"
+
+    if (previousStatus === newStatus) return
 
     // Optimistic update
     setStudents((prev) =>
@@ -126,12 +130,14 @@ export function QRSummaryState({
 
     try {
       const supabase = createClient()
-      const { data: existing } = await supabase
+      const { data: existing, error: selectErr } = await supabase
         .from("period_attendance")
         .select("student_id")
         .eq("session_id", sessionId)
         .eq("student_id", studentId)
         .maybeSingle()
+
+      if (selectErr) throw selectErr
 
       if (existing) {
         const { error } = await supabase
@@ -162,12 +168,15 @@ export function QRSummaryState({
       }
 
       toast.success(`Marked ${newStatus} — ${studentName}`)
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      console.error("Manual override error:", err)
+      // Roll back explicitly to the captured previous status
       setStudents((prev) =>
-        prev.map((s) => (s.id === studentId ? { ...s, status: s.status } : s))
+        prev.map((s) => (s.id === studentId ? { ...s, status: previousStatus } : s))
       )
-      toast.error("Failed to update status")
+      toast.error("Failed to update status", {
+        description: err?.message || "Database update failed. Status has been reverted.",
+      })
     }
   }
 

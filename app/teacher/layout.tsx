@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react"
 import { TeacherSidebar } from "@/components/teacher-sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useSessionGuard } from "@/hooks/use-session-guard"
 
 const pageTitles: Record<string, string> = {
   "/teacher/dashboard": "Dashboard",
@@ -73,15 +74,8 @@ export default function TeacherLayout({
     return () => window.removeEventListener("popstate", handlePopState)
   }, [pathname])
 
-  useEffect(() => {
-    // Check stored role matches teacher portal
-    const storedRole = localStorage.getItem("fa_user_role")
-    if (storedRole && storedRole !== "teacher") {
-      // Role mismatch — clear and redirect to login
-      localStorage.removeItem("fa_user_role")
-      window.location.href = "/login"
-    }
-  }, [])
+  // Enforce teacher role and single-session guard
+  useSessionGuard("teacher")
 
   return (
     <div className="flex h-svh overflow-hidden bg-background">

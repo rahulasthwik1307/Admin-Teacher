@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "@/components/admin-sidebar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useSessionGuard } from "@/hooks/use-session-guard"
 
 const pageTitles: Record<string, string> = {
   "/admin/dashboard": "Admin Dashboard",
@@ -76,15 +77,8 @@ export default function AdminLayout({
     return () => window.removeEventListener("popstate", handlePopState)
   }, [pathname])
 
-  useEffect(() => {
-    // Check stored role matches admin portal
-    const storedRole = localStorage.getItem("fa_user_role")
-    if (storedRole && storedRole !== "admin") {
-      // Role mismatch — clear and redirect to login
-      localStorage.removeItem("fa_user_role")
-      window.location.href = "/login"
-    }
-  }, [])
+  // Enforce admin role and single-session guard
+  useSessionGuard("admin")
 
   return (
     <div className="flex h-svh overflow-hidden bg-background">

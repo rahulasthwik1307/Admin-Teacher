@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Users,
@@ -58,9 +58,17 @@ export function TeacherSidebar({
   collapsed = false,
   onToggleCollapse,
 }: TeacherSidebarProps) {
+  const router = useRouter()
   const pathname = usePathname()
   const [teacherName, setTeacherName] = useState("Teacher")
   const [teacherInitials, setTeacherInitials] = useState("T")
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    const { clearTabSession } = await import("@/lib/auth/session-manager")
+    await clearTabSession()
+    router.push("/login")
+  }
 
   useEffect(() => {
     async function loadTeacherName() {
@@ -296,25 +304,27 @@ export function TeacherSidebar({
       {/* ── Sign out ──────────────────────────────────────── */}
       <div className={cn("py-3", collapsed ? "px-2" : "px-3")}>
         {!collapsed ? (
-          <Link
-            href="/login"
-            className="group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 cursor-pointer"
           >
             <span className="flex size-7.5 shrink-0 items-center justify-center rounded-lg bg-muted/80 transition-all duration-200 group-hover:bg-rose-100 group-hover:text-rose-600 dark:group-hover:bg-rose-900/40">
               <LogOut className="size-4" />
             </span>
             <span className="transition-all duration-200 font-medium">Sign Out</span>
-          </Link>
+          </button>
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link
-                href="/login"
-                className="group flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="group flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 cursor-pointer"
                 aria-label="Sign Out"
               >
                 <LogOut className="size-4.5" />
-              </Link>
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={12}>
               Sign Out
