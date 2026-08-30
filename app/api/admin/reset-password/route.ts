@@ -41,8 +41,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use admin client to reset the user's password
     const adminClient = createAdminClient();
+
+    // Fetch target user/teacher details for audit trail
+    const { data: targetUser } = await adminClient
+      .from("users")
+      .select("full_name, role, teacher:teachers(teacher_id_code)")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const targetName = targetUser?.full_name ?? "Teacher";
+    const teacherCode = (targetUser?.teacher as any)?.teacher_id_code;
+    const targetLabel = teacherCode ? `${targetName} (${teacherCode})` : targetName;
+
+    // Use admin client to reset the user's password
     const { error: resetError } = await adminClient.auth.admin.updateUserById(
       userId,
       { password: "Teacher@1234" }
@@ -67,6 +79,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Log the successful password reset to system_logs
+    await adminClient.from("system_logs").insert({
+      performed_by: user.id,
+      action_type: "reset",
+      description: `Password reset for teacher: ${targetLabel}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (err) {

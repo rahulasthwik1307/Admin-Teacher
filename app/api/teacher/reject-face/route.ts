@@ -1,14 +1,31 @@
 import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const supabaseAdmin = createAdminClient();
   try {
+    const supabase = await createClient();
+    const {
+      data: { user: caller },
+    } = await supabase.auth.getUser();
+
     const { studentId } = await request.json();
 
     if (!studentId) {
       return Response.json({ error: "studentId is required" }, { status: 400 });
     }
+
+    // Fetch student info for audit trail before updating
+    const { data: studentInfo } = await supabaseAdmin
+      .from("students")
+      .select("roll_number, user:users(full_name)")
+      .eq("id", studentId)
+      .maybeSingle();
+
+    const studentName = (studentInfo as any)?.user?.full_name ?? "Student";
+    const rollNumber = studentInfo?.roll_number ?? "";
+    const studentLabel = rollNumber ? `${studentName} (${rollNumber})` : studentName;
 
     // Step 1: Delete all storage files for this student
     try {
@@ -51,6 +68,15 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("DB update error:", error);
       return Response.json({ error: "Failed to update student" }, { status: 500 });
+    }
+
+    // Log the rejection to system_logs
+    if (caller) {
+      await supabaseAdmin.from("system_logs").insert({
+        performed_by: caller.id,
+        action_type: "update",
+        description: `Student face registration rejected and reset: ${studentLabel}`,
+      });
     }
 
     return Response.json({ success: true });

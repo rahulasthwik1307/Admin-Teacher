@@ -43,6 +43,17 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
+    // Fetch user details for audit trail before deletion
+    const { data: targetUser } = await adminClient
+      .from("users")
+      .select("full_name, role, student:students(roll_number)")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const targetName = targetUser?.full_name ?? "User";
+    const rollNumber = (targetUser?.student as any)?.roll_number;
+    const targetLabel = rollNumber ? `${targetName} (${rollNumber})` : targetName;
+
     // Step 1: Delete all storage files for this student (entire folder)
     try {
       const { data: fileList, error: listErr } = await adminClient.storage
@@ -89,6 +100,13 @@ export async function POST(request: NextRequest) {
     if (userDelErr) {
       console.error("Delete user error (users table):", userDelErr)
     }
+
+    // Log the user deletion to system_logs
+    await adminClient.from("system_logs").insert({
+      performed_by: caller.id,
+      action_type: "delete",
+      description: `Student account deleted by ${callerProfile.role}: ${targetLabel}`,
+    });
 
     // Always return success so the frontend UI can refresh locally
     return NextResponse.json({ success: true });

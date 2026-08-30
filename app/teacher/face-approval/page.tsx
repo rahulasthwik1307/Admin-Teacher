@@ -149,6 +149,14 @@ export default function FaceApprovalPage() {
       const supabase = createClient()
       const { error } = await supabase.from("students").update({ is_approved: true }).eq("id", approveTarget.studentId)
       if (error) throw error
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "update",
+          description: `Student face registration approved by teacher: ${approveTarget.name}`,
+        })
+      }
       toast.success(`Approved face registration for ${approveTarget.name}`)
       const approvedStudent = pending.find((s) => s.id === approveTarget.studentId)
       if (approvedStudent) setApproved((prev) => [approvedStudent, ...prev])

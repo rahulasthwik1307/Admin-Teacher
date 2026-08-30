@@ -697,10 +697,10 @@ export default function AdminDashboardPage() {
                   const config = getActionConfig(item.actionType)
                   const IconComponent = config.icon
                   return (
-                    <div key={i} className="relative flex gap-3.5 pb-4 last:pb-0">
-                      {/* Vertical line connecting nodes */}
+                    <div key={i} className="relative flex gap-3.5 pb-5 last:pb-0">
+                      {/* Vertical line connecting nodes with intentional gap around icons */}
                       {i < recentActivity.length - 1 && (
-                        <div className="absolute left-3.75 top-7 h-full w-px bg-border" />
+                        <div className="absolute left-3.75 top-8.5 bottom-1 w-px -translate-x-1/2 bg-border" />
                       )}
                       {/* Node Icon */}
                       <div

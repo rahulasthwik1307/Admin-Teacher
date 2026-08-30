@@ -388,6 +388,16 @@ export default function TeacherManagementPage() {
           style: { background: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" },
         })
       } else {
+        const { data: { user: adminUser } } = await supabase.auth.getUser()
+        if (adminUser) {
+          const actionWord = newStatus ? "re-enabled" : "disabled"
+          await supabase.from("system_logs").insert({
+            performed_by: adminUser.id,
+            action_type: "update",
+            description: `Teacher account ${actionWord} for ${disableTarget.name} (${disableTarget.teacherId})`,
+          })
+        }
+
         const action = disableTarget.status === "Active" ? "disabled" : "enabled"
         toast.success(`${disableTarget.name}'s account has been ${action}.`)
         setTeachers((prev) =>

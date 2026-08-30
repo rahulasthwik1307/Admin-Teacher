@@ -25,11 +25,20 @@ export async function POST(request: Request) {
     // Set must_change_password flag
     await admin.from('users').update({ must_change_password: true }).eq('id', student_id)
 
+    // Fetch caller role for accurate audit trail
+    const { data: callerProfile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single()
+
+    const callerRole = callerProfile?.role ?? "teacher"
+
     // Log it
     await admin.from('system_logs').insert({
       performed_by: user.id,
-      action_type: 'security',
-      description: `Student password reset by teacher: ${roll_number}`,
+      action_type: 'reset',
+      description: `Student password reset by ${callerRole}: ${roll_number}`,
     })
 
     return NextResponse.json({ success: true })
