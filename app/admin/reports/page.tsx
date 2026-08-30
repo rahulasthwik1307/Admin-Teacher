@@ -590,7 +590,7 @@ export default function ReportsPage() {
                     </SelectItem>
                   )}
                   {departmentsList.map((d: any) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name} ({d.code})</SelectItem>
+                    <SelectItem key={d.id} value={d.id}>{d.code}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

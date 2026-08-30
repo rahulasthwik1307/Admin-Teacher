@@ -1111,7 +1111,7 @@ export default function AdminFaceApprovalPage() {
                 <SelectItem value="all">All Departments</SelectItem>
                 {deptOptions.map((dept) => (
                   <SelectItem key={dept.id} value={dept.code}>
-                    {dept.name} ({dept.code})
+                    {dept.code}
                   </SelectItem>
                 ))}
               </SelectContent>

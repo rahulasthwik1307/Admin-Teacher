@@ -535,7 +535,7 @@ export default function TeacherAssignmentsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {deptOptions.map(d => <SelectItem key={d.code} value={d.code}>{d.name} ({d.code})</SelectItem>)}
+              {deptOptions.map(d => <SelectItem key={d.code} value={d.code}>{d.code}</SelectItem>)}
             </SelectContent>
           </Select>
 

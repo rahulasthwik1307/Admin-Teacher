@@ -66,6 +66,7 @@ interface Teacher {
   initials: string
   teacherId: string
   department: string
+  departmentCode: string
   departmentId: string
   subjects: number
   status: "Active" | "Disabled"
@@ -140,7 +141,7 @@ export default function TeacherManagementPage() {
           is_active,
           title,
           department_id,
-          department:departments ( id, name ),
+          department:departments ( id, name, code ),
           user:users ( full_name, email, contact_email )
         `)
         .order("created_at", { ascending: false })
@@ -158,6 +159,7 @@ export default function TeacherManagementPage() {
         initials: getInitials(t.user?.full_name ?? ""),
         teacherId: t.teacher_id_code,
         department: t.department?.name ?? "Unassigned",
+        departmentCode: t.department?.code ?? t.department?.name ?? "Unassigned",
         departmentId: t.department?.id ?? "unassigned",
         subjects: 0,
         status: t.is_active ? "Active" : "Disabled",
@@ -201,11 +203,17 @@ export default function TeacherManagementPage() {
         (t) =>
           t.name.toLowerCase().includes(q) ||
           t.teacherId.toLowerCase().includes(q) ||
-          t.department.toLowerCase().includes(q)
+          t.department.toLowerCase().includes(q) ||
+          t.departmentCode.toLowerCase().includes(q)
       )
     }
     if (selectedDeptFilter !== "all") {
-      result = result.filter((t) => t.department === selectedDeptFilter)
+      result = result.filter(
+        (t) =>
+          t.departmentCode === selectedDeptFilter ||
+          t.department === selectedDeptFilter ||
+          t.departmentId === selectedDeptFilter
+      )
     }
     return result
   }, [teachers, searchQuery, selectedDeptFilter])
@@ -214,7 +222,7 @@ export default function TeacherManagementPage() {
   const groupedTeachers = useMemo(() => {
     const groups: Record<string, Teacher[]> = {}
     for (const t of filteredTeachers) {
-      const key = t.department || "Unassigned"
+      const key = t.departmentCode || t.department || "Unassigned"
       if (!groups[key]) groups[key] = []
       groups[key].push(t)
     }
@@ -227,7 +235,7 @@ export default function TeacherManagementPage() {
   }, [filteredTeachers])
 
   const uniqueDepts = useMemo(
-    () => [...new Set(teachers.map((t) => t.department))].sort(),
+    () => [...new Set(teachers.map((t) => t.departmentCode || t.department))].sort(),
     [teachers]
   )
 
