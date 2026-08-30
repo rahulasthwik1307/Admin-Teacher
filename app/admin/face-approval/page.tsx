@@ -668,24 +668,183 @@ export default function AdminFaceApprovalPage() {
     setSortBy("newest")
   }
 
+  /* ---------- Stat cards ---------- */
+  const statCards = [
+    {
+      label: "Total Students",
+      value: campusStats.total,
+      icon: Users,
+      accent: "border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card hover:border-sky-300 dark:border-sky-900/50 dark:from-sky-950/20",
+      iconColor: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+      tag: "Enrolled",
+      tagColor: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+      trend: "Total student population",
+    },
+    {
+      label: "Active Roster",
+      value: campusStats.active,
+      icon: UserCheck,
+      accent: "border-teal-200/80 bg-linear-to-b from-teal-500/5 via-card to-card hover:border-teal-300 dark:border-teal-900/50 dark:from-teal-950/20",
+      iconColor: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+      tag: "Active",
+      tagColor: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
+      trend: "Active student records",
+    },
+    {
+      label: "Pending Approval",
+      value: campusStats.pending,
+      icon: Clock,
+      accent:
+        campusStats.pending > 0
+          ? "border-amber-300/80 bg-linear-to-b from-amber-500/10 via-card to-card hover:border-amber-400 dark:border-amber-800/60 dark:from-amber-950/30"
+          : "border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card hover:border-amber-300 dark:border-amber-900/50 dark:from-amber-950/20",
+      iconColor:
+        campusStats.pending > 0
+          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 animate-pulse"
+          : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      tag: "Queue",
+      tagColor: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      trend: "Awaiting verification",
+    },
+    {
+      label: "Approved",
+      value: campusStats.approved,
+      icon: ShieldCheck,
+      accent: "border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card hover:border-emerald-300 dark:border-emerald-900/50 dark:from-emerald-950/20",
+      iconColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+      tag: "Verified",
+      tagColor: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+      trend: "Biometrics verified",
+    },
+    {
+      label: "Rejected",
+      value: campusStats.rejected,
+      icon: X,
+      accent: "border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card hover:border-rose-300 dark:border-rose-900/50 dark:from-rose-950/20",
+      iconColor: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+      tag: "Purged",
+      tagColor: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+      trend: "Rejected & removed",
+    },
+    {
+      label: "Not Registered",
+      value: campusStats.notRegistered,
+      icon: UserX,
+      accent: "border-slate-200/80 bg-linear-to-b from-slate-500/5 via-card to-card hover:border-slate-300 dark:border-slate-800 dark:from-slate-900/30",
+      iconColor: "bg-muted text-muted-foreground",
+      tag: "No Capture",
+      tagColor: "bg-muted text-muted-foreground",
+      trend: "Face capture pending",
+    },
+  ]
+
   return (
-    <div className="flex flex-col gap-5">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-border/70 pb-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Biometric Face Verification Workspace
-          </h1>
-          <p className="text-xs text-muted-foreground sm:text-sm mt-0.5">
-            Campus-wide biometric facial template enrollment, verification queue, and cohort breakdown
-          </p>
+    <div className="flex flex-col gap-6">
+      {/* ── Stat Cards (Consistent with Academic Structure & Teacher Assignments) ── */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 lg:gap-4">
+          {statCards.map((s) => (
+            <div
+              key={s.label}
+              className={cn(
+                "group relative overflow-hidden rounded-xl border p-3.5 lg:p-4 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+                s.accent
+              )}
+            >
+              <div className="flex items-center justify-between mb-2.5">
+                <div className={cn("flex size-8.5 items-center justify-center rounded-lg", s.iconColor)}>
+                  <s.icon className="size-4.5" />
+                </div>
+                <span className={cn("rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider", s.tagColor)}>
+                  {s.tag}
+                </span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <div className="text-2xl lg:text-3xl font-extrabold tracking-tight text-foreground leading-none">
+                  {s.value}
+                </div>
+                <div className="text-xs font-semibold text-foreground/80 mt-1">{s.label}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{s.trend}</div>
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="flex items-center gap-2">
+      )}
+
+      {/* ── Segmented Navigation & Action Bar ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {/* Segmented view tabs */}
+        <div className="inline-flex flex-wrap items-center gap-1.5 rounded-xl bg-muted/60 p-1.5 border border-border/70 shadow-2xs">
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
+              activeTab === "pending"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <Clock className="size-3.5 text-amber-500" />
+            <span>Pending Queue</span>
+            <span
+              className={cn(
+                "flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold min-w-5 tabular-nums transition-colors",
+                activeTab === "pending"
+                  ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {campusStats.pending}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("approved")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
+              activeTab === "approved"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <ShieldCheck className="size-3.5 text-emerald-500" />
+            <span>Approved Directory</span>
+            <span
+              className={cn(
+                "flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold min-w-5 tabular-nums transition-colors",
+                activeTab === "approved"
+                  ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {campusStats.approved}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("all")}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
+              activeTab === "all"
+                ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+          >
+            <Users className="size-3.5 text-primary" />
+            <span>All Biometrics Roster</span>
+            <span className="flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-extrabold text-muted-foreground min-w-5 tabular-nums">
+              {campusStats.total}
+            </span>
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowCohortBreakdown((prev) => !prev)}
-            className="rounded-xl text-xs font-semibold gap-1.5 h-9 cursor-pointer"
+            className="rounded-xl text-xs font-semibold gap-1.5 h-9.5 px-3.5 shadow-2xs cursor-pointer border-border/80 bg-card hover:bg-muted/80"
           >
             <Layers className="size-3.5 text-primary" />
             <span>{showCohortBreakdown ? "Hide Cohort Tree" : "View Cohort Breakdown"}</span>
@@ -695,134 +854,13 @@ export default function AdminFaceApprovalPage() {
             size="sm"
             onClick={fetchStudentsAndMetadata}
             disabled={loading}
-            className="rounded-xl text-xs font-semibold gap-1.5 h-9 shadow-2xs cursor-pointer"
+            className="rounded-xl text-xs font-semibold gap-1.5 h-9.5 px-3.5 shadow-2xs cursor-pointer border-border/80 bg-card hover:bg-muted/80"
           >
             <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
             <span>Refresh</span>
           </Button>
         </div>
       </div>
-
-      {/* ── 1. Compact Campus Summary Cards (6-Metrics Strip) ── */}
-      {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Total Students */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-[11px] font-semibold">Total Students</span>
-              <Users className="size-3.5 text-primary" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-foreground">
-                {campusStats.total}
-              </span>
-              <span className="text-[10px] text-muted-foreground">enrolled</span>
-            </div>
-          </div>
-
-          {/* Active Students */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-[11px] font-semibold">Active Roster</span>
-              <UserCheck className="size-3.5 text-emerald-600" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-foreground">
-                {campusStats.active}
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                active
-              </span>
-            </div>
-          </div>
-
-          {/* Pending Approval (Primary Action Metric) */}
-          <div
-            className={cn(
-              "rounded-2xl border p-3.5 shadow-2xs transition-colors",
-              campusStats.pending > 0
-                ? "border-amber-300 bg-amber-500/10 dark:border-amber-700/60 dark:bg-amber-950/30"
-                : "border-border bg-card"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <span
-                className={cn(
-                  "text-[11px] font-semibold",
-                  campusStats.pending > 0
-                    ? "text-amber-700 dark:text-amber-300"
-                    : "text-muted-foreground"
-                )}
-              >
-                Pending Approval
-              </span>
-              <Clock
-                className={cn(
-                  "size-3.5",
-                  campusStats.pending > 0 ? "text-amber-600 animate-pulse" : "text-muted-foreground"
-                )}
-              />
-            </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span
-                className={cn(
-                  "text-2xl font-bold tracking-tight",
-                  campusStats.pending > 0 ? "text-amber-700 dark:text-amber-300" : "text-foreground"
-                )}
-              >
-                {campusStats.pending}
-              </span>
-              <span className="text-[10px] text-muted-foreground">in queue</span>
-            </div>
-          </div>
-
-          {/* Approved Biometrics */}
-          <div className="rounded-2xl border border-emerald-200/80 bg-emerald-500/5 p-3.5 shadow-2xs dark:border-emerald-900/60 dark:bg-emerald-950/20">
-            <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300">
-              <span className="text-[11px] font-semibold">Approved</span>
-              <ShieldCheck className="size-3.5 text-emerald-600" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-foreground">
-                {campusStats.approved}
-              </span>
-              <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                verified
-              </span>
-            </div>
-          </div>
-
-          {/* Rejected Biometrics */}
-          <div className="rounded-2xl border border-rose-200/80 bg-rose-500/5 p-3.5 shadow-2xs dark:border-rose-900/60 dark:bg-rose-950/20">
-            <div className="flex items-center justify-between text-rose-700 dark:text-rose-300">
-              <span className="text-[11px] font-semibold">Rejected</span>
-              <X className="size-3.5 text-rose-600" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-foreground">
-                {campusStats.rejected}
-              </span>
-              <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold">
-                purged
-              </span>
-            </div>
-          </div>
-
-          {/* Not Registered */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-[11px] font-semibold">Not Registered</span>
-              <UserX className="size-3.5 text-muted-foreground" />
-            </div>
-            <div className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tracking-tight text-foreground">
-                {campusStats.notRegistered}
-              </span>
-              <span className="text-[10px] text-muted-foreground">no capture</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── 2. Biometric Status Overview Distribution Bar ── */}
       {!loading && campusStats.total > 0 && (
@@ -1008,70 +1046,7 @@ export default function AdminFaceApprovalPage() {
         </div>
       )}
 
-      {/* ── 4. Segmented View Navigation ── */}
-      <div className="flex items-center gap-2 rounded-2xl bg-muted/60 p-1.5 border border-border/80 shadow-2xs self-start">
-        <button
-          onClick={() => setActiveTab("pending")}
-          className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
-            activeTab === "pending"
-              ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          )}
-        >
-          <Clock className="size-3.5 text-amber-500" />
-          <span>Pending Queue</span>
-          <span
-            className={cn(
-              "flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold min-w-5 tabular-nums transition-colors",
-              activeTab === "pending"
-                ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            {campusStats.pending}
-          </span>
-        </button>
 
-        <button
-          onClick={() => setActiveTab("approved")}
-          className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
-            activeTab === "approved"
-              ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          )}
-        >
-          <ShieldCheck className="size-3.5 text-emerald-500" />
-          <span>Approved Directory</span>
-          <span
-            className={cn(
-              "flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-extrabold min-w-5 tabular-nums transition-colors",
-              activeTab === "approved"
-                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                : "bg-muted text-muted-foreground"
-            )}
-          >
-            {campusStats.approved}
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("all")}
-          className={cn(
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
-            activeTab === "all"
-              ? "bg-card text-foreground shadow-xs ring-1 ring-border/80"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
-          )}
-        >
-          <Users className="size-3.5 text-primary" />
-          <span>All Biometrics Roster</span>
-          <span className="flex items-center justify-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-extrabold text-muted-foreground min-w-5 tabular-nums">
-            {campusStats.total}
-          </span>
-        </button>
-      </div>
 
       {/* ── 5. Compact Filter & Search Workspace ── */}
       <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3.5 sm:p-4 shadow-2xs">
