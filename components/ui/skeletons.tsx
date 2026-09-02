@@ -568,7 +568,7 @@ export function AttendanceHistorySkeleton() {
             <Skeleton className="h-4 w-16" />
           </div>
           {/* Sections within day */}
-          <div className="flex flex-col gap-3 pl-3 border-l-2 border-border">
+          <div className="flex flex-col gap-3">
             {[1, 2].map((secIndex) => (
               <div key={secIndex} className="flex flex-col">
                 {/* Collapsible section row header */}

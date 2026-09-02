@@ -43,21 +43,47 @@ export async function POST(request: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // Fetch target user/teacher details for audit trail
-    const { data: targetUser } = await adminClient
+    // Fetch target user details for role-specific password and audit trail
+    const { data: targetUser, error: userError } = await adminClient
       .from("users")
-      .select("full_name, role, teacher:teachers(teacher_id_code)")
+      .select(`
+        id, full_name, role,
+        teacher:teachers(teacher_id_code),
+        student:students(roll_number)
+      `)
       .eq("id", userId)
       .maybeSingle();
 
-    const targetName = targetUser?.full_name ?? "Teacher";
-    const teacherCode = (targetUser?.teacher as any)?.teacher_id_code;
-    const targetLabel = teacherCode ? `${targetName} (${teacherCode})` : targetName;
+    if (userError || !targetUser) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
 
-    // Use admin client to reset the user's password
+    const role = targetUser.role;
+    if (role !== "student" && role !== "teacher") {
+      return NextResponse.json(
+        { error: "Invalid target user role for password reset" },
+        { status: 400 }
+      );
+    }
+
+    const isStudent = role === "student";
+    const defaultPassword = isStudent ? "Student@1234" : "Teacher@1234";
+
+    const studentRoll = (targetUser.student as any)?.roll_number;
+    const teacherCode = (targetUser.teacher as any)?.teacher_id_code;
+    const targetLabel = isStudent
+      ? `${targetUser.full_name || "Student"} (${studentRoll || "No Roll"})`
+      : teacherCode
+      ? `${targetUser.full_name || "Teacher"} (${teacherCode})`
+      : targetUser.full_name || "Teacher";
+
+    // Use admin client to reset the user's password in Supabase Auth
     const { error: resetError } = await adminClient.auth.admin.updateUserById(
       userId,
-      { password: "Teacher@1234" }
+      { password: defaultPassword }
     );
 
     if (resetError) {
@@ -84,7 +110,7 @@ export async function POST(request: NextRequest) {
     await adminClient.from("system_logs").insert({
       performed_by: user.id,
       action_type: "reset",
-      description: `Password reset for teacher: ${targetLabel}`,
+      description: `Password reset for ${isStudent ? "student" : "teacher"}: ${targetLabel}`,
     });
 
     return NextResponse.json({ success: true });
@@ -96,3 +122,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

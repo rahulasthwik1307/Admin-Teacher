@@ -1,103 +1,235 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const classId = searchParams.get("class_id")
-  const sessionId = searchParams.get("session_id")
+  try {
+    const supabase = await createClient()
 
-  if (!classId || !sessionId) {
-    return NextResponse.json({ error: "class_id and session_id required" }, { status: 400 })
-  }
+    // 1. Authenticate caller from session / Bearer header
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
 
-  // 1. Fetch all students in the class
-  const { data: classStudents, error: studentsErr } = await supabaseAdmin
-    .from("students")
-    .select("id, roll_number")
-    .eq("class_id", classId)
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
 
-  if (studentsErr) {
-    console.error("student-list: error fetching class students:", studentsErr)
-  }
+    // 2. Verify caller role
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single()
 
-  if (studentsErr || !classStudents || classStudents.length === 0) {
-    return NextResponse.json({ students: [] })
-  }
+    const role = userProfile?.role
+    if (role !== "teacher" && role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden: Teacher access required" },
+        { status: 403 }
+      )
+    }
 
-  // 2. Fetch names from users table in a single bulk query
-  const studentIds = classStudents.map((s: any) => s.id)
-  const { data: usersData, error: usersErr } = await supabaseAdmin
-    .from("users")
-    .select("id, full_name")
-    .in("id", studentIds)
+    // 3. If teacher, verify is_active status
+    if (role === "teacher") {
+      const { data: teacherProfile } = await supabase
+        .from("teachers")
+        .select("is_active")
+        .eq("id", user.id)
+        .maybeSingle()
 
-  if (usersErr) {
-    console.error("student-list: error fetching user names:", usersErr)
-  }
+      if (teacherProfile && teacherProfile.is_active === false) {
+        return NextResponse.json(
+          { error: "Teacher account is disabled" },
+          { status: 403 }
+        )
+      }
+    }
 
-  const nameMap = new Map<string, string>()
-  if (usersData) {
-    usersData.forEach((u: any) => {
-      if (u.full_name) {
-        nameMap.set(u.id, u.full_name)
+    // 4. Resolve authorized class IDs for this teacher
+    let authorizedClassIds: string[] = []
+
+    if (role === "admin") {
+      // Admin retains campus-wide access
+      const { data: allClasses } = await supabase
+        .from("classes")
+        .select("id")
+      authorizedClassIds = (allClasses ?? []).map((c: any) => c.id)
+    } else {
+      // Teacher: resolve strictly from teacher_assignments
+      const { data: assignments } = await supabase
+        .from("teacher_assignments")
+        .select("class_id")
+        .eq("teacher_id", user.id)
+
+      authorizedClassIds = Array.from(
+        new Set(
+          (assignments ?? [])
+            .map((a: any) => a.class_id)
+            .filter(Boolean)
+        )
+      )
+    }
+
+    if (authorizedClassIds.length === 0) {
+      return NextResponse.json({ students: [] })
+    }
+
+    // 5. Intersect client query params with server-derived authorized scope
+    const { searchParams } = new URL(req.url)
+    const requestedClassId = searchParams.get("class_id")
+    const sessionId = searchParams.get("session_id")
+
+    let targetClassIds: string[] = authorizedClassIds
+
+    if (requestedClassId) {
+      // Reject / empty if requested class is outside teacher's authorized assignments
+      if (!authorizedClassIds.includes(requestedClassId)) {
+        return NextResponse.json({ students: [] })
+      }
+      targetClassIds = [requestedClassId]
+    }
+
+    // If session_id is supplied, verify session ownership / assignment
+    if (sessionId && role === "teacher") {
+      const { data: session } = await supabase
+        .from("attendance_sessions")
+        .select("id, teacher_id, class_id")
+        .eq("id", sessionId)
+        .maybeSingle()
+
+      if (
+        session &&
+        session.teacher_id !== user.id &&
+        !authorizedClassIds.includes(session.class_id)
+      ) {
+        return NextResponse.json({ students: [] })
+      }
+    }
+
+    // 6. Query students strictly within the authorized class IDs
+    const { data: studentRows, error: studentsErr } = await supabase
+      .from("students")
+      .select(`
+        id,
+        roll_number,
+        year,
+        is_active,
+        is_approved,
+        is_rejected,
+        embedding_a,
+        registration_photo_url,
+        class_id,
+        created_at,
+        class:classes ( id, name, section, year, department:departments ( code ) ),
+        user:users ( full_name )
+      `)
+      .in("class_id", targetClassIds)
+      .order("created_at", { ascending: false })
+
+    if (studentsErr) {
+      console.error("student-list: error fetching students:", studentsErr)
+      return NextResponse.json(
+        { error: "Failed to fetch students" },
+        { status: 500 }
+      )
+    }
+
+    if (!studentRows || studentRows.length === 0) {
+      return NextResponse.json({ students: [] })
+    }
+
+    // 7. If session_id is supplied, fetch attendance records for this session
+    const attendanceMap = new Map<string, { status: string; scanned_at?: string }>()
+    if (sessionId) {
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from("period_attendance")
+        .select("student_id, status, scanned_at, face_verified")
+        .eq("session_id", sessionId)
+
+      if (attendanceError) {
+        console.error(
+          "student-list: error fetching attendance records:",
+          attendanceError
+        )
+      }
+
+      if (attendanceData) {
+        attendanceData.forEach((a: any) =>
+          attendanceMap.set(a.student_id, a)
+        )
+      }
+    }
+
+    // 8. Build formatted student response payload
+    const students = studentRows.map((s: any) => {
+      const classData = s.class as any
+      const deptCode =
+        classData?.department?.code ?? classData?.name ?? ""
+      const section = classData?.section ?? ""
+      const className = classData ? `${deptCode}-${section}` : "—"
+      const hasEmbedding = !!s.embedding_a
+      const isApproved = s.is_approved === true
+      const isRejected = s.is_rejected === true
+      const faceStatus: "Approved" | "Pending" | "Rejected" | "None" =
+        isRejected
+          ? "Rejected"
+          : !hasEmbedding
+          ? "None"
+          : isApproved
+          ? "Approved"
+          : "Pending"
+
+      const name = s.user?.full_name || "Unknown Student"
+      const initials = name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .substring(0, 2)
+        .toUpperCase()
+
+      const att = attendanceMap.get(s.id)
+      const status: string = att ? att.status : "pending"
+      const time: string | undefined = att?.scanned_at
+        ? att.scanned_at
+        : undefined
+
+      return {
+        id: s.id,
+        name,
+        roll: s.roll_number,
+        initials,
+        class: className,
+        classId: s.class_id,
+        year: s.year ?? classData?.year ?? "",
+        faceStatus,
+        photoUrl: isApproved ? (s.registration_photo_url ?? null) : null,
+        status,
+        time,
       }
     })
-  }
 
-  // 3. Fetch attendance records for this session
-  const { data: attendanceData, error: attendanceError } = await supabaseAdmin
-    .from('period_attendance')
-    .select('student_id, status, scanned_at, face_verified')
-    .eq('session_id', sessionId)
-
-  if (attendanceError) {
-    console.error("student-list: error fetching attendance records:", attendanceError)
-  }
-
-  const attendanceMap = new Map()
-  if (attendanceData) {
-    attendanceData.forEach((a: any) => attendanceMap.set(a.student_id, a))
-  }
-
-  // 4. Merge all results
-  const students = classStudents.map((s: any) => {
-    const att = attendanceMap.get(s.id)
-    let status: string = "pending"
-    let time: string | undefined = undefined
-
-    if (att) {
-      status = att.status
-      if (att.scanned_at) {
-        time = att.scanned_at
+    // Sort: if session attendance, present first, then absent, then pending, then failed
+    if (sessionId) {
+      const order: Record<string, number> = {
+        present: 0,
+        absent: 1,
+        pending: 2,
+        failed: 3,
       }
+      students.sort(
+        (a: any, b: any) =>
+          (order[a.status] ?? 2) - (order[b.status] ?? 2)
+      )
     }
 
-    const name = nameMap.get(s.id) || "Unknown Student"
-    const initials = name
-      .split(" ")
-      .map((n: string) => n[0])
-      .join("")
-      .substring(0, 2)
-      .toUpperCase()
-
-    return {
-      id: s.id,
-      name,
-      roll: s.roll_number,
-      initials,
-      status,
-      time,
-    }
-  })
-
-  // Sort: present first, then absent, then pending
-  const order: Record<string, number> = { present: 0, absent: 1, pending: 2, failed: 3 }
-  students.sort((a: any, b: any) => (order[a.status] ?? 2) - (order[b.status] ?? 2))
-
-  return NextResponse.json({ students })
+    return NextResponse.json({ students })
+  } catch (error: any) {
+    console.error("student-list API error:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
 }
+

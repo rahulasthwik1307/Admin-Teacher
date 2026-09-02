@@ -378,7 +378,7 @@ export default function AdminFaceApprovalPage() {
     if (!rejectTarget) return
     setActionLoading(true)
     try {
-      const response = await fetch("/api/teacher/reject-face", {
+      const response = await fetch("/api/admin/reject-face", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ studentId: rejectTarget.studentId }),

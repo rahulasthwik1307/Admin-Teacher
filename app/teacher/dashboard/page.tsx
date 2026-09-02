@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion, type Variants } from "framer-motion"
 import { DashboardStats } from "@/components/teacher/dashboard-stats"
-import { FaceApprovalAlert } from "@/components/teacher/face-approval-alert"
 import { MissedAttendanceAlert } from "@/components/teacher/missed-attendance-alert"
 import { MyClasses } from "@/components/teacher/my-classes"
 import { MyTimetable } from "@/components/teacher/my-timetable"
@@ -45,8 +44,6 @@ export default function TeacherDashboard() {
       <motion.div variants={itemVariants}>
         <DashboardStats />
       </motion.div>
-
-      <FaceApprovalAlert />
 
       <motion.div variants={itemVariants}>
         <MissedAttendanceAlert />

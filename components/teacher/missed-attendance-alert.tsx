@@ -1,86 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { AlertTriangle, ArrowRight } from "lucide-react"
 import { MissedAttendanceAlertSkeleton } from "@/components/ui/skeletons"
+import { useMissedAttendance } from "@/hooks/use-missed-attendance"
 
 export function MissedAttendanceAlert() {
-  const [count, setCount] = useState(0)
-  const [loading, setLoading] = useState(true)
   const router = useRouter()
-
-  useEffect(() => {
-    async function fetchCount() {
-      try {
-        const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) { setLoading(false); return }
-
-        const todayStr = new Date().toISOString().split("T")[0]
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        const startStr = thirtyDaysAgo.toISOString().split("T")[0]
-
-        const { data: timetable } = await supabase
-          .from("timetables")
-          .select("day_of_week, subject_id, class_id, period_id")
-          .eq("teacher_id", user.id)
-
-        if (!timetable || timetable.length === 0) {
-          setCount(0)
-          return
-        }
-
-        const { data: existingSessions } = await supabase
-          .from("attendance_sessions")
-          .select("subject_id, class_id, period_id, session_date")
-          .eq("teacher_id", user.id)
-          .gte("session_date", startStr)
-          .lte("session_date", todayStr)
-
-        const existingKeys = new Set(
-          (existingSessions || []).map(
-            (s: any) => `${s.session_date}__${s.subject_id}__${s.class_id}__${s.period_id}`
-          )
-        )
-
-        let missed = 0
-        const cursor = new Date(thirtyDaysAgo)
-        const today = new Date()
-        today.setHours(23, 59, 59, 999)
-
-        while (cursor <= today) {
-          const dayOfWeek = cursor.getDay() === 0 ? 7 : cursor.getDay()
-          if (dayOfWeek !== 7) {
-            const dateStr = cursor.toISOString().split("T")[0]
-            const isToday = dateStr === todayStr
-            for (const slot of timetable) {
-              if ((slot as any).day_of_week !== dayOfWeek) continue
-              const key = `${dateStr}__${slot.subject_id}__${slot.class_id}__${slot.period_id}`
-              if (existingKeys.has(key)) continue
-              if (isToday) {
-                // Skip future periods today
-                continue
-              }
-              missed++
-            }
-          }
-          cursor.setDate(cursor.getDate() + 1)
-        }
-
-        setCount(missed)
-      } catch (e) {
-        console.error("MissedAttendanceAlert error:", e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchCount()
-  }, [])
+  const { data: missedSlots, isLoading: loading } = useMissedAttendance("180")
 
   if (loading) return <MissedAttendanceAlertSkeleton />
+  const count = missedSlots?.length ?? 0
   if (count === 0) return null
 
   return (
@@ -97,14 +27,14 @@ export function MissedAttendanceAlert() {
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                {count} Missed Attendance Session{count !== 1 ? "s" : ""}
+                {count} Pending Missed Session{count !== 1 ? "s" : ""}
               </span>
               <span className="rounded-full bg-amber-500/20 px-2 py-0.2 text-[10px] font-extrabold uppercase tracking-wide text-amber-800 dark:text-amber-300">
                 Action Required
               </span>
             </div>
             <span className="text-xs text-amber-700/90 dark:text-amber-400">
-              Timetable periods passed without recorded attendance in the last 30 days
+              Timetable sessions passed without recorded attendance requiring review
             </span>
           </div>
         </div>
@@ -120,3 +50,4 @@ export function MissedAttendanceAlert() {
     </div>
   )
 }
+

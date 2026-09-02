@@ -10,98 +10,82 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const { class_id, subject_id, period_id, session_date, attendance } = body
-    // attendance = [{ student_id: string, status: "present" | "absent" }]
 
-    if (!class_id || !subject_id || !period_id || !session_date || !attendance) {
+    if (!class_id || !subject_id || !period_id || !session_date || !attendance || !Array.isArray(attendance)) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
     const admin = createAdminClient()
 
-    // Server-side safety net: only accept attendance rows for students who
-    // were actually enrolled in this class by the session date. Even though
-    // the UI already filters this client-side, never trust client input for
-    // who gets marked present/absent in a permanent record.
-    const { data: validRoster } = await admin
-      .from("students")
-      .select("id")
-      .eq("class_id", class_id)
-      .eq("is_approved", true)
-      .lte("created_at", `${session_date}T23:59:59`)
+    // 1. Explicit Teacher Role & Active Status Verification
+    const { data: userProfile, error: profileError } = await admin
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single()
 
-    const validStudentIds = new Set((validRoster ?? []).map((s: any) => s.id))
-    const filteredAttendance = (attendance as { student_id: string; status: string }[]).filter(
-      (a) => validStudentIds.has(a.student_id)
-    )
-
-    if (filteredAttendance.length === 0) {
-      return NextResponse.json({ error: "No valid enrolled students in this attendance payload" }, { status: 400 })
+    if (profileError || !userProfile || userProfile.role !== "teacher") {
+      return NextResponse.json({ error: "Forbidden: Teacher access required" }, { status: 403 })
     }
 
-    // Check if a session already exists for this slot
-    const { data: existing } = await admin
-      .from("attendance_sessions")
+    const { data: teacherProfile } = await admin
+      .from("teachers")
+      .select("is_active")
+      .eq("id", user.id)
+      .single()
+
+    if (teacherProfile && teacherProfile.is_active === false) {
+      return NextResponse.json({ error: "Forbidden: Teacher account is inactive" }, { status: 403 })
+    }
+
+    // 2. Server-Authoritative Teacher Assignment Authorization
+    const { data: assignment, error: assignmentError } = await admin
+      .from("teacher_assignments")
       .select("id")
       .eq("teacher_id", user.id)
       .eq("class_id", class_id)
       .eq("subject_id", subject_id)
-      .eq("period_id", period_id)
-      .eq("session_date", session_date)
       .maybeSingle()
 
-    if (existing) {
-      return NextResponse.json({ error: "Session already exists for this slot" }, { status: 409 })
+    if (assignmentError || !assignment) {
+      return NextResponse.json(
+        { error: "Forbidden: You are not assigned to teach this subject and class cohort" },
+        { status: 403 }
+      )
     }
 
-    const now = new Date().toISOString()
+    // 3. Execute atomic PostgreSQL transaction RPC with Fail-Closed validation
+    const { data: rpcResult, error: rpcError } = await admin.rpc(
+      "save_missed_attendance_session",
+      {
+        p_teacher_id: user.id,
+        p_class_id: class_id,
+        p_subject_id: subject_id,
+        p_period_id: period_id,
+        p_session_date: session_date,
+        p_attendance: attendance,
+      }
+    )
 
-    // Create the attendance session as finalized
-    const { data: session, error: sessionError } = await admin
-      .from("attendance_sessions")
-      .insert({
-        teacher_id: user.id,
-        class_id,
-        subject_id,
-        period_id,
-        session_date,
-        status: "finalized",
-        opened_at: now,
-        finalized_at: now,
-      })
-      .select("id")
-      .single()
-
-    if (sessionError || !session) {
-      return NextResponse.json({ error: "Failed to create session" }, { status: 500 })
-    }
-
-    // Insert period_attendance for each student — using the server-filtered list
-    const attendanceRows = filteredAttendance.map((a) => ({
-      session_id: session.id,
-      student_id: a.student_id,
-      status: a.status,
-    }))
-
-    const { error: attendanceError } = await admin
-      .from("period_attendance")
-      .insert(attendanceRows)
-
-    if (attendanceError) {
-      // Rollback session
-      await admin.from("attendance_sessions").delete().eq("id", session.id)
+    if (rpcError) {
+      const msg = rpcError.message || ""
+      if (msg.includes("Forbidden")) {
+        return NextResponse.json({ error: msg }, { status: 403 })
+      }
+      if (msg.includes("Conflict")) {
+        return NextResponse.json({ error: msg }, { status: 409 })
+      }
+      if (msg.includes("Bad Request")) {
+        return NextResponse.json({ error: msg }, { status: 400 })
+      }
+      console.error("save_missed_attendance_session RPC error:", rpcError)
       return NextResponse.json({ error: "Failed to save attendance" }, { status: 500 })
     }
 
-    // Log to system_logs
-    await admin.from("system_logs").insert({
-      performed_by: user.id,
-      action_type: "create",
-      description: `Missed attendance filled for session_date: ${session_date}`,
-    })
-
-    return NextResponse.json({ success: true, session_id: session.id })
+    return NextResponse.json(rpcResult)
   } catch (e) {
     console.error("save-missed-attendance error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+

@@ -65,7 +65,6 @@ const ROWS_PER_PAGE = 10
 /* ---------- Scalable Cohort Color & Hierarchy System ---------- */
 
 interface CohortTheme {
-  borderLeft: string
   headerBg: string
   deptBadge: string
   yearBadge: string
@@ -73,14 +72,12 @@ interface CohortTheme {
 }
 
 const DEPARTMENT_PALETTES: Record<string, {
-  borderLeft: string
   headerBg: string
   deptBadge: string
   iconColor: string
   yearVariants: Record<string, string>
 }> = {
   CSE: {
-    borderLeft: "border-l-sky-500",
     headerBg: "bg-sky-500/6 dark:bg-sky-950/25",
     deptBadge: "bg-sky-500/15 text-sky-800 dark:text-sky-200 border-sky-300/70 dark:border-sky-800/60",
     iconColor: "text-sky-600 dark:text-sky-400",
@@ -92,7 +89,6 @@ const DEPARTMENT_PALETTES: Record<string, {
     },
   },
   CSD: {
-    borderLeft: "border-l-teal-500",
     headerBg: "bg-teal-500/6 dark:bg-teal-950/25",
     deptBadge: "bg-teal-500/15 text-teal-800 dark:text-teal-200 border-teal-300/70 dark:border-teal-800/60",
     iconColor: "text-teal-600 dark:text-teal-400",
@@ -104,7 +100,6 @@ const DEPARTMENT_PALETTES: Record<string, {
     },
   },
   ECE: {
-    borderLeft: "border-l-violet-500",
     headerBg: "bg-violet-500/6 dark:bg-violet-950/25",
     deptBadge: "bg-violet-500/15 text-violet-800 dark:text-violet-200 border-violet-300/70 dark:border-violet-800/60",
     iconColor: "text-violet-600 dark:text-violet-400",
@@ -116,7 +111,6 @@ const DEPARTMENT_PALETTES: Record<string, {
     },
   },
   MECH: {
-    borderLeft: "border-l-amber-500",
     headerBg: "bg-amber-500/6 dark:bg-amber-950/25",
     deptBadge: "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-300/70 dark:border-amber-800/60",
     iconColor: "text-amber-600 dark:text-amber-400",
@@ -128,7 +122,6 @@ const DEPARTMENT_PALETTES: Record<string, {
     },
   },
   CIVIL: {
-    borderLeft: "border-l-emerald-500",
     headerBg: "bg-emerald-500/6 dark:bg-emerald-950/25",
     deptBadge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-800/60",
     iconColor: "text-emerald-600 dark:text-emerald-400",
@@ -143,7 +136,6 @@ const DEPARTMENT_PALETTES: Record<string, {
 
 const FALLBACK_PALETTES = [
   {
-    borderLeft: "border-l-indigo-500",
     headerBg: "bg-indigo-500/6 dark:bg-indigo-950/25",
     deptBadge: "bg-indigo-500/15 text-indigo-800 dark:text-indigo-200 border-indigo-300/70 dark:border-indigo-800/60",
     iconColor: "text-indigo-600 dark:text-indigo-400",
@@ -155,7 +147,6 @@ const FALLBACK_PALETTES = [
     },
   },
   {
-    borderLeft: "border-l-cyan-500",
     headerBg: "bg-cyan-500/6 dark:bg-cyan-950/25",
     deptBadge: "bg-cyan-500/15 text-cyan-800 dark:text-cyan-200 border-cyan-300/70 dark:border-cyan-800/60",
     iconColor: "text-cyan-600 dark:text-cyan-400",
@@ -167,7 +158,6 @@ const FALLBACK_PALETTES = [
     },
   },
   {
-    borderLeft: "border-l-rose-500",
     headerBg: "bg-rose-500/6 dark:bg-rose-950/25",
     deptBadge: "bg-rose-500/15 text-rose-800 dark:text-rose-200 border-rose-300/70 dark:border-rose-800/60",
     iconColor: "text-rose-600 dark:text-rose-400",
@@ -201,7 +191,6 @@ function getCohortTheme(cohortTitle: string): CohortTheme {
     "bg-muted text-muted-foreground border-border text-xs"
 
   return {
-    borderLeft: palette.borderLeft,
     headerBg: palette.headerBg,
     deptBadge: palette.deptBadge,
     yearBadge,
@@ -320,7 +309,7 @@ function CohortGroupHeader({ cohortTitle, students }: { cohortTitle: string; stu
   const yearPart = parts[1] || ""
 
   return (
-    <tr className={cn("border-y border-border/80 border-l-4 transition-colors", theme.borderLeft, theme.headerBg)}>
+    <tr className={cn("border-y border-border/80 transition-colors", theme.headerBg)}>
       <td colSpan={6} className="px-4 py-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           {/* Cohort Identity */}
@@ -383,7 +372,7 @@ function MobileCohortGroupHeader({ cohortTitle, students }: { cohortTitle: strin
   const yearPart = parts[1] || ""
 
   return (
-    <div className={cn("flex flex-col gap-2 p-3 rounded-xl border border-border/80 border-l-4 mb-2 mt-1 shadow-2xs", theme.borderLeft, theme.headerBg)}>
+    <div className={cn("flex flex-col gap-2 p-3 rounded-xl border border-border/80 mb-2 mt-1 shadow-2xs", theme.headerBg)}>
       <div className="flex items-center justify-between flex-wrap gap-1.5">
         <div className="flex items-center gap-1.5">
           <span className={cn("font-bold px-2 py-0.5 rounded-md border text-xs font-mono", theme.deptBadge)}>

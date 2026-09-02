@@ -1,14 +1,17 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
-import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown } from "lucide-react"
+import { Fragment, useMemo, useState, useEffect } from "react"
+import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -31,6 +34,15 @@ export interface RecentSessionData {
   status: string
 }
 
+export interface OccupiedSlotData {
+  sessionId: string
+  subjectId: string
+  subjectName: string
+  periodId: string
+  periodNumber: number
+  status: string
+}
+
 interface QRSetupStateProps {
   selectedClass: string
   selectedSubject: string
@@ -46,6 +58,56 @@ interface QRSetupStateProps {
   recentSessions: RecentSessionData[]
   recentSessionsLoading?: boolean
   periodAutoFilled?: boolean
+  todayOccupiedSlots?: Map<string, OccupiedSlotData>
+}
+
+/* ---------- Cohort label parser & grouper helper ---------- */
+function parseCohortLabel(label: string) {
+  const parts = label.split("·").map((p) => p.trim())
+  if (parts.length >= 2) {
+    return {
+      className: parts[0],
+      year: parts[1],
+    }
+  }
+  return {
+    className: label,
+    year: "Other",
+  }
+}
+
+/* ---------- Deterministic Cohort Subtle Accent Helper ---------- */
+const cohortAccents = [
+  {
+    badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300/60 dark:border-sky-800/50",
+    dot: "bg-sky-500",
+  },
+  {
+    badge: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300/60 dark:border-violet-800/50",
+    dot: "bg-violet-500",
+  },
+  {
+    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800/50",
+    dot: "bg-emerald-500",
+  },
+  {
+    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/60 dark:border-amber-800/50",
+    dot: "bg-amber-500",
+  },
+  {
+    badge: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-300/60 dark:border-teal-800/50",
+    dot: "bg-teal-500",
+  },
+]
+
+function getCohortAccent(cohortName: string) {
+  let hash = 0
+  for (let i = 0; i < cohortName.length; i++) {
+    hash = (hash << 5) - hash + cohortName.charCodeAt(i)
+    hash |= 0
+  }
+  const index = Math.abs(hash) % cohortAccents.length
+  return cohortAccents[index]
 }
 
 /* ---------- Period label parser helper ---------- */
@@ -135,6 +197,7 @@ export function QRSetupState({
   recentSessions,
   recentSessionsLoading,
   periodAutoFilled,
+  todayOccupiedSlots,
 }: QRSetupStateProps) {
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today")
   const [classFilterLocal, setClassFilterLocal] = useState("all")
@@ -144,11 +207,67 @@ export function QRSetupState({
     setMounted(true)
   }, [])
 
+  // Group setup class options by academic year
+  const setupCohortGroups = useMemo(() => {
+    const map = new Map<string, { value: string; className: string }[]>()
+    for (const opt of classOptions) {
+      const { className, year } = parseCohortLabel(opt.label)
+      if (!map.has(year)) {
+        map.set(year, [])
+      }
+      map.get(year)!.push({ value: opt.value, className })
+    }
+
+    const sortedYears = Array.from(map.keys()).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ""), 10)
+      const numB = parseInt(b.replace(/\D/g, ""), 10)
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        return numA - numB
+      }
+      return a.localeCompare(b)
+    })
+
+    return sortedYears.map((year) => ({
+      year,
+      cohorts: map.get(year)!.sort((a, b) =>
+        a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: "base" })
+      ),
+    }))
+  }, [classOptions])
+
   const uniqueClasses = useMemo(() => {
     const set = new Set<string>()
     recentSessions.forEach((s) => set.add(s.class))
     return Array.from(set).sort()
   }, [recentSessions])
+
+  // Group recent sessions cohorts by academic year
+  const recentCohortGroups = useMemo(() => {
+    const map = new Map<string, { key: string; className: string }[]>()
+    for (const fullClass of uniqueClasses) {
+      const { className, year } = parseCohortLabel(fullClass)
+      if (!map.has(year)) {
+        map.set(year, [])
+      }
+      map.get(year)!.push({ key: fullClass, className })
+    }
+
+    const sortedYears = Array.from(map.keys()).sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ""), 10)
+      const numB = parseInt(b.replace(/\D/g, ""), 10)
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+        return numA - numB
+      }
+      return a.localeCompare(b)
+    })
+
+    return sortedYears.map((year) => ({
+      year,
+      cohorts: map.get(year)!.sort((a, b) =>
+        a.className.localeCompare(b.className, undefined, { numeric: true, sensitivity: "base" })
+      ),
+    }))
+  }, [uniqueClasses])
 
   const filteredSessions = useMemo(() => {
     return recentSessions.filter((session) => {
@@ -190,6 +309,27 @@ export function QRSetupState({
     return opt ? parsePeriodLabel(opt.label) : null
   }, [selectedPeriod, periodOptions])
 
+  // Conflict & Reopen resolution for the currently selected slot
+  const currentSlotOccupant = useMemo(() => {
+    if (!selectedClass || !selectedPeriod || !todayOccupiedSlots) return null
+    return todayOccupiedSlots.get(`${selectedClass}__${selectedPeriod}`) || null
+  }, [selectedClass, selectedPeriod, todayOccupiedSlots])
+
+  const hasSlotConflict = useMemo(() => {
+    if (!currentSlotOccupant || !selectedSubject) return false
+    return currentSlotOccupant.subjectId !== selectedSubject
+  }, [currentSlotOccupant, selectedSubject])
+
+  const isReopenSession = useMemo(() => {
+    if (!currentSlotOccupant || !selectedSubject) return false
+    return currentSlotOccupant.subjectId === selectedSubject
+  }, [currentSlotOccupant, selectedSubject])
+
+  const conflictMessage = useMemo(() => {
+    if (!hasSlotConflict || !currentSlotOccupant) return null
+    return `Period ${currentSlotOccupant.periodNumber} is already used for ${currentSlotOccupant.subjectName}.`
+  }, [hasSlotConflict, currentSlotOccupant])
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── Setup Card ── */}
@@ -212,7 +352,7 @@ export function QRSetupState({
         <CardContent className="p-4 sm:p-6 flex flex-col gap-5">
           {/* Premium Connected Filter Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center rounded-xl border border-border/80 bg-muted/20 shadow-2xs w-full overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-border/80">
-            {/* Class Select */}
+            {/* Class Select (Grouped by Academic Year) */}
             <div className="flex items-center gap-3 px-4 py-3 sm:py-2.5 flex-1 bg-card hover:bg-muted/30 transition-colors">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
                 <Users className="size-4" />
@@ -233,11 +373,25 @@ export function QRSetupState({
                     <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
                       <SelectValue placeholder="Select class cohort" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border shadow-md">
-                      {classOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold py-2">
-                          {opt.label}
-                        </SelectItem>
+                    <SelectContent className="rounded-xl border-border shadow-md min-w-56 py-1">
+                      {setupCohortGroups.map((group, idx) => (
+                        <Fragment key={group.year}>
+                          {idx > 0 && <SelectSeparator className="my-1 bg-border/60" />}
+                          <SelectGroup>
+                            <SelectLabel className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {group.year}
+                            </SelectLabel>
+                            {group.cohorts.map((cohort) => (
+                              <SelectItem
+                                key={cohort.value}
+                                value={cohort.value}
+                                className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer"
+                              >
+                                {cohort.className}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </Fragment>
                       ))}
                     </SelectContent>
                   </Select>
@@ -278,7 +432,7 @@ export function QRSetupState({
               </div>
             </div>
 
-            {/* Period Select (Fixed formatting) */}
+            {/* Period Select */}
             <div className="flex items-center gap-3 px-4 py-3 sm:py-2.5 flex-1 bg-card hover:bg-muted/30 transition-colors relative">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <Clock className="size-4" />
@@ -302,27 +456,52 @@ export function QRSetupState({
                         <span className="font-mono text-xs sm:text-sm font-semibold text-foreground/90 tracking-tight">{selectedPeriodParsed.timeRange}</span>
                       </span>
                     ) : (
-                      <span className="truncate">Select period slot</span>
+                      <span className="truncate">
+                        {selectedClass && selectedSubject
+                          ? periodOptions.length === 0
+                            ? "No timetable slot today"
+                            : "Select period slot"
+                          : "Select class & subject first"}
+                      </span>
                     )}
                     <ChevronDown className="size-4 opacity-50 shrink-0 ml-auto" />
                   </div>
                 ) : (
-                  <Select value={selectedPeriod} onValueChange={onPeriodChange}>
-                    <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
+                  <Select value={selectedPeriod} onValueChange={onPeriodChange} disabled={periodOptions.length === 0}>
+                    <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-60">
                       {selectedPeriodParsed ? (
                         <span className="flex items-center gap-2.5 truncate">
                           <span className="font-bold text-primary text-xs sm:text-sm">P{selectedPeriodParsed.periodNum}</span>
                           <span className="font-mono text-xs sm:text-sm font-semibold text-foreground/90 tracking-tight">{selectedPeriodParsed.timeRange}</span>
                         </span>
                       ) : (
-                        <SelectValue placeholder="Select period slot" />
+                        <SelectValue
+                          placeholder={
+                            selectedClass && selectedSubject
+                              ? periodOptions.length === 0
+                                ? "No timetable slot today"
+                                : "Select period slot"
+                              : "Select class & subject first"
+                          }
+                        />
                       )}
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-border shadow-md min-w-64">
                       {periodOptions.map((opt) => {
                         const parsed = parsePeriodLabel(opt.label)
+                        const slotOccupant = selectedClass && todayOccupiedSlots
+                          ? todayOccupiedSlots.get(`${selectedClass}__${opt.value}`)
+                          : null
+                        const isOccupiedByDifferentSubject = !!(slotOccupant && selectedSubject && slotOccupant.subjectId !== selectedSubject)
+                        const isOccupiedBySameSubject = !!(slotOccupant && selectedSubject && slotOccupant.subjectId === selectedSubject)
+
                         return (
-                          <SelectItem key={opt.value} value={opt.value} className="py-2.5">
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                            disabled={isOccupiedByDifferentSubject}
+                            className={cn("py-2.5", isOccupiedByDifferentSubject && "opacity-60 cursor-not-allowed")}
+                          >
                             <div className="flex items-center justify-between w-full gap-3">
                               <div className="flex items-center gap-2">
                                 <span className="inline-flex size-6 items-center justify-center rounded-md bg-primary/15 text-primary text-xs font-black">
@@ -331,6 +510,16 @@ export function QRSetupState({
                                 <span className="font-bold text-xs text-foreground">
                                   {parsed.periodText}
                                 </span>
+                                {isOccupiedByDifferentSubject && slotOccupant && (
+                                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-300/60 dark:border-rose-800/60 px-1.5 py-0.5 rounded">
+                                    Used: {slotOccupant.subjectName}
+                                  </span>
+                                )}
+                                {isOccupiedBySameSubject && (
+                                  <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-300/60 dark:border-sky-800/60 px-1.5 py-0.5 rounded">
+                                    Reopen
+                                  </span>
+                                )}
                               </div>
                               {parsed.timeRange && (
                                 <span className="font-mono text-xs font-semibold text-foreground/80 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
@@ -348,21 +537,51 @@ export function QRSetupState({
             </div>
           </div>
 
+          {/* No Timetable Slot Notice */}
+          {selectedClass && selectedSubject && periodOptions.length === 0 && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-amber-300/70 dark:border-amber-800/70 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300 font-semibold shadow-2xs">
+              <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                No timetable slot is assigned to you for {subjectOptions.find((o) => o.value === selectedSubject)?.label || "this subject"} today.
+              </span>
+            </div>
+          )}
+
+          {/* Conflict Banner */}
+          {hasSlotConflict && conflictMessage && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-rose-300/70 dark:border-rose-800/70 bg-rose-500/10 px-4 py-3 text-xs text-rose-700 dark:text-rose-300 font-semibold shadow-2xs">
+              <AlertCircle className="size-4 shrink-0 text-rose-600 dark:text-rose-400" />
+              <span>{conflictMessage}</span>
+            </div>
+          )}
+
           {/* Action Row */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
             <Button
               size="lg"
-              className="gap-2 font-bold shadow-xs hover:shadow transition-all sm:w-auto h-11 px-5 rounded-xl cursor-pointer"
-              disabled={!canStart}
+              className={cn(
+                "gap-2 font-bold shadow-xs hover:shadow transition-all sm:w-auto h-11 px-5 rounded-xl cursor-pointer",
+                hasSlotConflict && "opacity-50 cursor-not-allowed"
+              )}
+              disabled={!canStart || hasSlotConflict}
               onClick={onStart}
             >
               <QrCode className="size-4.5" />
-              <span>Open Attendance Window</span>
+              <span>{isReopenSession ? "Reopen Attendance Window" : "Open Attendance Window"}</span>
               <ArrowRight className="size-4" />
             </Button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
-              <span>Geofencing and facial verification are automatically enforced</span>
+              {isReopenSession ? (
+                <>
+                  <Sparkles className="size-4 text-primary shrink-0" />
+                  <span>Reopening existing attendance session for review and updates</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="size-4 text-emerald-500 shrink-0" />
+                  <span>Geofencing and facial verification are automatically enforced</span>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -406,7 +625,7 @@ export function QRSetupState({
                 ))}
               </div>
 
-              {/* Class Filter Dropdown */}
+              {/* Class Filter Dropdown (Grouped by Academic Year) */}
               <div className="flex items-center h-8.5 rounded-xl border border-border bg-card px-2.5 shadow-2xs">
                 <Users className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
                 {!mounted ? (
@@ -419,12 +638,28 @@ export function QRSetupState({
                     <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
                       <SelectValue placeholder="All Cohorts" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border shadow-md">
-                      <SelectItem value="all" className="text-xs font-semibold">All Cohorts</SelectItem>
-                      {uniqueClasses.map((c) => (
-                        <SelectItem key={c} value={c} className="text-xs font-semibold">
-                          {c}
-                        </SelectItem>
+                    <SelectContent className="rounded-xl border-border shadow-md min-w-48 py-1">
+                      <SelectItem value="all" className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer">
+                        All Cohorts
+                      </SelectItem>
+                      {recentCohortGroups.map((group) => (
+                        <Fragment key={group.year}>
+                          <SelectSeparator className="my-1 bg-border/60" />
+                          <SelectGroup>
+                            <SelectLabel className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              {group.year}
+                            </SelectLabel>
+                            {group.cohorts.map((cohort) => (
+                              <SelectItem
+                                key={cohort.key}
+                                value={cohort.key}
+                                className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer"
+                              >
+                                {cohort.className}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </Fragment>
                       ))}
                     </SelectContent>
                   </Select>
@@ -457,68 +692,81 @@ export function QRSetupState({
                   </div>
 
                   {/* Sections within day */}
-                  <div className="flex flex-col gap-3 pl-1 sm:pl-3 border-l-2 border-border/60">
-                    {Array.from(sectionMap.entries()).map(([section, sessions]) => (
-                      <div key={section} className="flex flex-col gap-2">
-                        {/* Section header */}
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-primary font-mono bg-primary/10 rounded-md border border-primary/20 px-2 py-0.5">
-                            {section}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground font-medium">
-                            {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
-                          </span>
-                        </div>
+                  <div className="flex flex-col gap-4">
+                    {Array.from(sectionMap.entries()).map(([section, sessions]) => {
+                      const accent = getCohortAccent(section)
+                      return (
+                        <div key={section} className="flex flex-col gap-2">
+                          {/* Cohort Section Header with Visual Identity */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "inline-flex items-center gap-1.5 text-xs font-bold font-mono rounded-md border px-2.5 py-0.5 shadow-2xs",
+                                accent.badge
+                              )}>
+                                <span className={cn("size-1.5 rounded-full inline-block shrink-0", accent.dot)} />
+                                {section}
+                              </span>
+                            </div>
+                            <span className="text-[11px] text-muted-foreground font-medium">
+                              {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
+                            </span>
+                          </div>
 
-                        {/* Subject rows within section */}
-                        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-2xs">
-                          {sessions.map((session, i) => {
-                            const pct = getAttendancePct(session.present, session.total)
-                            return (
-                              <div
-                                key={i}
-                                className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/60 last:border-0 hover:bg-muted/20 transition-colors"
-                              >
-                                {/* Subject + period */}
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs border border-primary/20">
-                                    {session.period}
-                                  </div>
-                                  <div className="flex flex-col min-w-0">
-                                    <p className="text-xs font-bold text-foreground truncate">
-                                      {session.subject}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                                      <Clock className="size-3 text-muted-foreground/70 shrink-0" />
-                                      <span>{session.time}</span>
-                                    </p>
-                                  </div>
-                                </div>
+                          {/* Subject rows within section */}
+                          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-2xs divide-y divide-border/60">
+                            {sessions.map((session, i) => {
+                              const pct = getAttendancePct(session.present, session.total)
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex items-center justify-between gap-3.5 px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/30 transition-colors"
+                                >
+                                  {/* Period Badge + Subject + Time */}
+                                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    {/* Period Slot Badge */}
+                                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-xs border border-primary/20 font-mono shadow-2xs">
+                                      {session.period}
+                                    </div>
 
-                                {/* Attendance metrics & status */}
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <div className="text-right">
-                                    <p className="text-xs font-bold text-foreground">
-                                      <span className="text-emerald-600 dark:text-emerald-400">{session.present}</span>
-                                      <span className="text-muted-foreground">/{session.total}</span>
-                                    </p>
+                                    <div className="flex flex-col min-w-0">
+                                      <p className="text-xs sm:text-sm font-bold text-foreground truncate tracking-tight">
+                                        {session.subject}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                        <Clock className="size-3 text-muted-foreground/70 shrink-0" />
+                                        <span>{session.time}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Attendance metrics & status */}
+                                  <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+                                    <div className="text-right">
+                                      <p className="text-xs sm:text-sm font-bold text-foreground leading-tight">
+                                        <span className={pct !== null && pct >= 75 ? "text-emerald-600 dark:text-emerald-400" : pct !== null && pct >= 50 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400"}>
+                                          {session.present}
+                                        </span>
+                                        <span className="text-muted-foreground/70">/{session.total}</span>
+                                      </p>
+                                      {pct !== null && (
+                                        <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{pct}% turnout</p>
+                                      )}
+                                    </div>
+
                                     {pct !== null && (
-                                      <p className="text-[10px] text-muted-foreground font-semibold">{pct}% turnout</p>
+                                      <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0.5 shrink-0", getPctBadge(pct))}>
+                                        {session.status}
+                                      </Badge>
                                     )}
                                   </div>
-
-                                  {pct !== null && (
-                                    <Badge variant="outline" className={cn("text-[10px] font-bold px-2 py-0.5", getPctBadge(pct))}>
-                                      {session.status}
-                                    </Badge>
-                                  )}
                                 </div>
-                              </div>
-                            )
-                          })}
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               ))}

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { toast } from "sonner"
-import { QRSetupState, DropdownOption, RecentSessionData } from "@/components/teacher/qr-setup-state"
+import { QRSetupState, DropdownOption, RecentSessionData, OccupiedSlotData } from "@/components/teacher/qr-setup-state"
 import { QRActiveSession } from "@/components/teacher/qr-active-session"
 import { createClient } from "@/lib/supabase/client"
 import type { Student } from "@/lib/qr-attendance-data"
@@ -47,15 +47,27 @@ export default function QRAttendancePage() {
   const [currentQrToken, setCurrentQrToken] = useState<string>("")
   const [liveStudents, setLiveStudents] = useState<Student[]>([])
   const [recentSessionsLoading, setRecentSessionsLoading] = useState(true)
+  const [todayOccupiedSlots, setTodayOccupiedSlots] = useState<Map<string, OccupiedSlotData>>(new Map())
 
   // Timetable state
-  const [timetableMap, setTimetableMap] = useState<
-    Map<string, { periodId: string; periodLabel: string }>
-  >(new Map()) // key: "classId__subjectId"
+  const [todayTimetableEntries, setTodayTimetableEntries] = useState<any[]>([])
   const [classSubjectMap, setClassSubjectMap] = useState<Map<string, DropdownOption[]>>(new Map())
   const [periodAutoFilled, setPeriodAutoFilled] = useState(false)
 
-  const canStart = !!selectedClass && !!selectedSubject && !!selectedPeriod
+  // Compute timetable-authorized periods for the currently selected class cohort + subject on today's day of week
+  const authorizedPeriods = useMemo(() => {
+    if (!selectedClass || !selectedSubject) return []
+    return (todayTimetableEntries || [])
+      .filter((t: any) => t.class_id === selectedClass && t.subject_id === selectedSubject && t.period)
+      .map((t: any) => ({
+        value: t.period_id,
+        label: `${t.period.period_number} Period ${t.period.start_time.slice(0, 5)} - ${t.period.end_time.slice(0, 5)}`,
+        periodNumber: t.period.period_number ?? 0,
+      }))
+      .sort((a: any, b: any) => a.periodNumber - b.periodNumber)
+  }, [selectedClass, selectedSubject, todayTimetableEntries])
+
+  const canStart = !!selectedClass && !!selectedSubject && !!selectedPeriod && authorizedPeriods.length > 0
 
   const subjectLabel = subjectOptions.find((o) => o.value === selectedSubject)?.label ?? ""
   const classLabel = classOptions.find((o) => o.value === selectedClass)?.label ?? ""
@@ -66,6 +78,7 @@ export default function QRAttendancePage() {
     try {
       const supabase = createClient()
 
+      const todayStr = new Date().toISOString().split("T")[0]
       const jsDay = new Date().getDay()
       const todayDow = jsDay === 0 ? null : jsDay
 
@@ -74,6 +87,7 @@ export default function QRAttendancePage() {
         { data: periods },
         { data: recent },
         { data: timetableEntries },
+        { data: todaySessions },
       ] = await Promise.all([
         // Fetch assignments with BOTH class and subject joined together
         supabase
@@ -110,6 +124,15 @@ export default function QRAttendancePage() {
               .eq("teacher_id", uid)
               .eq("day_of_week", todayDow)
           : Promise.resolve({ data: [] }),
+        supabase
+          .from("attendance_sessions")
+          .select(`
+            id, class_id, subject_id, period_id, session_date, status,
+            subject:subjects(id, name),
+            period:periods(id, period_number)
+          `)
+          .eq("teacher_id", uid)
+          .eq("session_date", todayStr),
       ])
 
       // 1. Classes — unique, from assignments
@@ -157,7 +180,7 @@ export default function QRAttendancePage() {
         )
       }
 
-      // 3. Periods
+      // 3. Periods fallback list
       if (periods) {
         setPeriodOptions(
           periods.map((p: any) => ({
@@ -167,25 +190,49 @@ export default function QRAttendancePage() {
         )
       }
 
-      // 4. Timetable map
+      // 4. Timetable entries for today
       if (timetableEntries && timetableEntries.length > 0) {
-        const map = new Map<string, { periodId: string; periodLabel: string }>()
-        for (const t of timetableEntries as any[]) {
-          const key = `${t.class_id}__${t.subject_id}`
-          const p = t.period
-          const label = p
-            ? `${p.period_number} Period ${p.start_time.slice(0, 5)} - ${p.end_time.slice(0, 5)}`
-            : ""
-          map.set(key, { periodId: t.period_id, periodLabel: label })
-        }
-        setTimetableMap(map)
+        setTodayTimetableEntries(timetableEntries)
       } else {
-        setTimetableMap(new Map())
+        setTodayTimetableEntries([])
       }
 
-      // 5. Recent sessions — fetch attendance counts in bulk, not per session
+      // 4b. Today's occupied slots map (key: "class_id__period_id")
+      const occupiedMap = new Map<string, OccupiedSlotData>()
+      if (todaySessions && todaySessions.length > 0) {
+        for (const s of (todaySessions as any[])) {
+          if (s.class_id && s.period_id) {
+            const key = `${s.class_id}__${s.period_id}`
+            occupiedMap.set(key, {
+              sessionId: s.id,
+              subjectId: s.subject_id,
+              subjectName: s.subject?.name || "Unknown Subject",
+              periodId: s.period_id,
+              periodNumber: s.period?.period_number ?? 0,
+              status: s.status,
+            })
+          }
+        }
+      }
+      setTodayOccupiedSlots(occupiedMap)
+
+      // 5. Recent sessions — deduplicate by logical slot (date + class + subject + period)
+      // and fetch attendance counts in bulk
       if (recent && recent.length > 0) {
-        const sessionIds = recent.map((r: any) => r.id)
+        // Group by logical slot identity to guarantee exactly 1 card per distinct lesson
+        const dedupeMap = new Map<string, any>()
+        for (const r of (recent as any[])) {
+          const classId = r.class?.name ? `${r.class?.name}-${r.class?.section}` : (r.class_id || "")
+          const subjectName = r.subject?.name || (r.subject_id || "")
+          const periodNum = r.period?.period_number ?? (r.period_id || "")
+          const key = `${r.session_date}__${classId}__${subjectName}__${periodNum}`
+          const existing = dedupeMap.get(key)
+          if (!existing || (r.finalized_at && (!existing.finalized_at || r.finalized_at > existing.finalized_at))) {
+            dedupeMap.set(key, r)
+          }
+        }
+        const uniqueRecent = Array.from(dedupeMap.values())
+        const sessionIds = uniqueRecent.map((r: any) => r.id)
 
         const [{ data: presentCounts }, { data: totalCounts }] = await Promise.all([
           supabase
@@ -208,12 +255,15 @@ export default function QRAttendancePage() {
           totalMap.set(row.session_id, (totalMap.get(row.session_id) ?? 0) + 1)
         }
 
-        const processedRecent = recent.map((r: any) => {
-          const n = r.period.period_number
+        const processedRecent = uniqueRecent.map((r: any) => {
+          const n = r.period?.period_number ?? 0
           const suffix = getOrdinalSuffix(n)
+          const deptCode = r.class?.department?.code ?? r.class?.name ?? "Class"
+          const section = r.class?.section ?? ""
+          const yearStr = r.class?.year ? ` · ${r.class.year}` : ""
           return {
-            subject: r.subject.name,
-            class: `${r.class.department.code}-${r.class.section}`,
+            subject: r.subject?.name ?? "Unknown Subject",
+            class: `${deptCode}-${section}${yearStr}`,
             period: `${n}${suffix}`,
             date: new Date(r.session_date).toLocaleDateString(),
             time: r.finalized_at
@@ -293,22 +343,24 @@ export default function QRAttendancePage() {
     init()
   }, [fetchSetupData, checkForActiveSession])
 
-  // Auto-fill period when class + subject both selected
+  // Auto-fill or adjust period when class + subject are selected based on timetable authorization
   useEffect(() => {
     if (!selectedClass || !selectedSubject) {
+      setSelectedPeriod("")
       setPeriodAutoFilled(false)
       return
     }
-    const key = `${selectedClass}__${selectedSubject}`
-    const found = timetableMap.get(key)
-    if (found) {
-      setSelectedPeriod(found.periodId)
-      setPeriodAutoFilled(true)
+    if (authorizedPeriods.length > 0) {
+      const isCurrentValid = authorizedPeriods.some((p: { value: string }) => p.value === selectedPeriod)
+      if (!isCurrentValid) {
+        setSelectedPeriod(authorizedPeriods[0].value)
+        setPeriodAutoFilled(true)
+      }
     } else {
       setSelectedPeriod("")
       setPeriodAutoFilled(false)
     }
-  }, [selectedClass, selectedSubject, timetableMap])
+  }, [selectedClass, selectedSubject, authorizedPeriods, selectedPeriod])
 
   // Fetch complete student list with attendance status via API route
   const isFetchingStudentList = useRef(false)
@@ -383,46 +435,69 @@ export default function QRAttendancePage() {
 
     try {
       const supabase = createClient()
-      const token = crypto.randomUUID()
-      const expiry = new Date(Date.now() + 15000).toISOString()
+      const todayStr = new Date().toISOString().split("T")[0]
 
-      const { data: session, error: sessionErr } = await supabase
-        .from("attendance_sessions")
-        .insert({
-          teacher_id: teacherId,
-          subject_id: selectedSubject,
-          class_id: selectedClass,
-          period_id: selectedPeriod,
-          session_date: new Date().toISOString().split("T")[0],
-          status: "active",
-          current_qr_token: token,
-          qr_token_expires_at: expiry,
-        })
-        .select("id, opened_at")
-        .single()
-
-      if (sessionErr) throw sessionErr
-
-      const { error: tokenErr } = await supabase.from("qr_tokens").insert({
-        session_id: session.id,
-        token: token,
-        expires_at: expiry,
-        is_used: false,
+      // Call atomic RPC to create or resume the single logical session with concurrency locks & timetable validation
+      const { data: res, error: rpcErr } = await supabase.rpc("start_or_resume_qr_session", {
+        p_teacher_id: teacherId,
+        p_class_id: selectedClass,
+        p_subject_id: selectedSubject,
+        p_period_id: selectedPeriod,
+        p_session_date: todayStr,
       })
 
-      if (tokenErr) throw tokenErr
+      if (rpcErr) throw rpcErr
 
-      setActiveSessionId(session.id)
-      setActiveSessionOpenedAt(session.opened_at || null)
-      setCurrentQrToken(token)
-
-      setTimeout(() => {
-        setPageState("active")
+      if (res?.action === "timetable_not_authorized") {
+        toast.error("Timetable Not Authorized", {
+          description: res?.message || "You are not assigned to this subject for this period.",
+        })
         setIsTransitioning(false)
-      }, 200)
+        return
+      }
+
+      if (res?.action === "slot_conflict" || res?.success === false) {
+        toast.error(res?.message || "Slot conflict detected", {
+          description: "This period is already occupied by another subject.",
+        })
+        if (teacherId) {
+          fetchSetupData(teacherId)
+        }
+        setIsTransitioning(false)
+        return
+      }
+
+      if (res?.action === "resumed_review" || res?.action === "reopened_review") {
+        setActiveSessionId(res.sessionId)
+        setActiveSessionOpenedAt(res.openedAt || null)
+        setCurrentQrToken(res.currentQrToken || "")
+        setTimeout(() => {
+          setPageState("summary")
+          setIsTransitioning(false)
+          if (res?.action === "reopened_review") {
+            toast.info("Existing session reopened for review", {
+              description: "Review and update student attendance records as needed.",
+            })
+          }
+        }, 200)
+        return
+      }
+
+      if (res?.action === "resumed_active" || res?.action === "created_active") {
+        setActiveSessionId(res.sessionId)
+        setActiveSessionOpenedAt(res.openedAt || null)
+        setCurrentQrToken(res.currentQrToken || "")
+        setTimeout(() => {
+          setPageState("active")
+          setIsTransitioning(false)
+        }, 200)
+        return
+      }
+
+      throw new Error(res?.message || "Unexpected response from session manager")
     } catch (err: any) {
-      console.error(err)
-      toast.error("Failed to start session")
+      console.error("Failed to start or resume session:", err)
+      toast.error(err?.message || "Failed to start session")
       setIsTransitioning(false)
     }
   }
@@ -590,10 +665,11 @@ export default function QRAttendancePage() {
           canStart={canStart}
           classOptions={classOptions}
           subjectOptions={subjectOptions}
-          periodOptions={periodOptions}
+          periodOptions={selectedClass && selectedSubject ? authorizedPeriods : []}
           periodAutoFilled={periodAutoFilled}
           recentSessions={recentSessions}
           recentSessionsLoading={recentSessionsLoading}
+          todayOccupiedSlots={todayOccupiedSlots}
         />
       ) : pageState === "active" ? (
         <QRActiveSession

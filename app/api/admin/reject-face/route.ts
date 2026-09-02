@@ -10,6 +10,24 @@ export async function POST(request: NextRequest) {
       data: { user: caller },
     } = await supabase.auth.getUser();
 
+    if (!caller) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify caller is an admin using the application's standard role check
+    const { data: callerProfile, error: profileError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", caller.id)
+      .single();
+
+    if (profileError || !callerProfile || callerProfile.role !== "admin") {
+      return Response.json(
+        { error: "Forbidden: admin access required" },
+        { status: 403 }
+      );
+    }
+
     const { studentId } = await request.json();
 
     if (!studentId) {
@@ -71,17 +89,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the rejection to system_logs
-    if (caller) {
-      await supabaseAdmin.from("system_logs").insert({
-        performed_by: caller.id,
-        action_type: "update",
-        description: `Student face registration rejected and reset: ${studentLabel}`,
-      });
-    }
+    await supabaseAdmin.from("system_logs").insert({
+      performed_by: caller.id,
+      action_type: "update",
+      description: `Student face registration rejected and reset: ${studentLabel}`,
+    });
 
     return Response.json({ success: true });
   } catch (error: any) {
-    console.error("Reject face API error:", error);
+    console.error("Admin reject face API error:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
