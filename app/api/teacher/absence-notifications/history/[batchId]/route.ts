@@ -20,24 +20,54 @@ export async function GET(request: Request, { params }: { params: Promise<{ batc
       .from("notification_batch_recipients")
       .select(`
         student_id, recipient_email, status, failure_reason,
-        student:students ( roll_number, user:users ( full_name ) ),
-        period_attendance:period_attendance_id ( session:attendance_sessions ( session_date, subject:subjects ( name ), period:periods ( period_number ) ) )
+        student:students (
+          roll_number,
+          year,
+          class:classes ( name, section, year, department:departments ( code ) ),
+          user:users ( full_name )
+        ),
+        period_attendance:period_attendance_id (
+          session:attendance_sessions (
+            session_date,
+            subject:subjects ( name ),
+            class:classes ( name, section, year, department:departments ( code ) ),
+            period:periods ( period_number, start_time, end_time )
+          )
+        )
       `)
       .eq("batch_id", batchId)
 
     const byStudent = new Map<string, any>()
     for (const r of (recipients ?? [])) {
       const st: any = r.student
-      if (!byStudent.has(r.student_id)) {
-        byStudent.set(r.student_id, {
-          studentName: st?.user?.full_name ?? "Unknown", rollNumber: st?.roll_number ?? "",
-          email: r.recipient_email, status: r.status, failureReason: r.failure_reason, records: [],
-        })
-      }
       const pa: any = r.period_attendance
       const s = pa?.session
+      const cls = st?.class || s?.class
+      const dCode = cls?.department?.code || ""
+      const year = st?.year || cls?.year || ""
+      const section = cls?.section || ""
+      const cohortLabel = `${dCode ? `${dCode} · ` : ""}${year ? `${year} — ` : ""}Section ${section || "A"}`
+
+      if (!byStudent.has(r.student_id)) {
+        byStudent.set(r.student_id, {
+          studentName: st?.user?.full_name ?? "Unknown",
+          rollNumber: st?.roll_number ?? "",
+          departmentCode: dCode,
+          year,
+          section,
+          cohortLabel,
+          email: r.recipient_email,
+          status: r.status,
+          failureReason: r.failure_reason,
+          records: [],
+        })
+      }
       byStudent.get(r.student_id)!.records.push({
-        subjectName: s?.subject?.name ?? "Unknown", date: s?.session_date, periodNumber: s?.period?.period_number ?? 0,
+        subjectName: s?.subject?.name ?? "Unknown",
+        date: s?.session_date,
+        periodNumber: s?.period?.period_number ?? 0,
+        startTime: s?.period?.start_time ?? "",
+        endTime: s?.period?.end_time ?? "",
       })
     }
 

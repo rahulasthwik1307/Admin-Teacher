@@ -19,28 +19,43 @@ export async function GET() {
 
     const { data: recipients } = batchIds.length > 0
       ? await supabase.from("notification_batch_recipients")
-          .select(`batch_id, period_attendance:period_attendance_id ( session:attendance_sessions ( session_date, subject:subjects ( name ) ) )`)
+          .select(`
+            batch_id,
+            period_attendance:period_attendance_id (
+              session:attendance_sessions (
+                session_date,
+                subject:subjects ( name ),
+                class:classes ( name, section, year, department:departments ( code ) )
+              )
+            )
+          `)
           .in("batch_id", batchIds)
       : { data: [] }
 
-    const aggMap = new Map<string, { subjects: Set<string>; dates: string[] }>()
+    const aggMap = new Map<string, { subjects: Set<string>; cohorts: Set<string>; dates: string[] }>()
     for (const r of (recipients ?? [])) {
       const pa: any = r.period_attendance
       const s = pa?.session
-      if (!aggMap.has(r.batch_id)) aggMap.set(r.batch_id, { subjects: new Set(), dates: [] })
+      if (!aggMap.has(r.batch_id)) aggMap.set(r.batch_id, { subjects: new Set(), cohorts: new Set(), dates: [] })
       const entry = aggMap.get(r.batch_id)!
       if (s?.subject?.name) entry.subjects.add(s.subject.name)
+      if (s?.class) {
+        const dCode = s.class.department?.code || ""
+        const cLabel = `${dCode ? `${dCode}-${s.class.section || "A"}` : `Sec ${s.class.section || "A"}`}${s.class.year ? ` · ${s.class.year}` : ""}`.trim()
+        if (cLabel) entry.cohorts.add(cLabel)
+      }
       if (s?.session_date) entry.dates.push(s.session_date)
     }
 
     const result = (batches ?? []).map((b: any) => {
-      const agg = aggMap.get(b.id) ?? { subjects: new Set(), dates: [] }
+      const agg = aggMap.get(b.id) ?? { subjects: new Set(), cohorts: new Set(), dates: [] }
       const sortedDates = [...agg.dates].sort()
       return {
         batchId: b.id, sentAt: b.sent_at, selectedCount: b.selected_count, studentCount: b.student_count,
         sentCount: b.sent_count, failedCount: b.failed_count, noEmailCount: b.no_email_count,
         sentBy: b.teacher?.user?.full_name ?? "Unknown",
         subjects: Array.from(agg.subjects),
+        cohorts: Array.from(agg.cohorts),
         dateFrom: sortedDates[0] ?? null, dateTo: sortedDates[sortedDates.length - 1] ?? null,
       }
     })
