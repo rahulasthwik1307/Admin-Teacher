@@ -8,13 +8,21 @@ export interface AttendanceSession {
   rawDate: string
   subject: string
   subjectId: string
+  subjectCode?: string
   class: string
   classId: string
+  departmentCode?: string
+  year?: string
+  section?: string
   period: string
   periodShort: string
+  periodNumber?: number
   periodTime: string
+  startTime?: string
+  endTime?: string
   present: number
   absent: number
+  total?: number
   percentage: number
   status: "Finalized"
 }

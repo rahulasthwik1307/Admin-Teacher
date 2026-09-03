@@ -414,6 +414,10 @@ async function runForensicAudit() {
   });
   console.log(`QR Attendance Flow: Status=${qrRegressionPass ? 'PASS' : 'FAIL'}, Session=${qrSession.id}\n`);
 
+  // Cleanup test 8 temporary records
+  await adminClient.from('period_attendance').delete().eq('session_id', qrSession.id);
+  await adminClient.from('attendance_sessions').delete().eq('id', qrSession.id);
+
   console.log('========================================================================');
   console.log('                 FORENSIC AUDIT SUMMARY MATRIX                          ');
   console.log('========================================================================');

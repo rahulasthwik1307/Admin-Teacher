@@ -287,6 +287,34 @@ function getLocalDateString(d: Date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
+function extractSectionsAndYears(batch: {
+  sections?: string[]
+  years?: string[]
+  cohorts?: string[]
+}): { sections: string[]; years: string[] } {
+  const sections = new Set<string>(batch.sections || [])
+  const years = new Set<string>(batch.years || [])
+
+  if (sections.size === 0 && years.size === 0 && batch.cohorts) {
+    for (const c of batch.cohorts) {
+      const parts = c.split(/\s*[·•]\s*|\s+-\s+/)
+      if (parts.length >= 2) {
+        sections.add(parts[0].trim())
+        years.add(parts.slice(1).join(" ").trim())
+      } else if (c.toLowerCase().includes("year")) {
+        years.add(c.trim())
+      } else {
+        sections.add(c.trim())
+      }
+    }
+  }
+
+  return {
+    sections: Array.from(sections).filter(Boolean),
+    years: Array.from(years).filter(Boolean),
+  }
+}
+
 function exportPendingCSV(groups: any[]) {
   const rows = [
     [
@@ -461,20 +489,19 @@ export default function AbsenceNotificationsPage() {
             const subjMap = new Map<string, { id: string; name: string }[]>()
             for (const a of assignments as any[]) {
               if (a.class && !cohortMap.has(a.class.id)) {
-                const dCode = a.class.department?.code || a.class.name || ""
-                const dPrefix = dCode ? `${dCode} · ` : ""
-                const cName =
-                  a.class.name && a.class.section
-                    ? `${dPrefix}${a.class.name}-${a.class.section}`
-                    : `${dPrefix}Section ${a.class.section}`
-                const fullLabel = `${dPrefix}${a.class.year || "Year"} — Section ${a.class.section || "A"}`
+                const dCode = a.class.department?.code || ""
+                const cName = dCode
+                  ? `${dCode}-${a.class.section || "A"}`
+                  : a.class.name && a.class.section
+                  ? `${a.class.name}-${a.class.section}`
+                  : `Section ${a.class.section || "A"}`
                 cohortMap.set(a.class.id, {
                   id: a.class.id,
                   className: cName,
                   year: a.class.year,
                   section: a.class.section,
                   deptCode: dCode,
-                  label: fullLabel,
+                  label: cName,
                 })
               }
               if (a.class_id && a.subject) {
@@ -496,7 +523,7 @@ export default function AbsenceNotificationsPage() {
     loadTeacherClasses()
   }, [])
 
-  // Build academic year grouped cohort list with explicit department identification
+  // Build academic year grouped cohort list with clean section identification
   const { cohortYearGroups, allCohortOptions } = useMemo(() => {
     const cohortMap = new Map<
       string,
@@ -509,23 +536,24 @@ export default function AbsenceNotificationsPage() {
         year: c.year,
         section: c.section,
         deptCode: c.deptCode,
-        label: c.label || `${c.deptCode ? `${c.deptCode} · ` : ""}${c.year} — Section ${c.section}`,
+        label: c.className,
       })
     }
     for (const a of absences) {
       if (a.classId && !cohortMap.has(a.classId)) {
         const dCode = a.departmentCode || ""
-        const dPrefix = dCode ? `${dCode} · ` : ""
-        const cName = a.className
-          ? `${dPrefix}${a.className}-${a.section}`
-          : `${dPrefix}Section ${a.section}`
+        const cName = dCode
+          ? `${dCode}-${a.section || "A"}`
+          : a.className
+          ? `${a.className}-${a.section}`
+          : `Section ${a.section || "A"}`
         cohortMap.set(a.classId, {
           id: a.classId,
           className: cName,
           year: a.year || "Other",
           section: a.section,
           deptCode: dCode,
-          label: a.cohortLabel || `${dPrefix}${a.year} — Section ${a.section}`,
+          label: cName,
         })
       }
     }
@@ -1010,21 +1038,21 @@ export default function AbsenceNotificationsPage() {
                   )}
                 </div>
 
-                {/* Cohort / Section Filter (Grouped by Academic Year, with Department Code) */}
+                {/* Cohort / Section Filter (Grouped by Academic Year) */}
                 <Select value={filterClass} onValueChange={setFilterClass}>
-                  <SelectTrigger className="h-10 w-full sm:w-auto sm:min-w-52 text-xs font-semibold rounded-xl bg-card border-border/80 shadow-2xs hover:border-primary/40 focus-visible:ring-primary/20 shrink-0">
+                  <SelectTrigger className="h-10 w-full sm:w-auto sm:min-w-44 text-xs font-semibold rounded-xl bg-card border-border/80 shadow-2xs hover:border-primary/40 focus-visible:ring-primary/20 shrink-0">
                     <div className="flex items-center gap-1.5 whitespace-nowrap">
                       <Users className="size-3.5 text-muted-foreground shrink-0" />
                       <span className="truncate">
                         {filterClass === "all"
-                          ? "All Sections & Departments"
-                          : allCohortOptions.find((c) => c.id === filterClass)?.label || "Selected Section"}
+                          ? "All Sections"
+                          : allCohortOptions.find((c) => c.id === filterClass)?.className || "Selected Section"}
                       </span>
                     </div>
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-md min-w-56 py-1">
-                    <SelectItem value="all" className="text-xs font-semibold py-2">
-                      All Sections & Departments
+                  <SelectContent className="rounded-xl border-border shadow-md min-w-48 py-1">
+                    <SelectItem value="all" className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer">
+                      All Sections
                     </SelectItem>
                     {cohortYearGroups.map((group) => (
                       <Fragment key={group.year}>
@@ -1039,17 +1067,7 @@ export default function AbsenceNotificationsPage() {
                               value={cohort.id}
                               className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer"
                             >
-                              <div className="flex items-center gap-1.5">
-                                {cohort.deptCode && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[10px] font-bold px-1.5 py-0 rounded bg-muted/60 text-primary border-primary/20"
-                                  >
-                                    {cohort.deptCode}
-                                  </Badge>
-                                )}
-                                <span>{cohort.label || cohort.className}</span>
-                              </div>
+                              {cohort.className}
                             </SelectItem>
                           ))}
                         </SelectGroup>
@@ -1934,6 +1952,7 @@ export default function AbsenceNotificationsPage() {
               history.map((b: any) => {
                 const mainSubject = b.subjects[0] || "General"
                 const theme = getSubjectTheme(mainSubject)
+                const { sections, years } = extractSectionsAndYears(b)
                 return (
                   <Card
                     key={b.batchId}
@@ -1951,15 +1970,25 @@ export default function AbsenceNotificationsPage() {
                             <span className="text-sm font-extrabold text-foreground">
                               {b.subjects.join(", ") || "Absence Notification Batch"}
                             </span>
-                            {b.cohorts && b.cohorts.length > 0 && (
+                            {sections.map((sec) => (
                               <Badge
+                                key={sec}
                                 variant="outline"
-                                className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-card/80 text-foreground border-border/80 shadow-2xs"
+                                className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-primary/30 tracking-wider uppercase flex items-center gap-1 shadow-2xs"
                               >
-                                <GraduationCap className="size-3 mr-1 text-primary" />
-                                {b.cohorts.join(" · ")}
+                                <Building2 className="size-3 mr-0.5" />
+                                {sec}
                               </Badge>
-                            )}
+                            ))}
+                            {years.map((yr) => (
+                              <span
+                                key={yr}
+                                className="inline-flex items-center gap-1.5 font-semibold text-muted-foreground bg-muted/50 px-2.5 py-0.5 rounded-lg border border-border/60 shadow-2xs text-[10px]"
+                              >
+                                <GraduationCap className="size-3.5 text-primary shrink-0" />
+                                <span>{yr}</span>
+                              </span>
+                            ))}
                           </div>
                         </div>
 
