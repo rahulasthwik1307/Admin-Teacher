@@ -34,6 +34,7 @@ interface TimetableSlot {
   startTime: string
   endTime: string
   subjectName: string
+  subjectCode?: string
   className: string
   section: string
   year?: string
@@ -65,7 +66,7 @@ export function MyTimetable() {
             .select(`
               day_of_week,
               period:periods ( period_number, start_time, end_time ),
-              subject:subjects ( name ),
+              subject:subjects ( name, code ),
               class:classes ( name, section, year )
             `)
             .eq("teacher_id", session.user.id)
@@ -93,6 +94,7 @@ export function MyTimetable() {
             startTime: t.period?.start_time?.slice(0, 5) ?? "",
             endTime: t.period?.end_time?.slice(0, 5) ?? "",
             subjectName: t.subject?.name ?? "—",
+            subjectCode: t.subject?.code ?? "",
             className: t.class?.name ?? "—",
             section: t.class?.section ?? "",
             year: t.class?.year ?? "",

@@ -75,9 +75,7 @@ interface SubjectTheme {
   hoverBorder: string
   bg: string
   periodBox: string
-  periodP: string
-  periodNum: string
-  periodLabel: string
+  periodNumBadge: string
   codeBadge: string
   dot: string
 }
@@ -89,10 +87,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-blue-200/90 dark:border-blue-800/70",
     hoverBorder: "hover:border-blue-400 dark:hover:border-blue-500",
     bg: "bg-blue-500/3 dark:bg-blue-950/20",
-    periodBox: "bg-blue-100/90 dark:bg-blue-950/90 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200",
-    periodP: "text-blue-600 dark:text-blue-400 font-extrabold",
-    periodNum: "text-blue-950 dark:text-blue-100 font-black",
-    periodLabel: "text-blue-700 dark:text-blue-300 font-black",
+    periodBox: "bg-blue-500/10 border-blue-300 dark:border-blue-700/80 text-blue-900 dark:text-blue-100",
+    periodNumBadge: "bg-blue-600 text-white dark:bg-blue-500",
     codeBadge: "bg-blue-100 text-blue-900 dark:bg-blue-900/80 dark:text-blue-200 border-blue-300 dark:border-blue-700",
     dot: "bg-blue-600",
   },
@@ -101,10 +97,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-purple-200/90 dark:border-purple-800/70",
     hoverBorder: "hover:border-purple-400 dark:hover:border-purple-500",
     bg: "bg-purple-500/3 dark:bg-purple-950/20",
-    periodBox: "bg-purple-100/90 dark:bg-purple-950/90 border-purple-300 dark:border-purple-700 text-purple-800 dark:text-purple-200",
-    periodP: "text-purple-600 dark:text-purple-400 font-extrabold",
-    periodNum: "text-purple-950 dark:text-purple-100 font-black",
-    periodLabel: "text-purple-700 dark:text-purple-300 font-black",
+    periodBox: "bg-purple-500/10 border-purple-300 dark:border-purple-700/80 text-purple-900 dark:text-purple-100",
+    periodNumBadge: "bg-purple-600 text-white dark:bg-purple-500",
     codeBadge: "bg-purple-100 text-purple-900 dark:bg-purple-900/80 dark:text-purple-200 border-purple-300 dark:border-purple-700",
     dot: "bg-purple-600",
   },
@@ -113,10 +107,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-amber-200/90 dark:border-amber-800/70",
     hoverBorder: "hover:border-amber-400 dark:hover:border-amber-500",
     bg: "bg-amber-500/3 dark:bg-amber-950/20",
-    periodBox: "bg-amber-100/90 dark:bg-amber-950/90 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200",
-    periodP: "text-amber-700 dark:text-amber-400 font-extrabold",
-    periodNum: "text-amber-950 dark:text-amber-100 font-black",
-    periodLabel: "text-amber-800 dark:text-amber-300 font-black",
+    periodBox: "bg-amber-500/10 border-amber-300 dark:border-amber-700/80 text-amber-950 dark:text-amber-100",
+    periodNumBadge: "bg-amber-600 text-white dark:bg-amber-500",
     codeBadge: "bg-amber-100 text-amber-950 dark:bg-amber-900/80 dark:text-amber-200 border-amber-300 dark:border-amber-700",
     dot: "bg-amber-600",
   },
@@ -125,10 +117,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-teal-200/90 dark:border-teal-800/70",
     hoverBorder: "hover:border-teal-400 dark:hover:border-teal-500",
     bg: "bg-teal-500/3 dark:bg-teal-950/20",
-    periodBox: "bg-teal-100/90 dark:bg-teal-950/90 border-teal-300 dark:border-teal-700 text-teal-800 dark:text-teal-200",
-    periodP: "text-teal-600 dark:text-teal-400 font-extrabold",
-    periodNum: "text-teal-950 dark:text-teal-100 font-black",
-    periodLabel: "text-teal-700 dark:text-teal-300 font-black",
+    periodBox: "bg-teal-500/10 border-teal-300 dark:border-teal-700/80 text-teal-900 dark:text-teal-100",
+    periodNumBadge: "bg-teal-600 text-white dark:bg-teal-500",
     codeBadge: "bg-teal-100 text-teal-900 dark:bg-teal-900/80 dark:text-teal-200 border-teal-300 dark:border-teal-700",
     dot: "bg-teal-600",
   },
@@ -137,10 +127,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-emerald-200/90 dark:border-emerald-800/70",
     hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-500",
     bg: "bg-emerald-500/3 dark:bg-emerald-950/20",
-    periodBox: "bg-emerald-100/90 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200",
-    periodP: "text-emerald-600 dark:text-emerald-400 font-extrabold",
-    periodNum: "text-emerald-950 dark:text-emerald-100 font-black",
-    periodLabel: "text-emerald-700 dark:text-emerald-300 font-black",
+    periodBox: "bg-emerald-500/10 border-emerald-300 dark:border-emerald-700/80 text-emerald-900 dark:text-emerald-100",
+    periodNumBadge: "bg-emerald-600 text-white dark:bg-emerald-500",
     codeBadge: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700",
     dot: "bg-emerald-600",
   },
@@ -149,10 +137,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-rose-200/90 dark:border-rose-800/70",
     hoverBorder: "hover:border-rose-400 dark:hover:border-rose-500",
     bg: "bg-rose-500/3 dark:bg-rose-950/20",
-    periodBox: "bg-rose-100/90 dark:bg-rose-950/90 border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-200",
-    periodP: "text-rose-600 dark:text-rose-400 font-extrabold",
-    periodNum: "text-rose-950 dark:text-rose-100 font-black",
-    periodLabel: "text-rose-700 dark:text-rose-300 font-black",
+    periodBox: "bg-rose-500/10 border-rose-300 dark:border-rose-700/80 text-rose-900 dark:text-rose-100",
+    periodNumBadge: "bg-rose-600 text-white dark:bg-rose-500",
     codeBadge: "bg-rose-100 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border-rose-300 dark:border-rose-700",
     dot: "bg-rose-600",
   },
@@ -161,10 +147,8 @@ const PALETTES: SubjectTheme[] = [
     border: "border-indigo-200/90 dark:border-indigo-800/70",
     hoverBorder: "hover:border-indigo-400 dark:hover:border-indigo-500",
     bg: "bg-indigo-500/3 dark:bg-indigo-950/20",
-    periodBox: "bg-indigo-100/90 dark:bg-indigo-950/90 border-indigo-300 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200",
-    periodP: "text-indigo-600 dark:text-indigo-400 font-extrabold",
-    periodNum: "text-indigo-950 dark:text-indigo-100 font-black",
-    periodLabel: "text-indigo-700 dark:text-indigo-300 font-black",
+    periodBox: "bg-indigo-500/10 border-indigo-300 dark:border-indigo-700/80 text-indigo-900 dark:text-indigo-100",
+    periodNumBadge: "bg-indigo-600 text-white dark:bg-indigo-500",
     codeBadge: "bg-indigo-100 text-indigo-900 dark:bg-indigo-900/80 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700",
     dot: "bg-indigo-600",
   },
@@ -847,106 +831,114 @@ export default function MissedAttendancePage() {
                         <Card
                           key={slotKey(slot)}
                           className={cn(
-                            "group transition-all duration-200 border shadow-2xs overflow-hidden rounded-2xl",
+                            "group transition-all duration-200 border shadow-2xs overflow-hidden rounded-2xl cursor-pointer select-none",
                             isSelected
                               ? "bg-primary/5 border-primary/50 ring-1 ring-primary/20 shadow-xs"
                               : cn("bg-card", theme.border, theme.hoverBorder, theme.bg, "hover:shadow-xs")
                           )}
                         >
-                          <CardContent className="flex items-center gap-3 p-3.5">
-                            {/* Multi-slot Checkbox */}
-                            <div className="flex items-center justify-center shrink-0">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={(checked) => toggleSlotSelected(slot, !!checked)}
-                                aria-label={`Select ${slot.subjectName} session for bulk action`}
-                                className="rounded-md size-4.5 cursor-pointer"
-                              />
-                            </div>
-
-                            {/* Distinct High-Contrast Period Box */}
-                            <div
-                              className="shrink-0 cursor-pointer"
-                              onClick={() => openSheet(slot)}
-                            >
-                              <div
-                                className={cn(
-                                  "flex flex-col items-center justify-center w-11.5 h-13.5 rounded-xl border-2 shrink-0 shadow-xs transition-transform group-hover:scale-105",
-                                  theme.periodBox
-                                )}
-                              >
-                                <span className={cn("text-[9px] font-black leading-none uppercase tracking-wider", theme.periodP)}>
-                                  P
-                                </span>
-                                <span className={cn("text-lg font-black leading-none my-0.5", theme.periodNum)}>
-                                  {slot.periodNumber}
-                                </span>
-                                <span className={cn("text-[8px] font-black leading-none uppercase tracking-widest", theme.periodLabel)}>
-                                  Period
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Card Body Details & Actions — opens single-slot sheet */}
-                            <div
-                              className="flex flex-col justify-between gap-2 flex-1 cursor-pointer min-w-0"
-                              onClick={() => openSheet(slot)}
-                            >
-                              {/* Level 1: Subject Name + Monospace Code */}
-                              <div className="flex items-center justify-between gap-2 min-w-0">
-                                <span className="text-sm font-black text-foreground truncate group-hover:text-primary transition-colors tracking-tight">
-                                  {slot.subjectName}
-                                </span>
-                                {slot.subjectCode && (
+                          <CardContent className="p-3 sm:p-3.5">
+                            <div className="flex items-center justify-between gap-3">
+                              {/* Left: Checkbox + Modern High-Contrast Period Pill */}
+                              <div className="flex items-center gap-2.5 shrink-0">
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={(checked) => toggleSlotSelected(slot, !!checked)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Select ${slot.subjectName} session for bulk action`}
+                                  className="rounded-md size-4.5 cursor-pointer"
+                                />
+                                <div
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-bold text-xs shadow-2xs border shrink-0 transition-transform group-hover:scale-105 cursor-pointer",
+                                    theme.periodBox
+                                  )}
+                                  onClick={() => openSheet(slot)}
+                                >
+                                  <span className="text-[10px] uppercase font-extrabold tracking-wider opacity-75">Period</span>
                                   <span
                                     className={cn(
-                                      "shrink-0 text-[10px] font-mono font-black px-1.5 py-0.2 rounded-md border shadow-2xs",
-                                      theme.codeBadge
+                                      "inline-flex items-center justify-center size-5 rounded-md text-xs font-black font-mono shadow-2xs",
+                                      theme.periodNumBadge
                                     )}
                                   >
-                                    {slot.subjectCode}
+                                    {slot.periodNumber}
                                   </span>
-                                )}
-                              </div>
-
-                              {/* Level 2: Cohort, Year & Lecture Time */}
-                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                                <span className="font-extrabold text-foreground flex items-center gap-1 text-[11px]">
-                                  <GraduationCap className="size-3.5 text-slate-600 dark:text-slate-300 shrink-0" />
-                                  <span>{sectionName}</span>
-                                </span>
-
-                                {yearName && (
-                                  <span
-                                    className={cn(
-                                      "text-[9px] font-bold px-1.5 py-0.2 rounded-md border shadow-2xs",
-                                      getYearBadgeClass(yearName)
-                                    )}
-                                  >
-                                    {yearName}
-                                  </span>
-                                )}
-
-                                <span className="text-muted-foreground/30 font-bold">&middot;</span>
-
-                                <div className="flex items-center gap-1 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono font-bold text-[10px]">
-                                  <Clock className="size-2.5 text-slate-500 dark:text-slate-400 shrink-0" />
-                                  <span>{slot.startTime}–{slot.endTime}</span>
                                 </div>
                               </div>
 
-                              {/* Level 3: Status Badge & Interactive Action Chevron */}
-                              <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
+                              {/* Center: Subject Name + Monogram + Meta Row */}
+                              <div
+                                className="flex-1 flex flex-col gap-1 cursor-pointer min-w-0"
+                                onClick={() => openSheet(slot)}
+                              >
+                                {/* Row 1: Subject Name + Monogram */}
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-sm font-black text-foreground truncate group-hover:text-primary transition-colors tracking-tight">
+                                    {slot.subjectName}
+                                  </span>
+                                  {slot.subjectCode && (
+                                    <span
+                                      className={cn(
+                                        "shrink-0 text-[10px] font-mono font-black px-1.5 py-0.2 rounded-md border shadow-2xs",
+                                        theme.codeBadge
+                                      )}
+                                    >
+                                      {slot.subjectCode}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Row 2: Cohort, Year & High-Contrast Time Capsule */}
+                                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                  <span className="font-extrabold text-foreground flex items-center gap-1 text-[11px] bg-muted/70 dark:bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/60">
+                                    <GraduationCap className="size-3 text-primary shrink-0" />
+                                    <span>{sectionName}</span>
+                                  </span>
+
+                                  {yearName && (
+                                    <span
+                                      className={cn(
+                                        "text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                        getYearBadgeClass(yearName)
+                                      )}
+                                    >
+                                      {yearName}
+                                    </span>
+                                  )}
+
+                                  {/* High-Contrast Time Capsule with Clock Icon */}
+                                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-mono font-bold text-[11px] shadow-2xs">
+                                    <Clock className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span>{slot.startTime} – {slot.endTime}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Right: Unrecorded Status Badge & Record CTA Button */}
+                              <div
+                                className="flex items-center gap-2 shrink-0 cursor-pointer"
+                                onClick={() => openSheet(slot)}
+                              >
                                 <Badge
                                   variant="outline"
-                                  className="bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-300/90 dark:border-amber-700/80 font-bold text-[10px] sm:text-[11px] px-2 py-0.5 shrink-0 gap-1 rounded-full shadow-2xs"
+                                  className="bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-300/90 dark:border-amber-700/80 font-bold text-[10px] sm:text-[11px] px-2.5 py-1 shrink-0 gap-1 rounded-full shadow-2xs hidden lg:inline-flex"
                                 >
                                   <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                                  <span>Attendance Not Taken</span>
+                                  <span>Unrecorded</span>
                                 </Badge>
-                                <div className="flex size-6.5 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs border border-slate-200/80 dark:border-slate-700">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2.5 sm:px-3 text-xs font-bold gap-1.5 rounded-xl border-primary/30 bg-card hover:bg-primary hover:text-primary-foreground transition-all shadow-2xs cursor-pointer group-hover:border-primary shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openSheet(slot)
+                                  }}
+                                >
+                                  <span className="hidden sm:inline">Record</span>
                                   <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
-                                </div>
+                                </Button>
                               </div>
                             </div>
                           </CardContent>

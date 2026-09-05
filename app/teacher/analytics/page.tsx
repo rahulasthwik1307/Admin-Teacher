@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { motion, useReducedMotion, type Variants } from "framer-motion"
 import { Skeleton } from "@/components/ui/skeleton"
 import { CardSkeleton, ChartSkeleton } from "@/components/ui/skeletons"
@@ -21,6 +21,9 @@ import {
   Sparkles,
   GraduationCap,
   Building2,
+  Clock,
+  Target,
+  Filter,
 } from "lucide-react"
 import {
   BarChart,
@@ -42,6 +45,8 @@ import {
   SubjectCard,
   ChartPoint,
   StudentRow,
+  DayOfWeekStat,
+  PeriodSlotStat,
 } from "@/hooks/use-analytics"
 
 /* ── types ─────────────────────────────────────────────── */
@@ -86,28 +91,6 @@ function getYearTheme(yearStr?: string): YearTheme {
   }
 }
 
-/* ── date range helpers ────────────────────────────────── */
-function getDateRange(period: Period): { from: string; to: string } {
-  const now = new Date()
-  const toStr = now.toISOString().split("T")[0]
-  if (period === "This Week") {
-    const day = now.getDay()
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - ((day + 6) % 7))
-    return { from: monday.toISOString().split("T")[0], to: toStr }
-  }
-  if (period === "This Month") {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1)
-    return { from: from.toISOString().split("T")[0], to: toStr }
-  }
-  return { from: "2000-01-01", to: toStr }
-}
-
-function formatChartDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00")
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-}
-
 /* ── color helpers ─────────────────────────────────────── */
 function pctColor(pct: number) {
   if (pct >= 75) return "text-emerald-600 dark:text-emerald-400"
@@ -120,47 +103,17 @@ function barColor(pct: number) {
   return "#dc2626"
 }
 
-/* ── Insight generator ─────────────────────────────────── */
-function generateInsight(
-  percentage: number,
-  trend: Trend,
-  totalClasses: number,
-  presentTotal: number,
-  absentTotal: number,
-  totalStudents: number
-): string {
-  if (totalClasses === 0) return "No sessions conducted yet."
-  if (percentage === 100) return "Perfect attendance — every student present every class!"
-  if (percentage === 0) return "No attendance recorded yet for this period."
-
-  if (trend === "Improving" && percentage < 75)
-    return `Trending up but still below 75% — keep monitoring closely.`
-  if (trend === "Declining" && percentage >= 75)
-    return `Attendance is slipping — was above target but now declining.`
-  if (trend === "Declining" && percentage < 75)
-    return `Critical: attendance is low and still dropping.`
-  if (trend === "Improving" && percentage >= 75)
-    return `Good progress — attendance is above target and improving.`
-  if (percentage < 50)
-    return `Very low attendance — immediate action recommended.`
-  if (percentage < 75)
-    return `Below 75% threshold — ${absentTotal} absences recorded across ${totalClasses} sessions.`
-  if (percentage >= 90)
-    return `Excellent attendance across ${totalClasses} session${totalClasses !== 1 ? "s" : ""}.`
-  return `Stable attendance — ${presentTotal} present out of ${presentTotal + absentTotal} records.`
-}
-
-/* ── CircularProgress ──────────────────────────────────── */
-function CircularProgress({ percentage, size = 104, strokeWidth = 9 }: {
+/* ── CircularProgress with High-Contrast Clean Typography ── */
+function CircularProgress({ percentage, size = 108, strokeWidth = 8.5 }: {
   percentage: number; size?: number; strokeWidth?: number
 }) {
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const offset = circumference - (percentage / 100) * circumference
-  const stroke = percentage >= 75 ? "#059669" : percentage >= 60 ? "#d97706" : "#dc2626"
+  const stroke = percentage >= 75 ? "#059669" : percentage >= 60 ? "#d97706" : percentage > 0 ? "#dc2626" : "#94a3b8"
 
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+    <div className="relative inline-flex items-center justify-center select-none" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
@@ -168,7 +121,7 @@ function CircularProgress({ percentage, size = 104, strokeWidth = 9 }: {
           r={radius}
           fill="none"
           strokeWidth={strokeWidth}
-          className="stroke-muted/60 dark:stroke-muted/30"
+          className="stroke-muted/50 dark:stroke-muted/25"
         />
         <circle
           cx={size / 2}
@@ -184,8 +137,11 @@ function CircularProgress({ percentage, size = 104, strokeWidth = 9 }: {
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center">
-        <span className={cn("text-2xl font-black tracking-tight", pctColor(percentage))}>
+        <span className="text-3xl font-black tracking-tight text-foreground leading-none">
           {percentage}%
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mt-1">
+          Turnout
         </span>
       </div>
     </div>
@@ -211,22 +167,15 @@ function BarLabel(props: any) {
 }
 
 /* ── Custom X-Axis Tick (Disambiguates Multi-Session Dates) ── */
+/* ── Custom X-Axis Tick (Shows Date and Timetable Period) ── */
 function CustomXAxisTick(props: any) {
   const { x, y, payload, chartData } = props
   if (!payload) return null
   const index = payload.index
-  const rawDate = payload.value
+  const item: ChartPoint | undefined = chartData?.[index]
 
-  let label = rawDate
-  if (chartData && Array.isArray(chartData) && chartData.length > 0) {
-    const matchingIndices = chartData
-      .map((item: any, i: number) => (item.date === rawDate ? i : -1))
-      .filter((i: number) => i !== -1)
-    if (matchingIndices.length > 1) {
-      const sessionNum = matchingIndices.indexOf(index) + 1
-      label = `${rawDate} (S${sessionNum})`
-    }
-  }
+  // Shows date and period (e.g. "Aug 31 (P1)" or clean date)
+  const label = item?.periodNumber ? `${item.date} (P${item.periodNumber})` : (item?.date || payload.value)
 
   return (
     <g transform={`translate(${x},${y})`}>
@@ -243,36 +192,83 @@ function CustomXAxisTick(props: any) {
   )
 }
 
-/* ── CustomTooltip ─────────────────────────────────────── */
-function CustomTooltip({ active, payload, label }: {
-  active?: boolean; payload?: { value: number }[]; label?: string
+/* ── CustomTooltip with Rich Subject & Session Information ── */
+function CustomTooltip({ active, payload }: {
+  active?: boolean; payload?: { payload: ChartPoint }[]
 }) {
   if (!active || !payload?.length) return null
-  const pct = payload[0].value
+  const d = payload[0].payload
+  const isTargetMet = d.percentage >= 75
+  const yrTheme = getYearTheme(d.year)
+
   return (
-    <div className="rounded-xl border border-border/80 bg-card/95 backdrop-blur-md px-3.5 py-2.5 shadow-lg">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-1">
-        <CalendarDays className="size-3 text-muted-foreground/70" />
-        <span>{label}</span>
+    <div className="rounded-xl border border-border/80 bg-card/95 backdrop-blur-md p-3.5 shadow-xl min-w-60">
+      {/* Subject & Class Header */}
+      <div className="flex flex-col gap-1 border-b border-border/60 pb-2 mb-2">
+        <span className="text-xs font-black text-foreground">{d.subjectName || "Subject Session"}</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {d.className && (
+            <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+              <Building2 className="size-2.5" />
+              {d.className}
+            </span>
+          )}
+          {d.year && (
+            <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold border", yrTheme.badge)}>
+              <GraduationCap className="size-2.5" />
+              {d.year}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="flex items-baseline gap-2">
-        <span className={cn("text-base font-extrabold tracking-tight", pctColor(pct))}>
-          {pct}%
-        </span>
-        <span className="text-[11px] font-semibold text-muted-foreground">
-          {pct >= 75 ? "Target Met" : "Below 75%"}
+
+      {/* Session Timing & Period */}
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium mb-2.5">
+        <CalendarDays className="size-3 text-primary shrink-0" />
+        <span>{d.fullDate || d.date}</span>
+        {d.periodNumber && (
+          <span className="font-bold text-foreground">· Period {d.periodNumber}</span>
+        )}
+      </div>
+
+      {/* Headcount Breakdown */}
+      <div className="grid grid-cols-2 gap-1.5 rounded-lg bg-muted/60 p-2 mb-2.5 text-[11px]">
+        <div className="flex flex-col">
+          <span className="text-muted-foreground text-[10px]">Present</span>
+          <span className="font-bold text-emerald-700 dark:text-emerald-400">{d.presentCount ?? 0} students</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-muted-foreground text-[10px]">Absent</span>
+          <span className="font-bold text-rose-700 dark:text-rose-400">{d.absentCount ?? 0} students</span>
+        </div>
+      </div>
+
+      {/* Turnout Percentage & Status */}
+      <div className="flex items-center justify-between border-t border-border/60 pt-2">
+        <div className="flex flex-col">
+          <span className="text-[10px] text-muted-foreground font-medium">Class Attendance</span>
+          <span className={cn("text-lg font-black font-mono leading-none", pctColor(d.percentage))}>
+            {d.percentage}%
+          </span>
+        </div>
+        <span className={cn(
+          "rounded-full px-2 py-0.5 text-[10px] font-bold",
+          isTargetMet
+            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+            : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
+        )}>
+          {isTargetMet ? `+${d.percentage - 75}% vs target` : `${d.percentage - 75}% vs target`}
         </span>
       </div>
     </div>
   )
 }
 
-/* ── StudentTable ──────────────────────────────────────── */
+/* ── StudentTable with Recovery Calculator Column ──────────────────────── */
 function getRowTint(percentage: number, type: "low" | "top") {
   if (type === "top") {
-    return "bg-card" // handled separately for medal rows
+    return "bg-card"
   }
-  // low students
   if (percentage <= 40) return "bg-red-50/80 dark:bg-red-950/20 border-l-4 border-l-red-500"
   if (percentage <= 60) return "bg-orange-50/70 dark:bg-orange-950/20 border-l-4 border-l-orange-400"
   return "bg-amber-50/60 dark:bg-amber-950/20 border-l-4 border-l-amber-400"
@@ -304,7 +300,7 @@ function StudentTable({
   if (rows.length === 0) {
     return (
       <div className="rounded-2xl border border-border/80 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
-        No students found for this period.
+        No students found matching this criteria.
       </div>
     )
   }
@@ -323,6 +319,7 @@ function StudentTable({
               <th className="px-4 py-3.5 text-right">Attendance</th>
               <th className="px-4 py-3.5 text-right">Attended</th>
               <th className="px-4 py-3.5 text-right">Total Classes</th>
+              {type === "low" && <th className="px-4 py-3.5 text-right">Recovery Target</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
@@ -369,6 +366,17 @@ function StudentTable({
                   </td>
                   <td className="px-4 py-3.5 text-right font-medium text-muted-foreground">{st.attended}</td>
                   <td className="px-4 py-3.5 text-right font-medium text-muted-foreground">{st.total}</td>
+                  {type === "low" && (
+                    <td className="px-4 py-3.5 text-right">
+                      <span
+                        className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300"
+                        title={`Must attend the next ${st.classesNeededFor75 ?? 1} sessions consecutively without absence to cross 75%`}
+                      >
+                        <Target className="size-3 text-indigo-500" />
+                        Needs +{st.classesNeededFor75 ?? 1} classes
+                      </span>
+                    </td>
+                  )}
                 </tr>
               )
             })}
@@ -418,6 +426,15 @@ function StudentTable({
                 </div>
                 <span className="font-medium">{st.attended} / {st.total} classes</span>
               </div>
+              {type === "low" && (
+                <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs">
+                  <span className="text-muted-foreground font-medium">Recovery Target:</span>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 font-bold text-indigo-700 dark:text-indigo-300">
+                    <Target className="size-3 text-indigo-500" />
+                    Needs +{st.classesNeededFor75 ?? 1} classes
+                  </span>
+                </div>
+              )}
             </div>
           )
         })}
@@ -429,6 +446,7 @@ function StudentTable({
 /* ── Page ──────────────────────────────────────────────── */
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>("This Month")
+  const [lowFilter, setLowFilter] = useState<"all" | "quick" | "critical">("all")
   const { data, isLoading: loading } = useAnalytics(period)
   const shouldReduceMotion = useReducedMotion()
 
@@ -458,7 +476,73 @@ export default function AnalyticsPage() {
   const chartData = data?.chartData ?? []
   const lowStudents = data?.lowStudents ?? []
   const topStudents = data?.topStudents ?? []
+  const dayOfWeekStats = data?.dayOfWeekStats ?? []
+  const periodSlotStats = data?.periodSlotStats ?? []
   const summaryStats = data?.summaryStats ?? { totalClasses: 0, overallPct: 0, belowThresholdCount: 0 }
+
+  // Group subjects by subjectId with their associated cohorts (classes)
+  const uniqueSubjects = useMemo(() => {
+    const map = new Map<string, {
+      subjectId: string
+      subjectName: string
+      cohorts: {
+        assignmentId: string
+        classId: string
+        className: string
+        year?: string
+      }[]
+    }>()
+
+    for (const sub of subjectCards) {
+      if (!map.has(sub.subjectId)) {
+        map.set(sub.subjectId, {
+          subjectId: sub.subjectId,
+          subjectName: sub.subjectName,
+          cohorts: [],
+        })
+      }
+      map.get(sub.subjectId)!.cohorts.push({
+        assignmentId: sub.assignmentId,
+        classId: sub.classId,
+        className: sub.className,
+        year: sub.year,
+      })
+    }
+    return Array.from(map.values())
+  }, [subjectCards])
+
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("all")
+  const [selectedClassId, setSelectedClassId] = useState<string>("all")
+
+  // Active subject's cohorts (if multiple classes exist for that subject)
+  const activeSubjectCohorts = useMemo(() => {
+    if (selectedSubjectId === "all") return []
+    const found = uniqueSubjects.find((s) => s.subjectId === selectedSubjectId)
+    return found?.cohorts ?? []
+  }, [uniqueSubjects, selectedSubjectId])
+
+  // Filtered low students
+  const filteredLowStudents = useMemo(() => {
+    if (lowFilter === "quick") {
+      return lowStudents.filter((s) => s.percentage >= 60 && s.percentage < 75)
+    }
+    if (lowFilter === "critical") {
+      return lowStudents.filter((s) => s.percentage < 60)
+    }
+    return lowStudents
+  }, [lowStudents, lowFilter])
+
+  // Filtered chart data for attendance trend (last 10 sessions)
+  const filteredChartData = useMemo(() => {
+    let result = chartData
+    if (selectedSubjectId !== "all") {
+      result = result.filter((c) => c.subjectId === selectedSubjectId)
+    }
+    if (selectedClassId !== "all") {
+      result = result.filter((c) => c.classId === selectedClassId)
+    }
+    return result.slice(-10)
+  }, [chartData, selectedSubjectId, selectedClassId])
 
   return (
     <motion.div
@@ -637,7 +721,7 @@ export default function AnalyticsPage() {
         </div>
       ) : (
         <>
-          {/* ── Subject cards ──────────────────────────────── */}
+          {/* ── Subject cards (Option A Redesign) ──────────────── */}
           <motion.div variants={itemVariants} className="flex flex-col gap-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -706,16 +790,16 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
 
-                      {/* Circular progress centered */}
+                      {/* Circular progress with high-contrast text */}
                       <div className="flex justify-center py-1">
-                        <CircularProgress percentage={sub.percentage} size={108} strokeWidth={9} />
+                        <CircularProgress percentage={sub.percentage} size={108} strokeWidth={8.5} />
                       </div>
 
-                      {/* High-End Attendance Distribution Pods & Sleek Track */}
+                      {/* Distribution Pods & Option A Two-Tone Split Track */}
                       <div className="flex flex-col gap-2.5">
                         <div className="grid grid-cols-2 gap-2">
                           {/* Present Metric Box */}
-                          <div className="flex items-center justify-between rounded-xl bg-emerald-500/[0.08] dark:bg-emerald-950/30 border border-emerald-500/20 px-3 py-2">
+                          <div className="flex items-center justify-between rounded-xl bg-emerald-500/8 dark:bg-emerald-950/30 border border-emerald-500/20 px-3 py-2">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className="size-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20 shrink-0" />
                               <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 truncate">Present</span>
@@ -726,7 +810,7 @@ export default function AnalyticsPage() {
                           </div>
 
                           {/* Absent Metric Box */}
-                          <div className="flex items-center justify-between rounded-xl bg-rose-500/[0.08] dark:bg-rose-950/30 border border-rose-500/20 px-3 py-2">
+                          <div className="flex items-center justify-between rounded-xl bg-rose-500/8 dark:bg-rose-950/30 border border-rose-500/20 px-3 py-2">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <span className="size-2 rounded-full bg-rose-500 ring-2 ring-rose-500/20 shrink-0" />
                               <span className="text-xs font-bold text-rose-900 dark:text-rose-200 truncate">Absent</span>
@@ -737,19 +821,36 @@ export default function AnalyticsPage() {
                           </div>
                         </div>
 
-                        {/* Sleek Visual Segmented Track Bar */}
-                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/80 p-0.5 shadow-inner">
+                        {/* Option A: Integrated Two-Tone Split Bar with 75% Notch */}
+                        <div className="flex flex-col gap-1.5">
                           <div
-                            className={cn(
-                              "h-full rounded-full transition-all duration-700 ease-out",
-                              sub.percentage >= 75
-                                ? "bg-linear-to-r from-emerald-600 to-emerald-500 shadow-xs"
-                                : sub.percentage >= 60
-                                ? "bg-linear-to-r from-amber-600 to-amber-500 shadow-xs"
-                                : "bg-linear-to-r from-rose-600 to-rose-500 shadow-xs"
-                            )}
-                            style={{ width: `${presentPct}%` }}
-                          />
+                            className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted/80 p-0.5 shadow-inner flex"
+                            title={`Present: ${Math.round(presentPct)}% | Absent: ${totalRecords > 0 ? Math.round(100 - presentPct) : 0}%`}
+                          >
+                            {/* Present Segment */}
+                            <div
+                              className="h-full rounded-l-full bg-linear-to-r from-emerald-600 to-emerald-500 transition-all duration-700 ease-out"
+                              style={{ width: `${presentPct}%` }}
+                            />
+                            {/* Absent Segment */}
+                            <div
+                              className="h-full rounded-r-full bg-linear-to-r from-rose-500 to-rose-600 transition-all duration-700 ease-out opacity-90"
+                              style={{ width: `${totalRecords > 0 ? 100 - presentPct : 0}%` }}
+                            />
+                            {/* 75% Regulatory Threshold Marker */}
+                            <div
+                              className="absolute top-0 bottom-0 w-0.5 bg-foreground dark:bg-white shadow-xs z-10"
+                              style={{ left: "75%" }}
+                              title="75% Minimum Target Benchmark"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground px-0.5">
+                            <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{Math.round(presentPct)}% present</span>
+                            <span className="text-[9px] uppercase tracking-wider text-muted-foreground/80 font-mono">
+                              {presentPct >= 75 ? `+${Math.round(presentPct - 75)}% safe buffer` : `-${Math.round(75 - presentPct)}% below target`}
+                            </span>
+                            <span className="text-rose-700 dark:text-rose-400 font-semibold">{totalRecords > 0 ? Math.round(100 - presentPct) : 0}% absent</span>
+                          </div>
                         </div>
                       </div>
 
@@ -785,34 +886,137 @@ export default function AnalyticsPage() {
             )}
           </motion.div>
 
-          {/* ── Bar chart ──────────────────────────────────── */}
+          {/* ── Bar chart: Attendance Trend ──────────────────── */}
           <motion.div variants={itemVariants} className="flex flex-col gap-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-8 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
                   <TrendingUp className="size-4" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold tracking-tight text-foreground">
-                    Attendance Trend
+                    Session Attendance Trend
                   </h2>
-                  <p className="text-xs text-muted-foreground">Last 8 conducted sessions</p>
+                  <p className="text-xs text-muted-foreground">
+                    Student attendance % per conducted class (Y-axis: Attendance % · X-axis: Date & Timetable Period)
+                  </p>
                 </div>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
-                <div className="h-0.5 w-4 border-t-2 border-dashed border-amber-500" />
-                <span>75% Target Threshold</span>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Primary Subject Filter Selector */}
+                {uniqueSubjects.length > 1 && (
+                  <div className="flex items-center gap-1 rounded-xl border border-border/80 bg-muted/40 p-1 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedSubjectId("all")
+                        setSelectedClassId("all")
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                        selectedSubjectId === "all"
+                          ? "bg-background text-foreground shadow-2xs border border-border/80"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      All Subjects
+                    </button>
+                    {uniqueSubjects.map((sub) => {
+                      const isActive = selectedSubjectId === sub.subjectId
+                      return (
+                        <button
+                          key={sub.subjectId}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSubjectId(sub.subjectId)
+                            setSelectedClassId("all")
+                          }}
+                          className={cn(
+                            "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer truncate max-w-44 flex items-center gap-1.5",
+                            isActive
+                              ? "bg-primary text-primary-foreground shadow-2xs"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                          title={sub.subjectName}
+                        >
+                          <span>{sub.subjectName}</span>
+                          {sub.cohorts.length > 1 && (
+                            <span className={cn(
+                              "rounded-full px-1.5 py-0.2 text-[9px] font-extrabold",
+                              isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                            )}>
+                              {sub.cohorts.length}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* 75% Target Threshold Marker Indicator */}
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                  <div className="h-0.5 w-4 border-t-2 border-dashed border-amber-500" />
+                  <span>75% Target Threshold</span>
+                </div>
               </div>
             </div>
 
-            {chartData.length === 0 ? (
+            {/* Sub-Tier: Cohort / Class Selector (When the selected subject has multiple sections/years) */}
+            {activeSubjectCohorts.length > 1 && (
+              <div className="flex items-center gap-1.5 flex-wrap rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                <span className="text-muted-foreground text-[11px] font-semibold mr-1 flex items-center gap-1">
+                  <GraduationCap className="size-3 text-primary shrink-0" />
+                  Select Cohort:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedClassId("all")}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md font-bold transition-all cursor-pointer text-xs",
+                    selectedClassId === "all"
+                      ? "bg-background text-foreground shadow-2xs border border-border/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All Classes ({activeSubjectCohorts.length})
+                </button>
+                {activeSubjectCohorts.map((c) => {
+                  const yrTheme = getYearTheme(c.year)
+                  const isSelected = selectedClassId === c.classId
+                  return (
+                    <button
+                      key={c.classId}
+                      type="button"
+                      onClick={() => setSelectedClassId(c.classId)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 font-bold transition-all cursor-pointer text-xs border",
+                        isSelected
+                          ? "bg-background text-foreground shadow-2xs border-primary ring-1 ring-primary/30"
+                          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      )}
+                    >
+                      <span>{c.className}</span>
+                      {c.year && (
+                        <span className={cn("inline-flex items-center rounded px-1 text-[10px] font-extrabold border", yrTheme.badge)}>
+                          {c.year}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {filteredChartData.length === 0 ? (
               <div className="rounded-2xl border border-border/80 bg-card px-4 py-12 text-center text-sm text-muted-foreground">
-                No sessions found for this period.
+                No sessions found for this selection.
               </div>
             ) : (
               <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-2xs">
                 <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={chartData} margin={{ top: 24, right: 12, bottom: 8, left: -16 }}>
+                  <BarChart data={filteredChartData} margin={{ top: 24, right: 12, bottom: 8, left: -16 }}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
@@ -821,7 +1025,7 @@ export default function AnalyticsPage() {
                     />
                     <XAxis
                       dataKey="date"
-                      tick={<CustomXAxisTick chartData={chartData} />}
+                      tick={<CustomXAxisTick chartData={filteredChartData} />}
                       tickLine={false}
                       axisLine={false}
                       interval={0}
@@ -837,7 +1041,6 @@ export default function AnalyticsPage() {
                       content={<CustomTooltip />}
                       cursor={{ fill: "var(--color-muted)", opacity: 0.35 }}
                     />
-                    {/* 75% threshold dashed line */}
                     <ReferenceLine
                       y={75}
                       stroke="#d97706"
@@ -853,7 +1056,7 @@ export default function AnalyticsPage() {
                       animationEasing="ease-out"
                     >
                       <LabelList dataKey="percentage" content={<BarLabel />} />
-                      {chartData.map((entry, idx) => (
+                      {filteredChartData.map((entry, idx) => (
                         <Cell key={idx} fill={barColor(entry.percentage)} />
                       ))}
                     </Bar>
@@ -863,7 +1066,213 @@ export default function AnalyticsPage() {
             )}
           </motion.div>
 
-          {/* ── Students needing attention ──────────────────── */}
+          {/* ── Day-of-Week & Period Turnout Intelligence ── */}
+          <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* 1. Day-of-Week Patterns */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-2xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    <CalendarDays className="size-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-bold tracking-tight text-foreground">
+                      Day-of-Week Turnout Pattern
+                    </h2>
+                    <p className="text-xs text-muted-foreground">Historical attendance rhythm across weekdays</p>
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                  <Target className="size-3 text-amber-500" />
+                  <span>Target: 75%</span>
+                </div>
+              </div>
+
+              {dayOfWeekStats.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">No session records available.</div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {dayOfWeekStats.map((d) => (
+                    <div
+                      key={d.dayNumber}
+                      className={cn(
+                        "group relative flex flex-col justify-between gap-2.5 rounded-xl border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs",
+                        d.isPeak
+                          ? "border-emerald-500/40 bg-linear-to-b from-emerald-500/8 via-card to-card dark:border-emerald-700/60 dark:from-emerald-950/25"
+                          : d.isLowest
+                          ? "border-rose-500/40 bg-linear-to-b from-rose-500/8 via-card to-card dark:border-rose-700/60 dark:from-rose-950/25"
+                          : "border-border/80 bg-card hover:border-border"
+                      )}
+                    >
+                      {/* Day Header & Highlights */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground tracking-tight">{d.day}</span>
+                        {d.isPeak && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300 shadow-2xs">
+                            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Peak
+                          </span>
+                        )}
+                        {d.isLowest && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[10px] font-extrabold text-rose-800 dark:text-rose-300 shadow-2xs">
+                            <span className="size-1.5 rounded-full bg-rose-500" />
+                            Lowest
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Dual-Tone Percentage & Delta */}
+                      <div className="flex items-baseline justify-between gap-1.5">
+                        <span className={cn("text-2xl font-black tracking-tight font-mono", pctColor(d.percentage))}>
+                          {d.sessionCount > 0 ? `${d.percentage}%` : "—"}
+                        </span>
+                        {d.sessionCount > 0 && (
+                          <span className={cn(
+                            "text-[10px] font-bold font-mono px-1.5 py-0.5 rounded",
+                            d.percentage >= 75
+                              ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10"
+                              : "text-rose-700 dark:text-rose-300 bg-rose-500/10"
+                          )}>
+                            {d.percentage >= 75 ? `+${d.percentage - 75}%` : `${d.percentage - 75}%`}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Progress Track with 75% Benchmark Notch */}
+                      <div className="flex flex-col gap-1">
+                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/80">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              d.percentage >= 75
+                                ? "bg-linear-to-r from-emerald-600 to-emerald-500"
+                                : d.percentage >= 60
+                                ? "bg-linear-to-r from-amber-600 to-amber-500"
+                                : "bg-linear-to-r from-rose-600 to-rose-500"
+                            )}
+                            style={{ width: `${d.percentage}%` }}
+                          />
+                          {/* 75% Target Notch */}
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-foreground/70 dark:bg-white/80 z-10"
+                            style={{ left: "75%" }}
+                            title="75% Target Marker"
+                          />
+                        </div>
+                        <div className="text-[10px] font-medium text-muted-foreground truncate">
+                          {d.sessionCount} class{d.sessionCount !== 1 ? "es" : ""} conducted
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. Period Time-Slot Turnout */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card p-5 shadow-2xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Clock className="size-4" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-bold tracking-tight text-foreground">
+                      Period Slot Turnout Distribution
+                    </h2>
+                    <p className="text-xs text-muted-foreground">Attendance performance across timetable periods</p>
+                  </div>
+                </div>
+                <div className="inline-flex items-center gap-1.5 rounded-md bg-muted/60 border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                  <Target className="size-3 text-amber-500" />
+                  <span>Target: 75%</span>
+                </div>
+              </div>
+
+              {periodSlotStats.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">No slot data available.</div>
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  {periodSlotStats.map((p) => {
+                    const isOverTarget = p.percentage >= 75
+                    const delta = p.percentage - 75
+                    return (
+                      <div
+                        key={p.periodNumber}
+                        className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-card p-3 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs hover:border-border"
+                      >
+                        {/* Period Badge & High-Contrast Time */}
+                        <div className="flex items-center gap-2 sm:w-52 shrink-0">
+                          <span className={cn(
+                            "inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-xs font-black font-mono shadow-2xs",
+                            p.percentage >= 75
+                              ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border border-emerald-500/30"
+                              : p.percentage >= 60
+                              ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30"
+                              : "bg-rose-500/15 text-rose-800 dark:text-rose-200 border border-rose-500/30"
+                          )}>
+                            Period {p.periodNumber}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-300 dark:border-zinc-700 px-2.5 py-1 text-xs font-mono font-bold text-zinc-900 dark:text-zinc-100 shadow-2xs">
+                            <Clock className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                            {p.timeRange}
+                          </span>
+                        </div>
+
+                        {/* Dual-Tone Progress Track with 75% Target Notch */}
+                        <div className="flex-1 flex flex-col gap-1 min-w-30">
+                          <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted/80 shadow-inner">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all duration-700 ease-out",
+                                p.percentage >= 75
+                                  ? "bg-linear-to-r from-emerald-600 to-emerald-500"
+                                  : p.percentage >= 60
+                                  ? "bg-linear-to-r from-amber-600 to-amber-500"
+                                  : "bg-linear-to-r from-rose-600 to-rose-500"
+                              )}
+                              style={{ width: `${p.percentage}%` }}
+                            />
+                            {/* 75% Target Notch */}
+                            <div
+                              className="absolute top-0 bottom-0 w-0.5 bg-foreground dark:bg-white shadow-xs z-10"
+                              style={{ left: "75%" }}
+                              title="75% Minimum Target Benchmark"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
+                            <span>{p.sessionCount} session{p.sessionCount !== 1 ? "s" : ""}</span>
+                            <span className={cn(
+                              "font-bold font-mono",
+                              isOverTarget ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"
+                            )}>
+                              {isOverTarget ? `+${delta}% vs target` : `${delta}% vs target`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Large Dual-Tone Percentage Pill */}
+                        <div className="flex items-center justify-end sm:w-16 shrink-0">
+                          <span className={cn(
+                            "rounded-lg px-2.5 py-1 text-sm font-black font-mono tracking-tight",
+                            p.percentage >= 75
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                              : p.percentage >= 60
+                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+                              : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20"
+                          )}>
+                            {p.percentage}%
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* ── Students needing attention with Target Calculator ──── */}
           <motion.div variants={itemVariants} className="flex flex-col gap-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -872,16 +1281,53 @@ export default function AnalyticsPage() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold tracking-tight text-foreground">
-                    Students Needing Attention
+                    Students Needing Attention & Recovery Targets
                   </h2>
-                  <p className="text-xs text-muted-foreground">Attendance rate below 75% target</p>
+                  <p className="text-xs text-muted-foreground">
+                    Attendance below 75% target with automated consecutive lecture recovery calculator
+                  </p>
                 </div>
               </div>
-              {lowStudents.length > 0 && (
-                <span className="inline-flex items-center rounded-full bg-rose-500/10 border border-rose-500/20 px-2.5 py-0.5 text-xs font-bold text-rose-700 dark:text-rose-300">
-                  {lowStudents.length} student{lowStudents.length !== 1 ? "s" : ""}
-                </span>
-              )}
+
+              {/* Segmented Filter Pills */}
+              <div className="flex items-center gap-1.5 rounded-xl border border-border/80 bg-muted/40 p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setLowFilter("all")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                    lowFilter === "all"
+                      ? "bg-background text-foreground shadow-2xs border border-border/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  All At-Risk ({lowStudents.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLowFilter("quick")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                    lowFilter === "quick"
+                      ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 border border-amber-500/30"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Quick Recovery ({lowStudents.filter((s) => s.percentage >= 60 && s.percentage < 75).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLowFilter("critical")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                    lowFilter === "critical"
+                      ? "bg-rose-500/15 text-rose-800 dark:text-rose-200 border border-rose-500/30"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Critical ({lowStudents.filter((s) => s.percentage < 60).length})
+                </button>
+              </div>
             </div>
 
             {/* Legend */}
@@ -899,7 +1345,7 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            <StudentTable rows={lowStudents} colorClass="text-rose-600 dark:text-rose-400" type="low" />
+            <StudentTable rows={filteredLowStudents} colorClass="text-rose-600 dark:text-rose-400" type="low" />
           </motion.div>
 
           {/* ── Top performers ──────────────────────────────── */}

@@ -417,13 +417,54 @@ export function exportAdminTimetablePDF({
   doc.save(`Timetable_${sanitizedLabel}.pdf`)
 }
 
+export function formatClassSection(className?: string, section?: string): string {
+  let baseName = (className || "").trim()
+  let sec = (section || "").trim()
+
+  if (baseName.includes(" · ")) {
+    baseName = baseName.split(" · ")[0].trim()
+  } else if (baseName.includes(" • ")) {
+    baseName = baseName.split(" • ")[0].trim()
+  }
+
+  if (sec && !baseName.toLowerCase().endsWith(sec.toLowerCase()) && !baseName.includes("-")) {
+    return `${baseName}-${sec}`
+  }
+  return baseName || "Class"
+}
+
+export function formatYearLabel(year?: string, className?: string): string {
+  let yr = (year || "").trim()
+  if (!yr && className) {
+    if (className.includes(" · ")) {
+      yr = className.split(" · ")[1]?.trim() || ""
+    } else if (className.includes(" • ")) {
+      yr = className.split(" • ")[1]?.trim() || ""
+    }
+  }
+  if (!yr) return ""
+  return yr.toLowerCase().includes("year") ? yr : `${yr} Year`
+}
+
+export function formatClassCapsuleText(className?: string, section?: string, year?: string): string {
+  const classSec = formatClassSection(className, section)
+  const yr = formatYearLabel(year, className)
+  return yr ? `${classSec}  |  ${yr}` : classSec
+}
+
+export function formatClassYearLabel(className?: string, section?: string, year?: string): string {
+  const classSec = formatClassSection(className, section)
+  const yr = formatYearLabel(year, className)
+  return yr ? `${classSec} • ${yr}` : classSec
+}
+
 /**
  * Generates and downloads a clean, publication-ready PDF timetable for Teacher personal view.
  */
 export function exportTeacherTimetablePDF({
   slots,
   teacherName = "Faculty Member",
-  institutionName = "FACULTY WEEKLY ACADEMIC SCHEDULE",
+  institutionName = "Faculty Weekly Schedule",
 }: {
   slots: {
     dayOfWeek: number
@@ -431,6 +472,7 @@ export function exportTeacherTimetablePDF({
     startTime: string
     endTime: string
     subjectName: string
+    subjectCode?: string
     className: string
     section: string
     year?: string
@@ -458,7 +500,9 @@ export function exportTeacherTimetablePDF({
 
   // Map unique subjects to colors
   const subjectColorMap = new Map<string, number>()
-  const uniqueSubjects = Array.from(new Set(slots.map((s) => s.subjectName).filter((s) => s && s !== "—")))
+  const uniqueSubjects = Array.from(
+    new Set(slots.map((s) => s.subjectName).filter((s) => s && s !== "—" && s !== "Unassigned"))
+  )
   uniqueSubjects.forEach((s, i) => subjectColorMap.set(s, i % PDF_SUBJECT_COLORS.length))
 
   // Detect unique periods from slots or default 1..8
@@ -480,14 +524,17 @@ export function exportTeacherTimetablePDF({
   const headerW = pageWidth - 28
   const headerH = 24
 
+  // Dark slate container
   doc.setFillColor(15, 23, 42) // slate-900
   doc.roundedRect(headerX, headerY, headerW, headerH, 2.5, 2.5, "F")
 
+  // Title
   doc.setFont("helvetica", "bold")
   doc.setFontSize(13)
   doc.setTextColor(255, 255, 255)
-  doc.text(institutionName.toUpperCase(), headerX + 6, headerY + 8)
+  doc.text("FACULTY WEEKLY ACADEMIC SCHEDULE", headerX + 6, headerY + 8)
 
+  // Subtitle
   doc.setFont("helvetica", "normal")
   doc.setFontSize(8.5)
   doc.setTextColor(148, 163, 184)
@@ -498,22 +545,32 @@ export function exportTeacherTimetablePDF({
   doc.setFontSize(8)
   doc.setFont("helvetica", "bold")
   doc.setFillColor(16, 185, 129) // Emerald-500
-  doc.roundedRect(headerX + 6, headerY + 16.5, doc.getTextWidth(facultyBadgeText) + 8, 5.5, 1.2, 1.2, "F")
+  const badgeW = doc.getTextWidth(facultyBadgeText) + 8
+  doc.roundedRect(headerX + 6, headerY + 16.5, badgeW, 5.5, 1.2, 1.2, "F")
   doc.setTextColor(255, 255, 255)
   doc.text(facultyBadgeText, headerX + 10, headerY + 20.3)
+
+  // Workload Pill next to Faculty
+  const loadBadgeText = `${slots.length} LECTURES / WEEK`
+  doc.setFillColor(51, 65, 85) // slate-700
+  const loadBadgeX = headerX + 6 + badgeW + 3
+  doc.roundedRect(loadBadgeX, headerY + 16.5, doc.getTextWidth(loadBadgeText) + 8, 5.5, 1.2, 1.2, "F")
+  doc.setTextColor(226, 232, 240)
+  doc.text(loadBadgeText, loadBadgeX + 4, headerY + 20.3)
 
   // Right Meta
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
   doc.setTextColor(148, 163, 184)
   doc.text(`Generated: ${timestamp}`, headerX + headerW - 6, headerY + 8, { align: "right" })
+  doc.text(`Official Academic Timetable`, headerX + headerW - 6, headerY + 14, { align: "right" })
 
-  // ── Build Table Data ──
+  // ── Build Table Data with Clean Class & Period Headers ──
   const headRow = [
     "Day",
     ...sortedPeriodNumbers.map((pNum) => {
       const times = periodMap.get(pNum)
-      const timeStr = times?.start ? `${times.start.slice(0, 5)} - ${times.end.slice(0, 5)}` : ""
+      const timeStr = times?.start && times?.end ? `${times.start.slice(0, 5)} – ${times.end.slice(0, 5)}` : ""
       return `Period ${pNum}\n\n${timeStr}`
     }),
   ]
@@ -522,11 +579,10 @@ export function exportTeacherTimetablePDF({
     const row: string[] = [day.name]
     sortedPeriodNumbers.forEach((pNum) => {
       const slot = slots.find((s) => s.dayOfWeek === day.value && s.periodNumber === pNum)
-      if (slot && slot.subjectName && slot.subjectName !== "—") {
-        const classStr = slot.className
-          ? `Class: ${slot.className}${slot.section ? `-${slot.section}` : ""}${slot.year ? ` · ${slot.year}` : ""}`
-          : ""
-        row.push(`${slot.subjectName}\n\n${classStr}`)
+      if (slot && slot.subjectName && slot.subjectName !== "—" && slot.subjectName !== "Unassigned") {
+        const capsuleText = formatClassCapsuleText(slot.className, slot.section, slot.year)
+        const codeStr = slot.subjectCode ? ` [${slot.subjectCode}]` : ""
+        row.push(`${slot.subjectName}${codeStr}\n\n[ ${capsuleText} ]`)
       } else {
         row.push("—")
       }
@@ -579,7 +635,7 @@ export function exportTeacherTimetablePDF({
         const pNum = sortedPeriodNumbers[data.column.index - 1]
         const slot = slots.find((s) => s.dayOfWeek === dayVal && s.periodNumber === pNum)
 
-        if (slot && slot.subjectName && slot.subjectName !== "—") {
+        if (slot && slot.subjectName && slot.subjectName !== "—" && slot.subjectName !== "Unassigned") {
           const palette = getSubjectColorIndex(slot.subjectName, subjectColorMap)
           data.cell.styles.fillColor = palette.bg
           data.cell.styles.textColor = palette.text
@@ -592,11 +648,111 @@ export function exportTeacherTimetablePDF({
     margin: { left: 14, right: 14 },
   })
 
+  // ── Course & Workload Summary Section Below Table (Structured Cards) ──
+  const finalY = (doc as any).lastAutoTable?.finalY || 155
+  if (finalY < pageHeight - 35) {
+    const summaryY = finalY + 5
+    const numSubjects = uniqueSubjects.length
+    const cardsPerRow = Math.min(numSubjects, 3) || 1
+    const cardGap = 4
+    const cardW = (headerW - 8 - (cardsPerRow - 1) * cardGap) / cardsPerRow
+    const cardH = 17
+    const totalSummaryH = cardH + 11
+
+    doc.setFillColor(248, 250, 252) // slate-50
+    doc.setDrawColor(226, 232, 240) // slate-200
+    doc.roundedRect(headerX, summaryY, headerW, totalSummaryH, 2, 2, "FD")
+
+    // Summary header title
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(8)
+    doc.setTextColor(15, 23, 42)
+    doc.text("COURSE ALLOCATION & TEACHING LOAD SUMMARY", headerX + 5, summaryY + 5.5)
+
+    // Total Load badge
+    const totalLoadText = `Total Workload: ${slots.length} Periods / Week`
+    doc.setFontSize(8)
+    doc.setFont("helvetica", "bold")
+    doc.setTextColor(5, 150, 105) // emerald-600
+    doc.text(totalLoadText, headerX + headerW - 5, summaryY + 5.5, { align: "right" })
+
+    // Build subject aggregation items
+    const subjectSummary = uniqueSubjects.map((subName) => {
+      const subSlots = slots.filter((s) => s.subjectName === subName)
+      const code = subSlots[0]?.subjectCode ? ` [${subSlots[0].subjectCode}]` : ""
+      const cohortMap = new Map<string, string>()
+      subSlots.forEach((s) => {
+        const cSec = formatClassSection(s.className, s.section)
+        const cYr = formatYearLabel(s.year, s.className)
+        const key = `${cSec} | ${cYr}`
+        cohortMap.set(key, cYr ? `${cSec} | ${cYr}` : cSec)
+      })
+      return {
+        name: `${subName}${code}`,
+        count: subSlots.length,
+        cohorts: Array.from(cohortMap.values()),
+        palette: getSubjectColorIndex(subName, subjectColorMap),
+      }
+    })
+
+    // Render cards side by side
+    const cardStartY = summaryY + 8
+    subjectSummary.forEach((item, idx) => {
+      if (idx >= cardsPerRow) return
+      const cardX = headerX + 4 + idx * (cardW + cardGap)
+
+      // Card background
+      doc.setFillColor(...item.palette.bg)
+      doc.setDrawColor(...item.palette.border)
+      doc.roundedRect(cardX, cardStartY, cardW, cardH, 1.5, 1.5, "FD")
+
+      // Dot + Subject Title
+      doc.setFillColor(...item.palette.text)
+      doc.roundedRect(cardX + 3.5, cardStartY + 3, 2.5, 2.5, 0.5, 0.5, "F")
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7.5)
+      doc.setTextColor(...item.palette.text)
+      doc.text(item.name, cardX + 7.5, cardStartY + 5)
+
+      // Period Count badge (right side of card)
+      const countText = `${item.count} Periods / Wk`
+      doc.setFontSize(7)
+      doc.setTextColor(15, 23, 42)
+      doc.text(countText, cardX + cardW - 3.5, cardStartY + 5, { align: "right" })
+
+      // Cohort Chips
+      let chipX = cardX + 3.5
+      const chipY = cardStartY + 8.5
+      const chipH = 5.2
+
+      item.cohorts.forEach((cohortStr) => {
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(6.8)
+        const textWidth = doc.getTextWidth(cohortStr)
+        const chipW = textWidth + 5.5
+
+        if (chipX + chipW < cardX + cardW - 2) {
+          // Draw white capsule with clean border
+          doc.setFillColor(255, 255, 255)
+          doc.setDrawColor(203, 213, 225)
+          doc.setLineWidth(0.15)
+          doc.roundedRect(chipX, chipY, chipW, chipH, 1, 1, "FD")
+
+          doc.setTextColor(30, 41, 59)
+          doc.text(cohortStr, chipX + chipW / 2, chipY + 3.6, { align: "center" })
+
+          chipX += chipW + 2
+        }
+      })
+    })
+  }
+
   // ── Footer ──
   doc.setFontSize(8)
   doc.setTextColor(148, 163, 184)
   doc.text(
-    `Personal Weekly Schedule • Generated via Faculty Portal • ${institutionName}`,
+    `Faculty Academic Schedule • Generated via Faculty Portal • Confidential & Internal Use`,
     pageWidth / 2,
     pageHeight - 8,
     { align: "center" }

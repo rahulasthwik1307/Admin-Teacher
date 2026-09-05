@@ -22,8 +22,19 @@ export interface SubjectCard {
 
 export interface ChartPoint {
   date: string
+  fullDate?: string
   percentage: number
   sessionId: string
+  subjectId?: string
+  subjectName?: string
+  classId?: string
+  className?: string
+  year?: string
+  periodNumber?: number
+  timeRange?: string
+  presentCount?: number
+  absentCount?: number
+  totalStudents?: number
 }
 
 export interface StudentRow {
@@ -36,6 +47,25 @@ export interface StudentRow {
   percentage: number
   attended: number
   total: number
+  classesNeededFor75?: number
+}
+
+export interface DayOfWeekStat {
+  day: string
+  dayNumber: number
+  percentage: number
+  sessionCount: number
+  presentTotal: number
+  totalRecords: number
+  isPeak?: boolean
+  isLowest?: boolean
+}
+
+export interface PeriodSlotStat {
+  periodNumber: number
+  timeRange: string
+  percentage: number
+  sessionCount: number
 }
 
 export interface AnalyticsResponse {
@@ -43,6 +73,8 @@ export interface AnalyticsResponse {
   chartData: ChartPoint[]
   lowStudents: StudentRow[]
   topStudents: StudentRow[]
+  dayOfWeekStats: DayOfWeekStat[]
+  periodSlotStats: PeriodSlotStat[]
   summaryStats: {
     totalClasses: number
     overallPct: number
@@ -64,3 +96,4 @@ export function useAnalytics(period: Period) {
     gcTime: 10 * 60 * 1000,
   })
 }
+
