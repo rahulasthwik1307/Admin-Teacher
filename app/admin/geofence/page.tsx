@@ -295,7 +295,7 @@ export default function GeofencePage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {hasUnsavedChanges && (
             <Badge
               variant="outline"
@@ -305,107 +305,27 @@ export default function GeofencePage() {
             </Badge>
           )}
           {!isLoading && (
-            <div className="hidden sm:flex items-center gap-3 text-xs font-medium text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-xl border border-border/60">
-              <span className="flex items-center gap-1 font-semibold text-foreground">
-                <Target className="size-3.5 text-primary" /> {savedValues.radius}m
-              </span>
-              <span className="text-border">|</span>
-              <span className="flex items-center gap-1 font-mono">
-                <MapPin className="size-3.5 text-emerald-600" />
-                {parseFloat(savedValues.lat).toFixed(4)}°, {parseFloat(savedValues.lng).toFixed(4)}°
-              </span>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+              <div className="flex items-center gap-1.5 bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20 px-2.5 py-1 rounded-lg">
+                <Target className="size-3.5 text-violet-600 dark:text-violet-400" />
+                <span className="font-semibold">{radiusNum}m radius</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
+                <Maximize2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-semibold">{coverageArea}</span>
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/20 px-2.5 py-1 rounded-lg font-mono">
+                <MapPin className="size-3.5 text-sky-600 dark:text-sky-400" />
+                <span>{parseFloat(lat).toFixed(4)}°N, {parseFloat(lng).toFixed(4)}°E</span>
+              </div>
+              <div className="hidden md:flex items-center gap-1.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+                <Compass className="size-3.5 text-amber-600 dark:text-amber-400" />
+                <span className="font-semibold">Anti-Spoofing</span>
+              </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* ── Metric Stat Cards Row ── */}
-      {!isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {/* Card 1: Center Point */}
-          <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-sky-800/60">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-                  Campus Center
-                </span>
-                <div
-                  className="text-sm font-bold tracking-tight text-foreground leading-snug wrap-break-word"
-                  title={collegeName || "Campus Anchor"}
-                >
-                  {collegeName || "Campus Anchor"}
-                </div>
-                <span className="text-xs font-mono text-muted-foreground">
-                  {parseFloat(lat).toFixed(4)}°N, {parseFloat(lng).toFixed(4)}°E
-                </span>
-              </div>
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                <MapPin className="size-4.5" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Card 2: Boundary Radius */}
-          <Card className="relative overflow-hidden rounded-xl border border-violet-200/80 bg-linear-to-b from-violet-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-violet-800/60">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
-                  Geofence Radius
-                </span>
-                <div className="text-xl font-black tracking-tight text-foreground">
-                  {radiusNum} <span className="text-xs font-semibold text-muted-foreground">meters</span>
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">
-                  Interactive Draggable Boundary
-                </span>
-              </div>
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                <Target className="size-4.5" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Card 3: Total Coverage Area */}
-          <Card className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-emerald-800/60">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                  Campus Coverage
-                </span>
-                <div className="text-xl font-black tracking-tight text-foreground">
-                  {coverageArea}
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">
-                  Verified Active Footprint
-                </span>
-              </div>
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Maximize2 className="size-4.5" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Card 4: Location Detection */}
-          <Card className="relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-amber-800/60">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                  GPS Verification
-                </span>
-                <div className="text-sm sm:text-base font-bold tracking-tight text-foreground leading-snug">
-                  Live & High Accuracy
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">
-                  Anti-Spoofing Active
-                </span>
-              </div>
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <Compass className="size-4.5" />
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* ── Main Workspace: Left Controls + Right Map Showcase ── */}
       <div className="grid gap-6 lg:grid-cols-[400px_1fr] items-stretch">

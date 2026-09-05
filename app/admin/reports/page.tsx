@@ -2476,7 +2476,7 @@ export default function ReportsPage() {
             </Select>
 
             <Select value={logFilterAction} onValueChange={setLogFilterAction}>
-              <SelectTrigger className="h-9 w-40 text-xs font-medium">
+              <SelectTrigger className="h-9 w-44 text-xs font-medium">
                 <Activity className="size-3.5 mr-1 text-muted-foreground" />
                 <SelectValue placeholder="All Action Types" />
               </SelectTrigger>
