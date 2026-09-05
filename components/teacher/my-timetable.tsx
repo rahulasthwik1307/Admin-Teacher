@@ -3,10 +3,12 @@
 import { useEffect, useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays, ChevronDown, ChevronUp, LayoutGrid, AlignJustify, Clock, GraduationCap, ArrowRight } from "lucide-react"
+import { CalendarDays, ChevronDown, ChevronUp, LayoutGrid, AlignJustify, Clock, GraduationCap, Building2, ArrowRight, Download } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { MyTimetableSkeleton } from "@/components/ui/skeletons"
+import { toast } from "sonner"
+import { exportTeacherTimetablePDF } from "@/lib/timetable-export"
 
 const DAYS = [
   { value: 1, short: "Mon", full: "Monday" },
@@ -34,10 +36,12 @@ interface TimetableSlot {
   subjectName: string
   className: string
   section: string
+  year?: string
 }
 
 export function MyTimetable() {
   const [slots, setSlots] = useState<TimetableSlot[]>([])
+  const [teacherName, setTeacherName] = useState<string>("Faculty Member")
   const [loading, setLoading] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
   const [gridView, setGridView] = useState(false)
@@ -55,16 +59,27 @@ export function MyTimetable() {
         } = await supabase.auth.getSession()
         if (!session) return
 
-        const { data, error } = await supabase
-          .from("timetables")
-          .select(`
-            day_of_week,
-            period:periods ( period_number, start_time, end_time ),
-            subject:subjects ( name ),
-            class:classes ( name, section )
-          `)
-          .eq("teacher_id", session.user.id)
-          .order("day_of_week")
+        const [{ data, error }, { data: profile }] = await Promise.all([
+          supabase
+            .from("timetables")
+            .select(`
+              day_of_week,
+              period:periods ( period_number, start_time, end_time ),
+              subject:subjects ( name ),
+              class:classes ( name, section, year )
+            `)
+            .eq("teacher_id", session.user.id)
+            .order("day_of_week"),
+          supabase
+            .from("users")
+            .select("full_name")
+            .eq("id", session.user.id)
+            .maybeSingle(),
+        ])
+
+        if (profile?.full_name) {
+          setTeacherName(profile.full_name)
+        }
 
         if (error || !data) {
           setLoading(false)
@@ -80,6 +95,7 @@ export function MyTimetable() {
             subjectName: t.subject?.name ?? "—",
             className: t.class?.name ?? "—",
             section: t.class?.section ?? "",
+            year: t.class?.year ?? "",
           }))
           .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodNumber - b.periodNumber)
 
@@ -92,6 +108,25 @@ export function MyTimetable() {
     }
     fetchTimetable()
   }, [])
+
+  function handleDownloadPDF() {
+    if (slots.length === 0) {
+      toast.error("No timetable slots to export.")
+      return
+    }
+    try {
+      toast.info("Generating your weekly schedule PDF...", { duration: 1500 })
+      exportTeacherTimetablePDF({
+        slots,
+        teacherName,
+        institutionName: "Faculty Weekly Schedule",
+      })
+      toast.success("Schedule PDF downloaded successfully!")
+    } catch (err) {
+      console.error("Teacher PDF export error:", err)
+      toast.error("Failed to generate PDF. Please try again.")
+    }
+  }
 
   const todayDow = (() => {
     const jsDay = new Date().getDay()
@@ -154,6 +189,18 @@ export function MyTimetable() {
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* Quick Export PDF */}
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary px-2.5 py-1.5 text-xs font-semibold shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+              title="Download weekly schedule as PDF"
+            >
+              <Download className="size-3.5" />
+              <span className="hidden sm:inline">Download PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </button>
+
             {/* View toggle — only shown when expanded */}
             {isExpanded && (
               <div className="inline-flex gap-0.5 rounded-xl border border-border/80 bg-muted/50 p-1">
@@ -307,11 +354,17 @@ export function MyTimetable() {
                         <span className="text-xs sm:text-sm font-bold text-foreground truncate">
                           {slot.subjectName}
                         </span>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-medium mt-0.5">
-                          <span className="inline-flex items-center gap-1 font-mono font-semibold rounded-md border border-border/70 bg-muted/40 px-1.5 py-0.2">
-                            <GraduationCap className="size-3 text-muted-foreground shrink-0" />
+                        <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-medium mt-1">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-2.5 shrink-0" />
                             {slot.className}-{slot.section}
                           </span>
+                          {slot.year && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              {slot.year}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -371,9 +424,17 @@ export function MyTimetable() {
                         <span className={cn("text-sm font-bold truncate", color.text)}>
                           {slot.subjectName}
                         </span>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium">
-                          <GraduationCap className="size-3.5 shrink-0" />
-                          <span className="font-mono">{slot.className}-{slot.section}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-2.5 shrink-0" />
+                            {slot.className}-{slot.section}
+                          </span>
+                          {slot.year && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              {slot.year}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -481,8 +542,15 @@ export function MyTimetable() {
                                   >
                                     {slot.subjectName}
                                   </div>
-                                  <div className="text-[10px] font-mono text-muted-foreground font-semibold mt-1">
-                                    {slot.className}-{slot.section}
+                                  <div className="flex items-center gap-1 flex-wrap mt-1">
+                                    <span className="inline-flex items-center rounded bg-blue-500/10 border border-blue-500/20 px-1 py-0.2 text-[9px] font-bold text-blue-700 dark:text-blue-300">
+                                      {slot.className}-{slot.section}
+                                    </span>
+                                    {slot.year && (
+                                      <span className="inline-flex items-center rounded bg-purple-500/10 border border-purple-500/20 px-1 py-0.2 text-[9px] font-bold text-purple-700 dark:text-purple-300">
+                                        {slot.year}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               ) : (

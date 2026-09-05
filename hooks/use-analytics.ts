@@ -10,6 +10,7 @@ export interface SubjectCard {
   subjectName: string
   classId: string
   className: string
+  year?: string
   percentage: number
   totalStudents: number
   totalClasses: number
@@ -26,9 +27,12 @@ export interface ChartPoint {
 }
 
 export interface StudentRow {
+  studentId?: string
   name: string
   roll: string
   subject: string
+  className?: string
+  year?: string
   percentage: number
   attended: number
   total: number

@@ -74,7 +74,7 @@ export async function GET(
     const { data: studentRows, error: stErr } = await supabase
       .from("period_attendance")
       .select(`
-        id, status, student_id,
+        id, status, student_id, notified_at,
         student:students (
           id, roll_number, year,
           user:users ( full_name, email ),
@@ -91,11 +91,30 @@ export async function GET(
 
     let presentCount = 0
     let absentCount = 0
+    let notifiedAbsentCount = 0
+    let emailableAbsentCount = 0
+    let noEmailAbsentCount = 0
 
     const students = (studentRows ?? []).map((row: any) => {
       const isPresent = row.status === "present"
-      if (isPresent) presentCount++
-      else absentCount++
+      const alreadyNotified = !!row.notified_at
+      const rawEmail = (row.student?.user?.email ?? "").trim()
+      const hasEmail = rawEmail.length > 0 && rawEmail.includes("@")
+
+      if (isPresent) {
+        presentCount++
+      } else {
+        absentCount++
+        if (alreadyNotified) {
+          notifiedAbsentCount++
+        } else {
+          if (hasEmail) {
+            emailableAbsentCount++
+          } else {
+            noEmailAbsentCount++
+          }
+        }
+      }
 
       const std = row.student
       const dCode = Array.isArray(std?.class?.department)
@@ -106,8 +125,11 @@ export async function GET(
         id: std?.id ?? row.student_id,
         name: std?.user?.full_name ?? "Unknown Student",
         rollNumber: std?.roll_number ?? "—",
-        email: std?.user?.email ?? "",
+        email: rawEmail,
+        hasEmail,
         status: isPresent ? ("Present" as const) : ("Absent" as const),
+        alreadyNotified,
+        notifiedAt: row.notified_at ? new Date(row.notified_at).toISOString() : null,
         departmentCode: dCode,
         year: std?.class?.year ?? std?.year ?? "",
         section: std?.class?.section ?? "",
@@ -143,8 +165,11 @@ export async function GET(
         rawDate: sessionData.session_date,
         finalizedAt: sessionData.finalized_at,
         subject: (sessionData.subjects as any)?.name ?? "Unknown Subject",
+        subjectId: sessionData.subject_id ?? "",
         subjectCode: (sessionData.subjects as any)?.code ?? "",
         class: classLabel,
+        classId: sessionData.class_id ?? "",
+        periodId: sessionData.period_id ?? "",
         departmentCode: dCode,
         year,
         section,
@@ -156,6 +181,10 @@ export async function GET(
         endTime,
         present: presentCount,
         absent: absentCount,
+        notifiedAbsentCount,
+        emailableAbsentCount,
+        noEmailAbsentCount,
+        pendingAbsentCount: emailableAbsentCount,
         total: totalStudents,
         percentage,
         status: "Finalized",

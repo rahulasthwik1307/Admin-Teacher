@@ -1,6 +1,6 @@
 "use client"
 
-import { Activity, CheckCircle2, Radio, UserPlus, ScanFace, Clock, Send } from "lucide-react"
+import { Activity, CheckCircle2, Radio, UserPlus, ScanFace, Clock, Send, Building2, GraduationCap } from "lucide-react"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { RecentActivitySkeleton } from "@/components/ui/skeletons"
 import { cn } from "@/lib/utils"
@@ -128,15 +128,40 @@ export function RecentActivity() {
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-md border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider",
+                        "inline-flex items-center rounded-md border px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider shrink-0",
                         cfg.badgeBg
                       )}
                     >
                       {cfg.label}
                     </span>
-                    <span className="text-xs font-semibold text-foreground truncate">
-                      {activity.description}
+
+                    {/* Title / Subject / Name */}
+                    <span className="text-xs font-bold text-foreground truncate">
+                      {activity.title || activity.description.split(" — ")[0]}
                     </span>
+
+                    {/* Class & Section Pill */}
+                    {activity.className && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                        <Building2 className="size-2.5 shrink-0" />
+                        {activity.className}{activity.section ? `-${activity.section}` : ""}
+                      </span>
+                    )}
+
+                    {/* Year Pill */}
+                    {activity.year && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                        <GraduationCap className="size-2.5 shrink-0" />
+                        {activity.year}
+                      </span>
+                    )}
+
+                    {/* Count info if available (for notifications) */}
+                    {activity.countInfo && (
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        ({activity.countInfo})
+                      </span>
+                    )}
                   </div>
                   <span className="shrink-0 text-[11px] text-muted-foreground font-medium flex items-center gap-1 sm:pl-3">
                     <Clock className="size-3 text-muted-foreground/60 shrink-0" />

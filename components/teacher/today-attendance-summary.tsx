@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart2, Users, UserCheck, UserX, Clock } from "lucide-react"
+import { BarChart2, Users, UserCheck, UserX, Clock, Building2, GraduationCap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { TodayAttendanceSummarySkeleton } from "@/components/ui/skeletons"
@@ -125,11 +125,29 @@ export function TodayAttendanceSummary() {
                 key={subject.id}
                 className="rounded-xl border border-border bg-card p-4 shadow-2xs transition-all hover:border-border/90"
               >
-                {/* Top row: name + badge */}
+                {/* Top row: name + separate pills + badge */}
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <span className="text-xs sm:text-sm font-bold text-foreground leading-snug">
-                    {subject.name}
-                  </span>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-xs sm:text-sm font-bold text-foreground leading-snug truncate">
+                      {subject.subjectName || subject.name.split(" (")[0]}
+                    </span>
+                    {(subject.className || subject.year) && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {subject.className && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-2.5 shrink-0" />
+                            {subject.className}{subject.section ? `-${subject.section}` : ""}
+                          </span>
+                        )}
+                        {subject.year && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                            <GraduationCap className="size-2.5 shrink-0" />
+                            {subject.year}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <span className={cn("shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-bold", getBadgeBg(pct))}>
                     {pct}% Turnout
                   </span>

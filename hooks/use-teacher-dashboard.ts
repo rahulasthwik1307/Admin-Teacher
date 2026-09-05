@@ -20,11 +20,20 @@ export interface TeacherDashboardData {
   todayAttendance: {
     id: string
     name: string
+    subjectName?: string
+    className?: string
+    section?: string
+    year?: string
     present: number
     total: number
   }[]
   recentActivity: {
     description: string
+    title?: string
+    className?: string
+    section?: string
+    year?: string
+    countInfo?: string
     time: string
     type: "finalized" | "opened" | "approved" | "added" | "notified"
   }[]

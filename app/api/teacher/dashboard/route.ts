@@ -92,7 +92,7 @@ export async function GET() {
       // Recent students created by teacher
       supabase
         .from("students")
-        .select(`id, created_at, updated_at, is_approved, users ( full_name )`)
+        .select(`id, created_at, updated_at, is_approved, users ( full_name ), classes ( name, section, year )`)
         .eq("created_by", teacherId)
         .order("created_at", { ascending: false })
         .limit(10),
@@ -193,6 +193,10 @@ export async function GET() {
       return {
         id: sess.id,
         name: `${subjectName} (${sectionName})`,
+        subjectName,
+        className: sess.classes?.name ?? "",
+        section: sess.classes?.section ?? "",
+        year: sess.classes?.year ?? "",
         present: presentBySession.get(sess.id) ?? 0,
         total: studentCountByClass.get(sess.class_id) ?? 0,
       }
@@ -206,6 +210,10 @@ export async function GET() {
       const cls: any = Array.isArray(s.classes) ? s.classes[0] : s.classes
       activityItems.push({
         description: `${subject?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""}`,
+        title: subject?.name ?? "Unknown",
+        className: cls?.name ?? "",
+        section: cls?.section ?? "",
+        year: cls?.year ?? "",
         time: s.finalized_at,
         type: "finalized",
       })
@@ -216,6 +224,10 @@ export async function GET() {
       const cls: any = Array.isArray(s.classes) ? s.classes[0] : s.classes
       activityItems.push({
         description: `${subject?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""}`,
+        title: subject?.name ?? "Unknown",
+        className: cls?.name ?? "",
+        section: cls?.section ?? "",
+        year: cls?.year ?? "",
         time: s.opened_at,
         type: "opened",
       })
@@ -223,15 +235,25 @@ export async function GET() {
 
     for (const s of (recentStudentsResult.data ?? [])) {
       const userObj: any = Array.isArray(s.users) ? s.users[0] : s.users
+      const cls: any = Array.isArray(s.classes) ? s.classes[0] : s.classes
+      const studentName = userObj?.full_name ?? "Unknown"
       if (s.is_approved) {
         activityItems.push({
-          description: userObj?.full_name ?? "Unknown",
+          description: studentName,
+          title: studentName,
+          className: cls?.name ?? "",
+          section: cls?.section ?? "",
+          year: cls?.year ?? "",
           time: s.updated_at,
           type: "approved",
         })
       }
       activityItems.push({
-        description: userObj?.full_name ?? "Unknown",
+        description: studentName,
+        title: studentName,
+        className: cls?.name ?? "",
+        section: cls?.section ?? "",
+        year: cls?.year ?? "",
         time: s.created_at,
         type: "added",
       })
@@ -241,8 +263,18 @@ export async function GET() {
       const sess: any = Array.isArray((b as any).session) ? (b as any).session[0] : (b as any).session
       const subj: any = Array.isArray(sess?.subjects) ? sess.subjects[0] : sess?.subjects
       const cls: any = Array.isArray(sess?.classes) ? sess.classes[0] : sess?.classes
-      const label = `${subj?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""} — ${b.sent_count} sent${b.failed_count > 0 ? `, ${b.failed_count} failed` : ""}`
-      activityItems.push({ description: label, time: b.sent_at, type: "notified" })
+      const sentInfo = `${b.sent_count} sent${b.failed_count > 0 ? `, ${b.failed_count} failed` : ""}`
+      const label = `${subj?.name ?? "Unknown"}${cls ? ` — ${cls.name} ${cls.section}` : ""} — ${sentInfo}`
+      activityItems.push({
+        description: label,
+        title: subj?.name ?? "Absence Notice",
+        className: cls?.name ?? "",
+        section: cls?.section ?? "",
+        year: cls?.year ?? "",
+        countInfo: sentInfo,
+        time: b.sent_at,
+        type: "notified",
+      })
     }
 
     activityItems.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())

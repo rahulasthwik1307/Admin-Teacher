@@ -1298,6 +1298,10 @@ export default function AdminFaceApprovalPage() {
             const cRejected = cohortStudents.filter((s) => s.faceStatus === "Rejected").length
             const cNone = cohortStudents.filter((s) => s.faceStatus === "None").length
 
+            const firstStudent = cohortStudents[0]
+            const classSection = firstStudent?.classSection || (cohortTitle !== "Unassigned Cohort" ? cohortTitle : null)
+            const year = firstStudent?.year
+
             return (
               <div
                 key={cohortTitle}
@@ -1305,14 +1309,28 @@ export default function AdminFaceApprovalPage() {
               >
                 {/* Cohort Header with Summary Badges */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/80 bg-muted/30 px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <GraduationCap className="size-4" />
-                    </div>
-                    <span className="text-xs sm:text-sm font-bold text-foreground">
-                      {cohortTitle}
-                    </span>
-                    <Badge variant="secondary" className="text-[10px] font-semibold px-2 py-0.2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Class & Section Pill */}
+                    {classSection ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/25 px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-300 shadow-2xs">
+                        <Building2 className="size-3.5 shrink-0" />
+                        {classSection}
+                      </span>
+                    ) : (
+                      <span className="text-xs sm:text-sm font-bold text-foreground font-mono">
+                        {cohortTitle}
+                      </span>
+                    )}
+
+                    {/* Year Pill */}
+                    {year && (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/25 px-2.5 py-1 text-xs font-bold text-purple-700 dark:text-purple-300 shadow-2xs">
+                        <GraduationCap className="size-3.5 shrink-0" />
+                        {year}
+                      </span>
+                    )}
+
+                    <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1 bg-card/90 border-border text-foreground shadow-2xs">
                       {cohortStudents.length} student{cohortStudents.length !== 1 ? "s" : ""}
                     </Badge>
                   </div>
@@ -1372,20 +1390,22 @@ export default function AdminFaceApprovalPage() {
                             <BiometricStatusBadge status={student.faceStatus} />
                           </div>
 
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                            <span className="flex items-center gap-1">
-                              <Building2 className="size-3 text-muted-foreground/70" />
-                              {student.deptCode} · {student.classSection}
-                            </span>
-                            <span>·</span>
-                            <span>{student.year}</span>
-                            <span>·</span>
-                            <span className="flex items-center gap-1 text-[11px]">
-                              <Calendar className="size-3 text-muted-foreground/70" />
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap mt-0.5">
+                            {/* Registration Timestamp / Status */}
+                            <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                              <Calendar className="size-3.5 text-muted-foreground/70 shrink-0" />
                               {student.registrationPhoto
-                                ? formatRegistrationDate(student.createdAt)
-                                : "No enrollment"}
+                                ? `Registered on ${formatRegistrationDate(student.createdAt)}`
+                                : "No image capture enrolled"}
                             </span>
+                            {student.contactEmail && (
+                              <>
+                                <span className="text-muted-foreground/40">·</span>
+                                <span className="text-xs text-muted-foreground/80 truncate max-w-56">
+                                  {student.contactEmail}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1546,9 +1566,20 @@ export default function AdminFaceApprovalPage() {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-0.5">
                     Cohort / Section
                   </span>
-                  <span className="font-semibold text-foreground block">
-                    {viewTarget.cohortLabel}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                    {viewTarget.classSection && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+                        <Building2 className="size-3 shrink-0" />
+                        {viewTarget.classSection}
+                      </span>
+                    )}
+                    {viewTarget.year && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+                        <GraduationCap className="size-3 shrink-0" />
+                        {viewTarget.year}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-border/80 bg-muted/20 p-3">

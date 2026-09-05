@@ -7,6 +7,7 @@ export interface TimetableData {
   periods: any[]
   classes: any[]
   timetable: any[]
+  teachers?: any[]
 }
 
 async function fetchTimetableData(): Promise<TimetableData> {

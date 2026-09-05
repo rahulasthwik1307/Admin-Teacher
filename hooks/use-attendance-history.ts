@@ -25,6 +25,8 @@ export interface AttendanceSession {
   total?: number
   percentage: number
   status: "Finalized"
+  method?: "qr" | "manual"
+  finalizedAt?: string | null
 }
 
 async function fetchAttendanceHistory(): Promise<AttendanceSession[]> {
@@ -37,7 +39,8 @@ export function useAttendanceHistory() {
   return useQuery({
     queryKey: ["teacher-attendance-history"],
     queryFn: fetchAttendanceHistory,
-    staleTime: 2 * 60 * 1000,  // fresh for 2 minutes
-    gcTime: 10 * 60 * 1000,    // keep in memory 10 minutes
+    staleTime: 5 * 1000,        // 5 seconds
+    refetchOnMount: "always",   // always fetch fresh data when navigating to page
+    refetchOnWindowFocus: true, // refresh when tab is focused
   })
 }

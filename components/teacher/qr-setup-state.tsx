@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useMemo, useState, useEffect } from "react"
-import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown, AlertCircle } from "lucide-react"
+import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown, AlertCircle, FileEdit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -41,6 +41,7 @@ export interface OccupiedSlotData {
   periodId: string
   periodNumber: number
   status: string
+  isManual?: boolean
 }
 
 interface QRSetupStateProps {
@@ -516,8 +517,15 @@ export function QRSetupState({
                                   </span>
                                 )}
                                 {isOccupiedBySameSubject && (
-                                  <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-300/60 dark:border-sky-800/60 px-1.5 py-0.5 rounded">
-                                    Reopen
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                                      slotOccupant?.isManual
+                                        ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-300/60 dark:border-amber-800/60"
+                                        : "text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-300/60 dark:border-sky-800/60"
+                                    )}
+                                  >
+                                    {slotOccupant?.isManual ? "Manual Entry" : "Reopen QR"}
                                   </span>
                                 )}
                               </div>
@@ -566,16 +574,33 @@ export function QRSetupState({
               disabled={!canStart || hasSlotConflict}
               onClick={onStart}
             >
-              <QrCode className="size-4.5" />
-              <span>{isReopenSession ? "Reopen Attendance Window" : "Open Attendance Window"}</span>
+              {isReopenSession && currentSlotOccupant?.isManual ? (
+                <FileEdit className="size-4.5 text-amber-500" />
+              ) : (
+                <QrCode className="size-4.5" />
+              )}
+              <span>
+                {isReopenSession
+                  ? currentSlotOccupant?.isManual
+                    ? "Review / Edit Attendance"
+                    : "Reopen Attendance Window"
+                  : "Open Attendance Window"}
+              </span>
               <ArrowRight className="size-4" />
             </Button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {isReopenSession ? (
-                <>
-                  <Sparkles className="size-4 text-primary shrink-0" />
-                  <span>Reopening existing attendance session for review and updates</span>
-                </>
+                currentSlotOccupant?.isManual ? (
+                  <>
+                    <FileEdit className="size-4 text-amber-500 shrink-0" />
+                    <span>Attendance was recorded via Manual Entry. Click to review student records.</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4 text-primary shrink-0" />
+                    <span>Reopening existing attendance session for review and updates</span>
+                  </>
+                )
               ) : (
                 <>
                   <ShieldCheck className="size-4 text-emerald-500 shrink-0" />

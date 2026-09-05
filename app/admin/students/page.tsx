@@ -856,18 +856,28 @@ export default function AdminStudentsPage() {
         {/* 3. Class & Section (STRICTLY CENTER ALIGNED) */}
         <td className="px-4 py-3.5 text-center">
           <div className="flex items-center justify-center">
-            <span className="inline-flex items-center justify-center font-mono text-xs font-semibold px-2.5 py-1 rounded-md bg-muted/80 text-foreground border border-border/70">
-              {student.classSection}
-            </span>
+            {student.classSection ? (
+              <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 shadow-2xs">
+                <Building2 className="size-3 shrink-0" />
+                {student.classSection}
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
           </div>
         </td>
 
         {/* 4. Academic Year (STRICTLY CENTER ALIGNED) */}
         <td className="px-4 py-3.5 text-center">
           <div className="flex items-center justify-center">
-            <span className="inline-flex items-center justify-center text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-md bg-muted/40 border border-border/50">
-              {student.year}
-            </span>
+            {student.year ? (
+              <span className="inline-flex items-center gap-1 text-xs text-purple-700 dark:text-purple-300 font-bold px-2.5 py-1 rounded-md bg-purple-500/10 border border-purple-500/20 shadow-2xs">
+                <GraduationCap className="size-3 shrink-0" />
+                {student.year}
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
           </div>
         </td>
 
@@ -1442,8 +1452,21 @@ export default function AdminStudentsPage() {
                         </DropdownMenu>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs text-muted-foreground">
-                      <span className="font-medium">{student.year}</span>
+                    <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {student.classSection && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-2.5 shrink-0" />
+                            {student.classSection}
+                          </span>
+                        )}
+                        {student.year && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                            <GraduationCap className="size-2.5 shrink-0" />
+                            {student.year}
+                          </span>
+                        )}
+                      </div>
                       <FaceStatusBadge status={student.faceStatus} />
                     </div>
                   </div>
@@ -1517,8 +1540,21 @@ export default function AdminStudentsPage() {
                   </DropdownMenu>
                 </div>
               </div>
-              <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs text-muted-foreground">
-                <span className="font-medium">{student.class}</span>
+              <div className="mt-3 flex items-center justify-between border-t border-border/50 pt-2 text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {student.classSection && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                      <Building2 className="size-2.5 shrink-0" />
+                      {student.classSection}
+                    </span>
+                  )}
+                  {student.year && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                      <GraduationCap className="size-2.5 shrink-0" />
+                      {student.year}
+                    </span>
+                  )}
+                </div>
                 <FaceStatusBadge status={student.faceStatus} />
               </div>
             </div>

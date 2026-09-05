@@ -54,7 +54,8 @@ export async function GET() {
     const { data: rawSessions, error } = await supabase
       .from("attendance_sessions")
       .select(`
-        id, session_date, finalized_at, subject_id, class_id, period_id,
+        id, session_date, finalized_at, opened_at, current_qr_token, subject_id, class_id, period_id,
+        qr_tokens:qr_tokens(count),
         subjects ( id, name, code ),
         classes ( id, name, section, year, department:departments ( code, name ) ),
         periods ( id, period_number, start_time, end_time )
@@ -134,6 +135,9 @@ export async function GET() {
       const section = s.classes?.section ?? ""
       const classLabel = `${dCode}-${section}${year ? ` · ${year}` : ""}`
 
+      const qrCount = s.qr_tokens?.[0]?.count ?? 0
+      const method = qrCount > 0 ? "qr" : "manual"
+
       sessions.push({
         id: s.id,
         date: formatDate(s.session_date),
@@ -157,6 +161,8 @@ export async function GET() {
         total,
         percentage: pct,
         status: "Finalized" as const,
+        method: method as "qr" | "manual",
+        finalizedAt: s.finalized_at ?? null,
       })
     }
 

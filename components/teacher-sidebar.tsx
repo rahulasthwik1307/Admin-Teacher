@@ -42,6 +42,11 @@ const navGroups = [
       { label: "Missed Attendance", href: "/teacher/missed-attendance", icon: ClipboardX },
       { label: "Absence Notifications", href: "/teacher/absence-notifications", icon: Mail },
       { label: "Attendance History", href: "/teacher/attendance-history", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "INSIGHTS",
+    items: [
       { label: "Analytics", href: "/teacher/analytics", icon: BarChart3 },
     ],
   },
@@ -127,10 +132,10 @@ export function TeacherSidebar({
                 <button
                   type="button"
                   onClick={onToggleCollapse}
-                  className="hidden lg:flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="hidden lg:flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
                   aria-label="Collapse sidebar"
                 >
-                  <PanelLeftClose className="size-4" />
+                  <PanelLeftClose className="size-4.5" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
@@ -140,64 +145,38 @@ export function TeacherSidebar({
           )}
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-2.5 px-2 pt-4 pb-3">
-          <FALogo size="sm" className="shrink-0" />
+        <div className="flex flex-col items-center gap-3 px-2 pt-4.5 pb-3.5">
+          <FALogo className="size-11 text-base shadow-sm" />
           {onToggleCollapse && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={onToggleCollapse}
-                  className="hidden lg:flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                  className="hidden lg:flex size-9 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer border border-transparent hover:border-border/60"
                   aria-label="Expand sidebar"
                 >
-                  <PanelLeftOpen className="size-4" />
+                  <PanelLeftOpen className="size-5" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
+              <TooltipContent side="right" sideOffset={12}>
                 Expand sidebar
               </TooltipContent>
             </Tooltip>
           )}
-        </div>
-      )}
-
-      {/* ── Teacher profile card ──────────────────────────── */}
-      {!collapsed ? (
-        <div className="px-3 pb-3.5">
-          <div className="relative flex items-center gap-3 rounded-xl border border-border bg-linear-to-br from-muted/60 to-muted/20 px-3 py-2.5 shadow-2xs">
-            <div className="relative shrink-0">
-              <Avatar className="size-8.5 ring-2 ring-primary/20 ring-offset-1">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                  {teacherInitials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-500 ring-2 ring-card" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-foreground leading-tight truncate">
-                {teacherName}
-              </span>
-              <span className="text-[11px] font-medium text-muted-foreground truncate">
-                Teacher
-              </span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-center px-2 pb-3">
+          {/* Teacher Profile Avatar in Collapsed Mode (Top - Enlarged) */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="relative cursor-default">
-                <Avatar className="size-9 ring-2 ring-primary/20 ring-offset-1">
-                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+              <div className="relative cursor-default size-10.5 flex items-center justify-center">
+                <Avatar className="size-10.5 ring-2 ring-primary/20 ring-offset-1 shadow-xs">
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
                     {teacherInitials}
                   </AvatarFallback>
                 </Avatar>
                 <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
               </div>
             </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={10}>
+            <TooltipContent side="right" sideOffset={12}>
               <div className="flex flex-col">
                 <span className="font-semibold text-xs">{teacherName}</span>
                 <span className="text-[10px] text-muted-foreground">Teacher</span>
@@ -207,51 +186,86 @@ export function TeacherSidebar({
         </div>
       )}
 
-      <div className={cn("h-px bg-border/80 transition-all duration-200", collapsed ? "mx-3" : "mx-4")} />
+      {/* ── Teacher profile card (Expanded mode only) ────────────────── */}
+      {!collapsed && (
+        <>
+          <div className="px-3 pb-3.5">
+            <div className="relative flex items-center gap-3 rounded-xl border border-border bg-linear-to-br from-muted/60 to-muted/20 px-3 py-2.5 shadow-2xs">
+              <div className="relative shrink-0">
+                <Avatar className="size-8.5 ring-2 ring-primary/20 ring-offset-1">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                    {teacherInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-500 ring-2 ring-card" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-semibold text-foreground leading-tight truncate">
+                  {teacherName}
+                </span>
+                <span className="text-[11px] font-medium text-muted-foreground truncate">
+                  Teacher
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="mx-4 h-px bg-border/80 transition-all duration-200" />
+        </>
+      )}
+
+      {collapsed && (
+        <div className="mx-3 h-px bg-border/80 transition-all duration-200" />
+      )}
 
       {/* ── Nav items ─────────────────────────────────────── */}
-      <nav className={cn("flex-1 overflow-y-auto py-3", collapsed ? "px-2" : "px-3")} aria-label="Teacher navigation">
-        <ul className="flex flex-col gap-4">
+      <nav
+        className={cn(
+          "flex-1 overflow-y-auto",
+          collapsed ? "py-3 px-2 flex flex-col items-center justify-center gap-1" : "py-3 px-3"
+        )}
+        aria-label="Teacher navigation"
+      >
+        <ul className={cn("flex flex-col w-full", collapsed ? "gap-1.5" : "gap-4")}>
           {navGroups.map((group, groupIdx) => (
-            <li key={group.label}>
+            <li key={group.label} className={cn(collapsed && "flex flex-col items-center w-full")}>
               {!collapsed ? (
                 <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 select-none">
                   {group.label}
                 </p>
               ) : groupIdx > 0 ? (
-                <div className="my-1.5 mx-auto w-6 h-px bg-border/60" />
+                <div className="my-1 mx-auto w-5 h-px bg-border/40" />
               ) : null}
-              <ul className="flex flex-col gap-1">
+              <ul className={cn("flex flex-col w-full", collapsed ? "gap-1.5 items-center" : "gap-1")}>
                 {group.items.map((item) => {
                   const isActive = pathname === item.href
 
                   if (collapsed) {
                     return (
-                      <li key={item.href}>
+                      <li key={item.href} className="flex justify-center w-full">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Link
                               href={item.href}
                               onClick={onClose}
                               className={cn(
-                                "group relative flex size-10 items-center justify-center rounded-xl mx-auto transition-all duration-200",
+                                "group relative flex size-11 items-center justify-center rounded-xl transition-all duration-200",
                                 isActive
-                                  ? "bg-primary/15 text-primary font-semibold shadow-2xs"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                                  ? "bg-primary/15 text-primary font-semibold shadow-xs"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
                               )}
                               aria-label={item.label}
                             >
                               <span
                                 className={cn(
-                                  "absolute left-0 top-1/2 -translate-y-1/2 w-0.75 rounded-r-full transition-all duration-200",
-                                  isActive ? "h-5 bg-primary opacity-100" : "h-0 bg-primary opacity-0"
+                                  "absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full transition-all duration-200",
+                                  isActive ? "h-5.5 bg-primary opacity-100" : "h-0 bg-primary opacity-0"
                                 )}
                               />
-                              <item.icon className="size-4.5 shrink-0" />
+                              <item.icon className="size-5 shrink-0" />
                             </Link>
                           </TooltipTrigger>
                           <TooltipContent side="right" sideOffset={12}>
-                            <span>{item.label}</span>
+                            <span className="font-medium text-xs">{item.label}</span>
                           </TooltipContent>
                         </Tooltip>
                       </li>
@@ -320,14 +334,14 @@ export function TeacherSidebar({
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="group flex size-10 items-center justify-center rounded-xl mx-auto text-muted-foreground transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 cursor-pointer"
+                className="group flex size-11 items-center justify-center rounded-xl mx-auto text-muted-foreground transition-all duration-200 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 cursor-pointer"
                 aria-label="Sign Out"
               >
-                <LogOut className="size-4.5" />
+                <LogOut className="size-5" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={12}>
-              Sign Out
+              <span className="font-medium text-xs">Sign Out</span>
             </TooltipContent>
           </Tooltip>
         )}

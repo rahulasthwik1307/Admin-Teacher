@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect, useCallback, useMemo } from "react"
+import Link from "next/link"
 import { useAcademicStructure } from "@/hooks/use-academic-structure"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -36,6 +37,9 @@ import {
   ChevronRight,
   AlignJustify,
   CalendarDays,
+  Sparkles,
+  Layers,
+  ArrowUpRight,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -46,6 +50,106 @@ interface Department { id: string; name: string; code: string; classes: number; 
 interface ClassItem { id: string; name: string; section: string; year: string; department: string; departmentFull: string; displayName: string }
 interface Subject { id: string; name: string; code: string; department: string; departmentFull: string }
 interface Period { id: string; number: number; start: string; end: string; duration: string }
+
+/* ---------- Academic Year Definitions & Visual Tokens ---------- */
+const STANDARD_YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"] as const
+
+interface YearTheme {
+  label: string
+  sublabel: string
+  pillColor: string
+  pillActive: string
+  badge: string
+  border: string
+  hoverBorder: string
+  gradient: string
+  avatarGradient: string
+  avatarText: string
+  glowDot: string
+  iconBg: string
+  bgSoft: string
+}
+
+const YEAR_THEMES: Record<string, YearTheme> = {
+  "1st Year": {
+    label: "1st Year",
+    sublabel: "Freshers / 1st Year Cohort",
+    pillColor: "hover:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300/40",
+    pillActive: "bg-sky-600 text-white shadow-xs border-sky-600",
+    badge: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-300/60 dark:border-sky-800/80",
+    border: "border-sky-200/80 dark:border-sky-900/50",
+    hoverBorder: "hover:border-sky-400 dark:hover:border-sky-600",
+    gradient: "from-sky-500/15 via-sky-500/5 to-transparent",
+    avatarGradient: "from-sky-500/20 to-blue-600/10",
+    avatarText: "text-sky-700 dark:text-sky-300 border-sky-300/60 dark:border-sky-700/60",
+    glowDot: "bg-sky-500",
+    iconBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+    bgSoft: "bg-sky-500/[0.02] dark:bg-sky-950/10",
+  },
+  "2nd Year": {
+    label: "2nd Year",
+    sublabel: "Sophomores / 2nd Year Cohort",
+    pillColor: "hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/40",
+    pillActive: "bg-emerald-600 text-white shadow-xs border-emerald-600",
+    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800/80",
+    border: "border-emerald-200/80 dark:border-emerald-900/50",
+    hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-600",
+    gradient: "from-emerald-500/15 via-emerald-500/5 to-transparent",
+    avatarGradient: "from-emerald-500/20 to-teal-600/10",
+    avatarText: "text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-700/60",
+    glowDot: "bg-emerald-500",
+    iconBg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    bgSoft: "bg-emerald-500/[0.02] dark:bg-emerald-950/10",
+  },
+  "3rd Year": {
+    label: "3rd Year",
+    sublabel: "Pre-Final / 3rd Year Cohort",
+    pillColor: "hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/40",
+    pillActive: "bg-amber-600 text-white shadow-xs border-amber-600",
+    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/60 dark:border-amber-800/80",
+    border: "border-amber-200/80 dark:border-amber-900/50",
+    hoverBorder: "hover:border-amber-400 dark:hover:border-amber-600",
+    gradient: "from-amber-500/15 via-amber-500/5 to-transparent",
+    avatarGradient: "from-amber-500/20 to-orange-600/10",
+    avatarText: "text-amber-700 dark:text-amber-300 border-amber-300/60 dark:border-amber-700/60",
+    glowDot: "bg-amber-500",
+    iconBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    bgSoft: "bg-amber-500/[0.02] dark:bg-amber-950/10",
+  },
+  "4th Year": {
+    label: "4th Year",
+    sublabel: "Final Year / Graduating Cohort",
+    pillColor: "hover:bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300/40",
+    pillActive: "bg-violet-600 text-white shadow-xs border-violet-600",
+    badge: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-300/60 dark:border-violet-800/80",
+    border: "border-violet-200/80 dark:border-violet-900/50",
+    hoverBorder: "hover:border-violet-400 dark:hover:border-violet-600",
+    gradient: "from-violet-500/15 via-violet-500/5 to-transparent",
+    avatarGradient: "from-violet-500/20 to-purple-600/10",
+    avatarText: "text-violet-700 dark:text-violet-300 border-violet-300/60 dark:border-violet-700/60",
+    glowDot: "bg-violet-500",
+    iconBg: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    bgSoft: "bg-violet-500/[0.02] dark:bg-violet-950/10",
+  },
+}
+
+function getYearTheme(year: string): YearTheme {
+  return YEAR_THEMES[year] || {
+    label: year,
+    sublabel: `${year} Cohort`,
+    pillColor: "hover:bg-primary/10 text-primary border-primary/40",
+    pillActive: "bg-primary text-primary-foreground shadow-xs border-primary",
+    badge: "bg-primary/10 text-primary border-primary/30",
+    border: "border-border",
+    hoverBorder: "hover:border-primary/50",
+    gradient: "from-primary/10 via-primary/5 to-transparent",
+    avatarGradient: "from-primary/15 to-primary/5",
+    avatarText: "text-primary border-primary/30",
+    glowDot: "bg-primary",
+    iconBg: "bg-primary/10 text-primary",
+    bgSoft: "bg-muted/10",
+  }
+}
 
 /* ---------- Helpers ---------- */
 function computeDuration(start: string, end: string): string {
@@ -113,6 +217,7 @@ export default function AcademicStructurePage() {
   const [perEnd, setPerEnd] = useState("")
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [yearFilterByDept, setYearFilterByDept] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!structureData) return
@@ -126,16 +231,63 @@ export default function AcademicStructurePage() {
     setLoadingPeriods(false)
   }, [structureData])
 
-  /* ---------- Grouped data ---------- */
-  const classesByDept = useMemo(() => {
-    const groups: Record<string, ClassItem[]> = {}
-    for (const c of classes) {
-      const key = c.departmentFull || "Unassigned"
-      if (!groups[key]) groups[key] = []
-      groups[key].push(c)
+  /* ---------- Hierarchical Classes Data Grouped by Dept -> Year -> Section ---------- */
+  const classesHierarchy = useMemo(() => {
+    const deptMap: Record<string, {
+      deptCode: string
+      deptName: string
+      totalClasses: number
+      years: Record<string, ClassItem[]>
+    }> = {}
+
+    // Initialize all departments from departments list
+    for (const d of departments) {
+      deptMap[d.name] = {
+        deptCode: d.code,
+        deptName: d.name,
+        totalClasses: 0,
+        years: {
+          "1st Year": [],
+          "2nd Year": [],
+          "3rd Year": [],
+          "4th Year": [],
+        },
+      }
     }
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-  }, [classes])
+
+    // Populate classes
+    for (const c of classes) {
+      const deptName = c.departmentFull || "Unassigned"
+      if (!deptMap[deptName]) {
+        deptMap[deptName] = {
+          deptCode: c.department || "—",
+          deptName,
+          totalClasses: 0,
+          years: {
+            "1st Year": [],
+            "2nd Year": [],
+            "3rd Year": [],
+            "4th Year": [],
+          },
+        }
+      }
+      const yearKey = c.year || "1st Year"
+      if (!deptMap[deptName].years[yearKey]) {
+        deptMap[deptName].years[yearKey] = []
+      }
+      deptMap[deptName].years[yearKey].push(c)
+      deptMap[deptName].totalClasses += 1
+    }
+
+    // Sort sections alphabetically within each year (A, B, C...)
+    for (const deptKey of Object.keys(deptMap)) {
+      for (const yKey of Object.keys(deptMap[deptKey].years)) {
+        deptMap[deptKey].years[yKey].sort((a, b) => a.section.localeCompare(b.section))
+      }
+    }
+
+    return Object.entries(deptMap).sort(([a], [b]) => a.localeCompare(b))
+  }, [classes, departments])
 
   const subjectsByDept = useMemo(() => {
     const groups: Record<string, Subject[]> = {}
@@ -153,6 +305,21 @@ export default function AcademicStructurePage() {
       next.has(key) ? next.delete(key) : next.add(key)
       return next
     })
+  }
+
+  function handleYearFilter(deptName: string, year: string) {
+    setYearFilterByDept(prev => ({
+      ...prev,
+      [deptName]: year,
+    }))
+  }
+
+  function openAddClassForCohort(deptCode: string, year: string) {
+    setClassDept(deptCode)
+    setClassYear(year)
+    setClassName(deptCode)
+    setClassSection("")
+    setClassDialog(true)
   }
 
   /* ---------- Submit handlers ---------- */
@@ -488,86 +655,269 @@ export default function AcademicStructurePage() {
               </div>
             )}
 
-            {/* ── Classes Tab ── */}
+            {/* ── Classes Tab (Interactive Cohort Hub with Year Hierarchy) ── */}
             {activeTab === "classes" && (
-              <div className="flex flex-col gap-3.5">
+              <div className="flex flex-col gap-4">
                 {loadingClasses ? (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-4">
                     {[1, 2].map(i => (
-                      <Card key={i} className="border-border">
-                        <CardContent className="p-4.5 flex flex-col gap-3">
-                          <Skeleton className="h-4 w-40" />
-                          <div className="grid grid-cols-3 gap-3 mt-2">
-                            <Skeleton className="h-12 rounded-xl" />
-                            <Skeleton className="h-12 rounded-xl" />
-                            <Skeleton className="h-12 rounded-xl" />
-                          </div>
-                        </CardContent>
+                      <Card key={i} className="border-border p-5 flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                          <Skeleton className="h-6 w-48 rounded-lg" />
+                          <Skeleton className="h-5 w-20 rounded-full" />
+                        </div>
+                        <div className="flex gap-2">
+                          <Skeleton className="h-8 w-24 rounded-lg" />
+                          <Skeleton className="h-8 w-24 rounded-lg" />
+                          <Skeleton className="h-8 w-24 rounded-lg" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Skeleton className="h-28 rounded-xl" />
+                          <Skeleton className="h-28 rounded-xl" />
+                          <Skeleton className="h-28 rounded-xl" />
+                        </div>
                       </Card>
                     ))}
                   </div>
-                ) : classes.length === 0 ? (
+                ) : classesHierarchy.length === 0 ? (
                   <Card className="border-border">
                     <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                      No classes configured yet.
+                      No classes configured yet. Click &quot;Add Class&quot; to get started.
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="flex flex-col gap-3.5">
-                    {classesByDept.map(([dept, deptClasses], gi) => {
+                  <div className="flex flex-col gap-5">
+                    {classesHierarchy.map(([deptName, deptData], gi) => {
                       const color = getDeptColor(gi)
-                      const isCollapsed = collapsedGroups.has(dept)
-                      return (
-                        <Card key={dept} className="overflow-hidden border-border shadow-2xs">
-                          {/* Collapsible Department Header */}
-                          <button
-                            onClick={() => toggleGroup(dept)}
-                            className="flex w-full items-center justify-between bg-muted/30 px-5 py-3.5 text-left hover:bg-muted/50 transition-colors border-b border-border/70 cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <div className={`flex size-7.5 items-center justify-center rounded-lg border ${color.bg} ${color.border}`}>
-                                <Building2 className={`size-3.5 ${color.text}`} />
-                              </div>
-                              <span className="text-sm font-bold text-foreground">{dept}</span>
-                              <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5">
-                                {deptClasses.length} class{deptClasses.length !== 1 ? "es" : ""}
-                              </Badge>
-                            </div>
-                            {isCollapsed ? (
-                              <ChevronRight className="size-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronDown className="size-4 text-muted-foreground" />
-                            )}
-                          </button>
+                      const isCollapsed = collapsedGroups.has(deptName)
+                      const selectedYear = yearFilterByDept[deptName] || "ALL"
+                      
+                      // Calculate active years count
+                      const activeYearsCount = Object.values(deptData.years).filter(secs => secs.length > 0).length
+                      
+                      // Determine which years to display
+                      const allYearKeys = Array.from(
+                        new Set([...STANDARD_YEARS, ...Object.keys(deptData.years)])
+                      )
 
-                          {/* Distinct Individual Class Cards */}
-                          {!isCollapsed && (
-                            <div className="p-4 bg-muted/10">
-                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                {deptClasses.map((c) => (
-                                  <div
-                                    key={c.id}
-                                    className="group relative flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 shadow-2xs hover:border-emerald-500/40 hover:shadow-sm transition-all duration-150"
+                      const yearsToRender = selectedYear === "ALL" 
+                        ? allYearKeys 
+                        : allYearKeys.filter(y => y === selectedYear)
+
+                      return (
+                        <div
+                          key={deptName}
+                          className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs transition-all duration-200"
+                        >
+                          {/* ── Department Header Banner ── */}
+                          <div
+                            onClick={() => toggleGroup(deptName)}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/30 px-5 py-4 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border/70"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${color.bg} ${color.border}`}>
+                                <Building2 className={`size-4.5 ${color.text}`} />
+                              </div>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-base font-bold text-foreground">
+                                    {deptName}
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-md ${color.badge}`}
                                   >
-                                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl font-black text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
-                                      {c.section}
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                      <div className="font-bold text-sm text-foreground truncate">
-                                        {c.displayName}
+                                    {deptData.deptCode}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground font-medium mt-0.5">
+                                  {deptData.totalClasses} total class{deptData.totalClasses !== 1 ? "es" : ""} across {activeYearsCount} active year cohort{activeYearsCount !== 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2.5 self-end sm:self-auto">
+                              <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1">
+                                {deptData.totalClasses} Class{deptData.totalClasses !== 1 ? "es" : ""}
+                              </Badge>
+                              <div className="flex size-7 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground">
+                                {isCollapsed ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ── Expanded Content: Interactive Cohort Workspace ── */}
+                          {!isCollapsed && (
+                            <div className="p-4 sm:p-5 flex flex-col gap-4 bg-muted/4">
+                              {/* ── Year Filter Switcher Pills ── */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-border/60">
+                                <div className="flex items-center gap-2">
+                                  <Sparkles className="size-3.5 text-primary" />
+                                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                    Cohort Switcher
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {/* All Years Pill */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleYearFilter(deptName, "ALL")
+                                    }}
+                                    className={`relative flex items-center gap-1.5 rounded-lg h-8 px-3 text-xs font-semibold transition-all cursor-pointer ${
+                                      selectedYear === "ALL"
+                                        ? "bg-foreground text-background shadow-xs font-bold"
+                                        : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50"
+                                    }`}
+                                  >
+                                    <Layers className="size-3" />
+                                    <span>All Years</span>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                      selectedYear === "ALL" ? "bg-background/20 text-background" : "bg-muted-foreground/15 text-foreground"
+                                    }`}>
+                                      {deptData.totalClasses}
+                                    </span>
+                                  </button>
+
+                                  {/* Individual Year Pills */}
+                                  {allYearKeys.map((yearKey) => {
+                                    const yTheme = getYearTheme(yearKey)
+                                    const count = deptData.years[yearKey]?.length || 0
+                                    const isYearActive = selectedYear === yearKey
+
+                                    return (
+                                      <button
+                                        key={yearKey}
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleYearFilter(deptName, yearKey)
+                                        }}
+                                        className={`flex items-center gap-1.5 rounded-lg h-8 px-3 text-xs font-semibold transition-all border cursor-pointer ${
+                                          isYearActive
+                                            ? yTheme.pillActive
+                                            : `bg-card text-muted-foreground hover:text-foreground ${yTheme.pillColor}`
+                                        }`}
+                                      >
+                                        <span className={`size-1.5 rounded-full ${isYearActive ? "bg-white" : yTheme.glowDot}`} />
+                                        <span>{yearKey}</span>
+                                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                          isYearActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
+                                        }`}>
+                                          {count}
+                                        </span>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* ── Year Cohort Bands ── */}
+                              <div className="flex flex-col gap-4">
+                                {yearsToRender.map((yearKey) => {
+                                  const yTheme = getYearTheme(yearKey)
+                                  const sections = deptData.years[yearKey] || []
+
+                                  return (
+                                    <div
+                                      key={yearKey}
+                                      className={`relative overflow-hidden rounded-xl border ${yTheme.border} ${yTheme.bgSoft} p-3.5 sm:p-4 transition-all duration-150`}
+                                    >
+                                      {/* Year Cohort Header */}
+                                      <div className="flex items-center justify-between gap-3 mb-3 pb-2.5 border-b border-border/50">
+                                        <div className="flex items-center gap-2.5">
+                                          <div className={`flex size-7 items-center justify-center rounded-lg ${yTheme.iconBg}`}>
+                                            <GraduationCap className="size-4" />
+                                          </div>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-sm font-extrabold text-foreground tracking-tight">
+                                              {yearKey}
+                                            </span>
+                                            <Badge
+                                              variant="outline"
+                                              className={`text-[10px] font-bold px-2 py-0.2 rounded-full ${yTheme.badge}`}
+                                            >
+                                              {sections.length} Section{sections.length !== 1 ? "s" : ""}
+                                            </Badge>
+                                          </div>
+                                        </div>
+
+                                        {/* Quick Add Section in Header (only when sections already exist) */}
+                                        {sections.length > 0 && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => openAddClassForCohort(deptData.deptCode, yearKey)}
+                                            className={`h-7 px-2.5 text-xs font-semibold gap-1.5 rounded-lg cursor-pointer ${yTheme.badge} hover:opacity-90`}
+                                          >
+                                            <Plus className="size-3" />
+                                            <span>Add Section</span>
+                                          </Button>
+                                        )}
                                       </div>
-                                      <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                                        <span>Section {c.section}</span>
-                                        <span className="text-muted-foreground/50">•</span>
-                                        <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Active Class</span>
-                                      </div>
+
+                                      {/* Sections Grid or Clean Empty State */}
+                                      {sections.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2.5 sm:gap-3">
+                                          {sections.map((c) => (
+                                            <div
+                                              key={c.id}
+                                              className={`group relative flex items-center justify-between gap-3.5 rounded-xl border border-border/90 bg-card px-3 py-2.5 shadow-2xs ${yTheme.hoverBorder} hover:shadow-xs transition-all duration-150 w-full sm:w-auto sm:min-w-50 sm:max-w-60`}
+                                            >
+                                              {/* Section Emblem & Clean Identity */}
+                                              <div className="flex items-center gap-2.5 min-w-0">
+                                                <div className={`flex size-9 shrink-0 flex-col items-center justify-center rounded-lg border bg-linear-to-br ${yTheme.avatarGradient} ${yTheme.avatarText} shadow-2xs`}>
+                                                  <span className="text-[7.5px] font-extrabold uppercase tracking-widest opacity-70 leading-none">SEC</span>
+                                                  <span className="text-xs font-black leading-none mt-0.5">{c.section}</span>
+                                                </div>
+                                                <span className="font-bold text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                                                  {c.name}-{c.section}
+                                                </span>
+                                              </div>
+
+                                              {/* Pulse Active Status Pill */}
+                                              <span className="flex items-center gap-1.5 text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
+                                                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                Active
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        /* Clean, Non-Repetitive Empty State for Year without classes */
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-xl border border-dashed border-border/80 bg-background/40 px-4 py-3 text-center sm:text-left">
+                                          <div className="flex items-center gap-2.5">
+                                            <div className="flex size-7.5 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                                              <GraduationCap className="size-4" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                              <span className="text-xs font-bold text-foreground">
+                                                No sections configured for {yearKey}
+                                              </span>
+                                              <span className="text-[11px] text-muted-foreground">
+                                                Add sections (e.g. {deptData.deptCode}-A) to activate this cohort.
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => openAddClassForCohort(deptData.deptCode, yearKey)}
+                                            className={`h-7.5 px-3 text-xs font-semibold gap-1.5 shrink-0 rounded-lg cursor-pointer ${yTheme.badge} hover:opacity-90`}
+                                          >
+                                            <Plus className="size-3.5" />
+                                            <span>Add {yearKey} Section</span>
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
-                                  </div>
-                                ))}
+                                  )
+                                })}
                               </div>
                             </div>
                           )}
-                        </Card>
+                        </div>
                       )
                     })}
                   </div>

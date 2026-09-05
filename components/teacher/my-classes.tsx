@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, ArrowRight, Users, Clock, GraduationCap } from "lucide-react"
+import { BookOpen, ArrowRight, Users, Clock, GraduationCap, Building2 } from "lucide-react"
 import { useTeacherDashboard } from "@/hooks/use-teacher-dashboard"
 import { MyClassesSkeleton } from "@/components/ui/skeletons"
 
@@ -82,9 +82,18 @@ export function MyClasses() {
                         </div>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="font-mono text-xs font-semibold rounded-md border border-border/70 bg-muted/40 px-2 py-0.5 text-muted-foreground">
-                          {row.className}-{row.section}{row.year ? ` · ${row.year}` : ""}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-3 shrink-0" />
+                            {row.className}-{row.section}
+                          </span>
+                          {row.year && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+                              <GraduationCap className="size-3 shrink-0" />
+                              {row.year}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3.5 text-center">
                         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
@@ -130,9 +139,17 @@ export function MyClasses() {
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="font-bold text-xs text-foreground truncate">{row.subject}</span>
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
-                          <GraduationCap className="size-3 shrink-0" />
-                          <span className="font-mono">{row.className}-{row.section}{row.year ? ` · ${row.year}` : ""}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-2.5 shrink-0" />
+                            {row.className}-{row.section}
+                          </span>
+                          {row.year && (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              {row.year}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

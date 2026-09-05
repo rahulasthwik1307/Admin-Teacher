@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect, useMemo, Fragment } from "react"
+import { useState, useEffect, useMemo, useRef, Suspense, Fragment } from "react"
+import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -393,8 +395,14 @@ async function openPreview(
   }
 }
 
-export default function AbsenceNotificationsPage() {
+function AbsenceNotificationsContent() {
   const shouldReduceMotion = useReducedMotion()
+  const searchParams = useSearchParams()
+  const paramDate = searchParams?.get("date") || ""
+  const paramClassId = searchParams?.get("classId") || ""
+  const paramSubjectId = searchParams?.get("subjectId") || ""
+  const paramSessionId = searchParams?.get("sessionId") || ""
+
   const [tab, setTab] = useState<"send" | "history">("send")
   const [absences, setAbsences] = useState<EligibleAbsence[]>([])
   const [loading, setLoading] = useState(true)
@@ -431,6 +439,67 @@ export default function AbsenceNotificationsPage() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [detail, setDetail] = useState<any>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+
+  const appliedParamsRef = useRef(false)
+
+  /* ── Deep-link query parameters auto-preselection & smooth center-of-view scroll ── */
+  useEffect(() => {
+    if (!appliedParamsRef.current && absences.length > 0 && (paramDate || paramClassId || paramSubjectId)) {
+      appliedParamsRef.current = true
+      if (paramDate) {
+        setFilterDateFrom(paramDate)
+        setFilterDateTo(paramDate)
+      }
+      if (paramClassId) {
+        setFilterClass(paramClassId)
+      }
+      if (paramSubjectId) {
+        setFilterSubject(paramSubjectId)
+      }
+
+      const targetAbsences = absences.filter((a) => {
+        if (paramSessionId && a.sessionId !== paramSessionId) return false
+        if (paramDate && a.date !== paramDate) return false
+        if (paramClassId && a.classId !== paramClassId) return false
+        if (paramSubjectId && a.subjectId !== paramSubjectId) return false
+        // Only select if the student has a registered contact email and is not already notified
+        const hasEmail = Boolean(a.contactEmail && a.contactEmail.trim().length > 0)
+        return hasEmail && !a.alreadyNotified
+      })
+
+      if (targetAbsences.length > 0) {
+        const idsToSelect = targetAbsences.map((a) => a.periodAttendanceId)
+        setSelectedIds(new Set(idsToSelect))
+        toast.info(`Pre-selected ${targetAbsences.length} eligible absent student(s) for review.`)
+
+        // Smoothly scroll the selected student into the exact center of the screen
+        const targetStudentId = targetAbsences[0]?.studentId
+        setTimeout(() => {
+          const el = targetStudentId
+            ? document.getElementById(`student-card-${targetStudentId}`)
+            : document.querySelector('[data-has-selected="true"]')
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" })
+            el.classList.add("ring-2", "ring-primary", "ring-offset-2")
+            setTimeout(() => {
+              el.classList.remove("ring-2", "ring-primary", "ring-offset-2")
+            }, 3000)
+          }
+        }, 350)
+      } else {
+        const anyAbsences = absences.filter((a) => {
+          if (paramSessionId && a.sessionId !== paramSessionId) return false
+          if (paramDate && a.date !== paramDate) return false
+          if (paramClassId && a.classId !== paramClassId) return false
+          if (paramSubjectId && a.subjectId !== paramSubjectId) return false
+          return true
+        })
+        if (anyAbsences.length > 0) {
+          toast.warning("No registered email addresses found for absent students in this session.")
+        }
+      }
+    }
+  }, [absences, paramDate, paramClassId, paramSubjectId, paramSessionId])
 
   const fetchPending = async () => {
     setLoading(true)
@@ -1574,10 +1643,20 @@ export default function AbsenceNotificationsPage() {
                     ) : null
                   const filteredSubjectStats = filteredSubjectRecords?.[0]
 
+                  const hasSelected = groupIds.some((id) => selectedIds.has(id))
+
                   return (
                     <Card
                       key={group.studentId}
-                      className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs transition-all hover:border-border"
+                      id={`student-card-${group.studentId}`}
+                      data-student-id={group.studentId}
+                      data-has-selected={hasSelected ? "true" : undefined}
+                      className={cn(
+                        "rounded-2xl border bg-card overflow-hidden shadow-2xs transition-all duration-300",
+                        hasSelected
+                          ? "border-primary/60 shadow-md ring-1 ring-primary/25"
+                          : "border-border/80 hover:border-border"
+                      )}
                     >
                       <CardContent className="p-0">
                         {/* Student Header Summary Bar */}
@@ -2369,5 +2448,13 @@ export default function AbsenceNotificationsPage() {
         </SheetContent>
       </Sheet>
     </div>
+  )
+}
+
+export default function AbsenceNotificationsPage() {
+  return (
+    <Suspense fallback={<MissedAttendanceSkeleton />}>
+      <AbsenceNotificationsContent />
+    </Suspense>
   )
 }

@@ -107,6 +107,7 @@ export default function QRAttendancePage() {
           .from("attendance_sessions")
           .select(`
             id, session_date, finalized_at, status,
+            qr_tokens:qr_tokens(count),
             subject:subjects(name),
             class:classes(name, section, year, department:departments(code)),
             period:periods(period_number),
@@ -128,6 +129,7 @@ export default function QRAttendancePage() {
           .from("attendance_sessions")
           .select(`
             id, class_id, subject_id, period_id, session_date, status,
+            qr_tokens:qr_tokens(count),
             subject:subjects(id, name),
             period:periods(id, period_number)
           `)
@@ -203,6 +205,7 @@ export default function QRAttendancePage() {
         for (const s of (todaySessions as any[])) {
           if (s.class_id && s.period_id) {
             const key = `${s.class_id}__${s.period_id}`
+            const isManual = (s.qr_tokens?.[0]?.count ?? 0) === 0
             occupiedMap.set(key, {
               sessionId: s.id,
               subjectId: s.subject_id,
@@ -210,18 +213,21 @@ export default function QRAttendancePage() {
               periodId: s.period_id,
               periodNumber: s.period?.period_number ?? 0,
               status: s.status,
+              isManual,
             })
           }
         }
       }
       setTodayOccupiedSlots(occupiedMap)
 
-      // 5. Recent sessions — deduplicate by logical slot (date + class + subject + period)
-      // and fetch attendance counts in bulk
+      // 5. Recent sessions — only include sessions that generated live QR scan tokens (qr_tokens count > 0)
       if (recent && recent.length > 0) {
+        const qrOnlySessions = (recent as any[]).filter(
+          (r: any) => (r.qr_tokens?.[0]?.count ?? 0) > 0
+        )
         // Group by logical slot identity to guarantee exactly 1 card per distinct lesson
         const dedupeMap = new Map<string, any>()
-        for (const r of (recent as any[])) {
+        for (const r of qrOnlySessions) {
           const classId = r.class?.name ? `${r.class?.name}-${r.class?.section}` : (r.class_id || "")
           const subjectName = r.subject?.name || (r.subject_id || "")
           const periodNum = r.period?.period_number ?? (r.period_id || "")

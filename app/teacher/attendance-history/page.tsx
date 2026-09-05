@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, Fragment } from "react"
+import Link from "next/link"
 import { toast } from "sonner"
 import { motion, useReducedMotion, type Variants } from "framer-motion"
 import {
@@ -19,9 +20,18 @@ import {
   Building2,
   GraduationCap,
   Calendar,
+  Search,
+  Mail,
+  QrCode,
+  FileEdit,
+  Filter,
+  ArrowUpRight,
+  Check,
+  AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -49,10 +59,33 @@ interface DetailStudent {
   name: string
   rollNumber: string
   email?: string
+  hasEmail?: boolean
   status: "Present" | "Absent"
+  alreadyNotified?: boolean
+  notifiedAt?: string | null
   departmentCode?: string
   year?: string
   section?: string
+}
+
+interface YearTheme {
+  badge: string
+  headerBg: string
+  containerBorder: string
+  containerBg: string
+  accentText: string
+  dot: string
+  activeTab: string
+}
+
+interface YearSubGroup {
+  year: string
+  sessions: AttendanceSession[]
+  totalLectures: number
+  avgPercentage: number
+  totalPresent: number
+  totalAbsent: number
+  theme: YearTheme
 }
 
 interface DayGroup {
@@ -63,6 +96,66 @@ interface DayGroup {
   avgPercentage: number
   totalPresent: number
   totalAbsent: number
+  yearGroups: YearSubGroup[]
+  hasMultipleYears: boolean
+}
+
+/* ── Academic Year Color Themes ────────────────────────── */
+function getYearTheme(yearStr?: string): YearTheme {
+  const y = (yearStr || "").toLowerCase()
+  if (y.includes("4") || y.includes("iv") || y.includes("four")) {
+    return {
+      badge: "bg-purple-500/15 text-purple-800 dark:text-purple-200 border-purple-300/80 dark:border-purple-700/80 font-black shadow-2xs",
+      headerBg: "bg-purple-500/10 border-b border-purple-200/80 dark:border-purple-900/60 text-purple-950 dark:text-purple-100",
+      containerBorder: "border-purple-200/90 dark:border-purple-900/60",
+      containerBg: "bg-purple-500/[0.03] dark:bg-purple-950/15",
+      accentText: "text-purple-700 dark:text-purple-300",
+      dot: "bg-purple-600 dark:bg-purple-400",
+      activeTab: "bg-purple-600 text-white shadow-2xs border-purple-600",
+    }
+  }
+  if (y.includes("3") || y.includes("iii") || y.includes("three")) {
+    return {
+      badge: "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-300/80 dark:border-amber-700/80 font-black shadow-2xs",
+      headerBg: "bg-amber-500/10 border-b border-amber-200/80 dark:border-amber-900/60 text-amber-950 dark:text-amber-100",
+      containerBorder: "border-amber-200/90 dark:border-amber-900/60",
+      containerBg: "bg-amber-500/[0.03] dark:bg-amber-950/15",
+      accentText: "text-amber-700 dark:text-amber-300",
+      dot: "bg-amber-600 dark:bg-amber-400",
+      activeTab: "bg-amber-600 text-white shadow-2xs border-amber-600",
+    }
+  }
+  if (y.includes("2") || y.includes("ii") || y.includes("two")) {
+    return {
+      badge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-300/80 dark:border-emerald-700/80 font-black shadow-2xs",
+      headerBg: "bg-emerald-500/10 border-b border-emerald-200/80 dark:border-emerald-900/60 text-emerald-950 dark:text-emerald-100",
+      containerBorder: "border-emerald-200/90 dark:border-emerald-900/60",
+      containerBg: "bg-emerald-500/[0.03] dark:bg-emerald-950/15",
+      accentText: "text-emerald-700 dark:text-emerald-300",
+      dot: "bg-emerald-600 dark:bg-emerald-400",
+      activeTab: "bg-emerald-600 text-white shadow-2xs border-emerald-600",
+    }
+  }
+  if (y.includes("1") || y.includes("i") || y.includes("one")) {
+    return {
+      badge: "bg-sky-500/15 text-sky-800 dark:text-sky-200 border-sky-300/80 dark:border-sky-700/80 font-black shadow-2xs",
+      headerBg: "bg-sky-500/10 border-b border-sky-200/80 dark:border-sky-900/60 text-sky-950 dark:text-sky-100",
+      containerBorder: "border-sky-200/90 dark:border-sky-900/60",
+      containerBg: "bg-sky-500/[0.03] dark:bg-sky-950/15",
+      accentText: "text-sky-700 dark:text-sky-300",
+      dot: "bg-sky-600 dark:bg-sky-400",
+      activeTab: "bg-sky-600 text-white shadow-2xs border-sky-600",
+    }
+  }
+  return {
+    badge: "bg-muted/80 text-foreground border-border/80 font-bold shadow-2xs",
+    headerBg: "bg-muted/40 border-b border-border/70",
+    containerBorder: "border-border/70",
+    containerBg: "bg-card/40",
+    accentText: "text-foreground",
+    dot: "bg-primary",
+    activeTab: "bg-primary text-primary-foreground shadow-2xs border-primary",
+  }
 }
 
 /* ── Subject Color Palettes ────────────────────────────── */
@@ -214,7 +307,7 @@ function exportDetailCSV(session: AttendanceSession, students: DetailStudent[]) 
   URL.revokeObjectURL(url)
 }
 
-/* ── Grouping: Single-Level Flat Day Grouping (Option 1) ── */
+/* ── Grouping: Day Grouping with Year-Aware Segregation ── */
 function groupSessionsByDay(sessions: AttendanceSession[]): DayGroup[] {
   const map = new Map<string, { dayLabel: string; rawDate: string; sessions: AttendanceSession[] }>()
 
@@ -237,6 +330,38 @@ function groupSessionsByDay(sessions: AttendanceSession[]): DayGroup[] {
     const totalStudents = totalPresent + totalAbsent
     const avgPercentage = totalStudents > 0 ? Math.round((totalPresent / totalStudents) * 100) : 0
 
+    // Group sessions by Academic Year within this day
+    const yearMap = new Map<string, AttendanceSession[]>()
+    for (const s of group.sessions) {
+      const yr = s.year || "Other"
+      if (!yearMap.has(yr)) yearMap.set(yr, [])
+      yearMap.get(yr)!.push(s)
+    }
+
+    // Sort years descending (e.g. 4th Year before 1st Year)
+    const sortedYears = Array.from(yearMap.keys()).sort((a, b) => {
+      const numA = parseInt(a) || 99
+      const numB = parseInt(b) || 99
+      return numB - numA
+    })
+
+    const yearGroups: YearSubGroup[] = sortedYears.map((year) => {
+      const yrSessions = yearMap.get(year)!
+      const yrPresent = yrSessions.reduce((acc, s) => acc + s.present, 0)
+      const yrAbsent = yrSessions.reduce((acc, s) => acc + s.absent, 0)
+      const yrTotal = yrPresent + yrAbsent
+      const yrAvg = yrTotal > 0 ? Math.round((yrPresent / yrTotal) * 100) : 0
+      return {
+        year,
+        sessions: yrSessions,
+        totalLectures: yrSessions.length,
+        avgPercentage: yrAvg,
+        totalPresent: yrPresent,
+        totalAbsent: yrAbsent,
+        theme: getYearTheme(year),
+      }
+    })
+
     return {
       dayLabel: group.dayLabel,
       rawDate: group.rawDate,
@@ -245,8 +370,10 @@ function groupSessionsByDay(sessions: AttendanceSession[]): DayGroup[] {
       avgPercentage,
       totalPresent,
       totalAbsent,
+      yearGroups,
+      hasMultipleYears: yearGroups.length > 1,
     }
-  })
+  }).sort((a, b) => b.rawDate.localeCompare(a.rawDate))
 }
 
 /* ── Per-subject summary strip ─────────────────────────── */
@@ -341,21 +468,36 @@ export default function AttendanceHistoryPage() {
 
   const [subjectFilter, setSubjectFilter] = useState("all")
   const [classFilter, setClassFilter] = useState("all")
+  const [filterAtRiskOnly, setFilterAtRiskOnly] = useState(false)
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [activeDatePreset, setActiveDatePreset] = useState<"all" | "today" | "yesterday" | "7days" | "30days">("all")
 
   const [selectedSession, setSelectedSession] = useState<AttendanceSession | null>(null)
   const [detailStudents, setDetailStudents] = useState<DetailStudent[]>([])
+  const [detailSessionSummary, setDetailSessionSummary] = useState<{
+    notifiedAbsentCount: number
+    emailableAbsentCount: number
+    noEmailAbsentCount: number
+    pendingAbsentCount: number
+  } | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [drawerSearch, setDrawerSearch] = useState("")
+  const [drawerStatusFilter, setDrawerStatusFilter] = useState<"all" | "absent" | "present">("all")
+  const [dayYearFilters, setDayYearFilters] = useState<Record<string, string>>({})
 
   /* ── Fetch detailed student breakdown from backend API ── */
   useEffect(() => {
     if (!selectedSession) {
       setDetailStudents([])
+      setDetailSessionSummary(null)
+      setDrawerSearch("")
+      setDrawerStatusFilter("all")
       return
     }
 
+    setDrawerSearch("")
+    setDrawerStatusFilter("all")
     let isMounted = true
     const fetchDetail = async () => {
       setDetailLoading(true)
@@ -365,6 +507,12 @@ export default function AttendanceHistoryPage() {
         const json = await res.json()
         if (isMounted) {
           setDetailStudents(json.students ?? [])
+          setDetailSessionSummary({
+            notifiedAbsentCount: json.session?.notifiedAbsentCount ?? 0,
+            emailableAbsentCount: json.session?.emailableAbsentCount ?? 0,
+            noEmailAbsentCount: json.session?.noEmailAbsentCount ?? 0,
+            pendingAbsentCount: json.session?.pendingAbsentCount ?? 0,
+          })
         }
       } catch (e) {
         console.error(e)
@@ -461,11 +609,27 @@ export default function AttendanceHistoryPage() {
     return sessions.filter((s) => {
       if (subjectFilter !== "all" && s.subjectId !== subjectFilter) return false
       if (classFilter !== "all" && s.classId !== classFilter) return false
+      if (filterAtRiskOnly && s.percentage >= 75) return false
       if (startDate && s.rawDate < startDate) return false
       if (endDate && s.rawDate > endDate) return false
       return true
     })
-  }, [sessions, subjectFilter, classFilter, startDate, endDate])
+  }, [sessions, subjectFilter, classFilter, filterAtRiskOnly, startDate, endDate])
+
+  /* ── Filtered students in drawer ──────────────────────── */
+  const filteredStudents = useMemo(() => {
+    return detailStudents.filter((st) => {
+      if (drawerStatusFilter === "absent" && st.status !== "Absent") return false
+      if (drawerStatusFilter === "present" && st.status !== "Present") return false
+      if (drawerSearch.trim()) {
+        const q = drawerSearch.toLowerCase().trim()
+        const matchName = st.name.toLowerCase().includes(q)
+        const matchRoll = st.rollNumber.toLowerCase().includes(q)
+        return matchName || matchRoll
+      }
+      return true
+    })
+  }, [detailStudents, drawerStatusFilter, drawerSearch])
 
   /* ── Grouped sessions by Day (Option 1) ───────────────── */
   const groupedDays = useMemo(() => groupSessionsByDay(filtered), [filtered])
@@ -490,11 +654,17 @@ export default function AttendanceHistoryPage() {
   })
 
   const hasActiveFilters =
-    subjectFilter !== "all" || classFilter !== "all" || startDate !== "" || endDate !== ""
+    subjectFilter !== "all" ||
+    classFilter !== "all" ||
+    filterAtRiskOnly ||
+    startDate !== "" ||
+    endDate !== "" ||
+    activeDatePreset !== "all"
 
   const clearFilters = () => {
     setSubjectFilter("all")
     setClassFilter("all")
+    setFilterAtRiskOnly(false)
     setStartDate("")
     setEndDate("")
     setActiveDatePreset("all")
@@ -741,6 +911,35 @@ export default function AttendanceHistoryPage() {
           >
             Last 30 Days
           </button>
+
+          <div className="h-4 w-px bg-border/80 mx-1 hidden sm:block" />
+
+          {/* Dedicated At-Risk Filter Pill in Filter Toolbar */}
+          <button
+            type="button"
+            onClick={() => setFilterAtRiskOnly((prev) => !prev)}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 shadow-2xs",
+              filterAtRiskOnly
+                ? "bg-rose-600 text-white border-rose-700 shadow-xs"
+                : "bg-muted/40 text-rose-700 dark:text-rose-300 border-rose-200/80 dark:border-rose-900/50 hover:bg-rose-100/70 dark:hover:bg-rose-950/30"
+            )}
+          >
+            <AlertTriangle className={cn("size-3.5", filterAtRiskOnly ? "text-white" : "text-rose-500")} />
+            <span>At Risk (&lt;75%)</span>
+            {lowSessions > 0 && (
+              <span
+                className={cn(
+                  "text-[10px] px-1.5 py-0.2 rounded-full font-black",
+                  filterAtRiskOnly
+                    ? "bg-white/20 text-white"
+                    : "bg-rose-500/20 text-rose-700 dark:text-rose-300"
+                )}
+              >
+                {lowSessions}
+              </span>
+            )}
+          </button>
         </div>
       </motion.div>
 
@@ -921,90 +1120,397 @@ export default function AttendanceHistoryPage() {
                 </div>
               </div>
 
-              {/* 2-Column Bento Grid for Lectures */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {day.sessions.map((s) => {
-                  const theme = getSubjectTheme(s.subject)
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => setSelectedSession(s)}
-                      className={cn(
-                        "group relative flex flex-col justify-between gap-3 rounded-2xl border p-4 shadow-2xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
-                        theme.border,
-                        theme.bgLinear
-                      )}
+              {/* Option 3: Day-Level Year Switcher Tabs */}
+              {day.hasMultipleYears && (
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/50 border border-border/70 overflow-x-auto select-none">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDayYearFilters((prev) => ({
+                        ...prev,
+                        [day.rawDate]: "all",
+                      }))
+                    }
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+                      (dayYearFilters[day.rawDate] || "all") === "all"
+                        ? "bg-card text-foreground shadow-2xs border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span>All Years</span>
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] font-extrabold px-1.5 py-0 h-4 rounded-md"
                     >
-                      {/* Top Row: Subject Title + Subject Code + Period Badge + Period Time */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-black text-foreground group-hover:text-primary transition-colors truncate">
-                              {s.subject}
-                            </span>
-                            {s.subjectCode && (
-                              <span className={cn("text-[10px] font-black uppercase px-1.5 py-0.2 rounded border shadow-2xs", theme.accentBg)}>
-                                {s.subjectCode}
-                              </span>
-                            )}
-                          </div>
+                      {day.totalLectures}
+                    </Badge>
+                  </button>
 
-                          {/* Academic Cohort Badges */}
-                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-primary/30 tracking-wider uppercase flex items-center gap-1 shadow-2xs"
-                            >
-                              <Building2 className="size-3 mr-0.5" />
-                              {s.departmentCode ? `${s.departmentCode}-${s.section || "A"}` : s.class}
-                            </Badge>
-                            {s.year && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-lg border border-border/60 shadow-2xs">
-                                <GraduationCap className="size-3 text-primary shrink-0" />
-                                {s.year}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Period Badge & Time */}
-                        <div className="flex flex-col items-end shrink-0 gap-1">
-                          <span className={cn("text-[10px] font-extrabold px-2 py-0.5 rounded-md", theme.periodBadge)}>
-                            {s.periodShort}
-                          </span>
-                          {s.periodTime && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground bg-muted/80 border border-border/70 px-2 py-0.5 rounded-md shadow-2xs">
-                              <Clock className="size-3 text-muted-foreground shrink-0" />
-                              {s.periodTime}
-                            </span>
+                  {day.yearGroups.map((yrGroup) => {
+                    const isSelected = dayYearFilters[day.rawDate] === yrGroup.year
+                    return (
+                      <button
+                        key={yrGroup.year}
+                        type="button"
+                        onClick={() =>
+                          setDayYearFilters((prev) => ({
+                            ...prev,
+                            [day.rawDate]: yrGroup.year,
+                          }))
+                        }
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap border",
+                          isSelected
+                            ? yrGroup.theme.activeTab
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "size-2 rounded-full shrink-0",
+                            isSelected ? "bg-white" : yrGroup.theme.dot
                           )}
-                        </div>
-                      </div>
+                        />
+                        <GraduationCap className="size-3.5 shrink-0" />
+                        <span>{yrGroup.year}</span>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-[10px] font-extrabold px-1.5 py-0 h-4 rounded-md",
+                            isSelected ? "bg-white/20 text-white" : ""
+                          )}
+                        >
+                          {yrGroup.totalLectures}
+                        </Badge>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
-                      {/* Bottom Row: Presence Tally + Percentage + Arrow */}
-                      <div className="flex items-center justify-between pt-2.5 border-t border-border/60">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
-                            <span className="size-1.5 rounded-full bg-emerald-500" />
-                            {s.present} Present
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-lg bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-xs font-bold text-rose-700 dark:text-rose-300 shadow-2xs">
-                            <span className="size-1.5 rounded-full bg-rose-500" />
-                            {s.absent} Absent
-                          </span>
-                        </div>
+              {/* Option 1: Dedicated Year Container Blocks */}
+              {(() => {
+                const currentFilter = dayYearFilters[day.rawDate] || "all"
+                const visibleYearGroups =
+                  currentFilter === "all"
+                    ? day.yearGroups
+                    : day.yearGroups.filter((yg) => yg.year === currentFilter)
 
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn("text-xs font-black px-2.5 py-0.5 rounded-lg border shadow-2xs", pctBg(s.percentage))}>
-                            {s.percentage}%
-                          </span>
-                          <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+                if (day.hasMultipleYears) {
+                  return (
+                    <div className="flex flex-col gap-4">
+                      {visibleYearGroups.map((yrGroup) => (
+                        <div
+                          key={yrGroup.year}
+                          className={cn(
+                            "flex flex-col rounded-2xl border overflow-hidden shadow-2xs transition-all",
+                            yrGroup.theme.containerBorder,
+                            yrGroup.theme.containerBg
+                          )}
+                        >
+                          {/* Dedicated Elevated Year Header */}
+                          <div
+                            className={cn(
+                              "flex items-center justify-between px-4 py-2.5",
+                              yrGroup.theme.headerBg
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className={cn("size-2.5 rounded-full shrink-0", yrGroup.theme.dot)} />
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                <span className="text-sm font-black tracking-tight text-foreground flex items-center gap-1.5 truncate">
+                                  <GraduationCap className={cn("size-4", yrGroup.theme.accentText)} />
+                                  {yrGroup.year}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-card/90 border-border/80 text-foreground shadow-2xs"
+                                >
+                                  {yrGroup.totalLectures} lecture{yrGroup.totalLectures !== 1 ? "s" : ""}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-xs font-bold shrink-0">
+                              <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-300 bg-card/80 px-2 py-0.5 rounded-lg border border-emerald-500/20 shadow-2xs">
+                                <span className="size-1.5 rounded-full bg-emerald-500" />
+                                {yrGroup.totalPresent} Pres
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-rose-700 dark:text-rose-300 bg-card/80 px-2 py-0.5 rounded-lg border border-rose-500/20 shadow-2xs">
+                                <span className="size-1.5 rounded-full bg-rose-500" />
+                                {yrGroup.totalAbsent} Abs
+                              </span>
+                              <span
+                                className={cn(
+                                  "px-2 py-0.5 rounded-lg border text-xs font-black shadow-2xs",
+                                  pctBg(yrGroup.avgPercentage)
+                                )}
+                              >
+                                {yrGroup.avgPercentage}% Avg
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Inner Lecture Cards Canvas */}
+                          <div className="p-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {yrGroup.sessions.map((s) => {
+                                const theme = getSubjectTheme(s.subject)
+                                const yrTheme = getYearTheme(s.year)
+                                return (
+                                  <div
+                                    key={s.id}
+                                    onClick={() => setSelectedSession(s)}
+                                    className={cn(
+                                      "group relative flex flex-col justify-between gap-3 rounded-2xl border p-4 shadow-2xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md bg-card",
+                                      theme.border,
+                                      theme.bgLinear
+                                    )}
+                                  >
+                                    {/* Top Row: Subject Title + Subject Code + Period Badge + Period Time */}
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex flex-col min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-sm font-black text-foreground group-hover:text-primary transition-colors truncate">
+                                            {s.subject}
+                                          </span>
+                                          {s.subjectCode && (
+                                            <span
+                                              className={cn(
+                                                "text-[10px] font-black uppercase px-1.5 py-0.2 rounded border shadow-2xs",
+                                                theme.accentBg
+                                              )}
+                                            >
+                                              {s.subjectCode}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Academic Cohort Badges + Method Badge */}
+                                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-primary/30 tracking-wider uppercase flex items-center gap-1 shadow-2xs"
+                                          >
+                                            <Building2 className="size-3 mr-0.5" />
+                                            {s.departmentCode ? `${s.departmentCode}-${s.section || "A"}` : s.class}
+                                          </Badge>
+                                          {s.year && (
+                                            <span
+                                              className={cn(
+                                                "inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg border shadow-2xs",
+                                                yrTheme.badge
+                                              )}
+                                            >
+                                              <GraduationCap className="size-3 shrink-0" />
+                                              {s.year}
+                                            </span>
+                                          )}
+                                          {s.method === "qr" ? (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800/60 shadow-2xs flex items-center gap-1"
+                                              title="Marked via live classroom QR scan"
+                                            >
+                                              <QrCode className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                              <span>Live QR</span>
+                                            </Badge>
+                                          ) : (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/60 dark:border-amber-800/60 shadow-2xs flex items-center gap-1"
+                                              title="Manually marked / backfilled"
+                                            >
+                                              <FileEdit className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                              <span>Manual Entry</span>
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Period Badge & Time */}
+                                      <div className="flex flex-col items-end shrink-0 gap-1">
+                                        <span
+                                          className={cn(
+                                            "text-[10px] font-extrabold px-2 py-0.5 rounded-md",
+                                            theme.periodBadge
+                                          )}
+                                        >
+                                          {s.periodShort}
+                                        </span>
+                                        {s.periodTime && (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground bg-muted/80 border border-border/70 px-2 py-0.5 rounded-md shadow-2xs">
+                                            <Clock className="size-3 text-muted-foreground shrink-0" />
+                                            {s.periodTime}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Bottom Row: Presence Tally + Percentage + Arrow */}
+                                    <div className="flex items-center justify-between pt-2.5 border-t border-border/60">
+                                      <div className="flex items-center gap-1.5 text-xs">
+                                        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+                                          <span className="size-1.5 rounded-full bg-emerald-500" />
+                                          {s.present} Present
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 rounded-lg bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-xs font-bold text-rose-700 dark:text-rose-300 shadow-2xs">
+                                          <span className="size-1.5 rounded-full bg-rose-500" />
+                                          {s.absent} Absent
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        <span
+                                          className={cn(
+                                            "text-xs font-black px-2.5 py-0.5 rounded-lg border shadow-2xs",
+                                            pctBg(s.percentage))
+                                          }
+                                        >
+                                          {s.percentage}%
+                                        </span>
+                                        <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   )
-                })}
-              </div>
+                }
+
+                /* Single Year: 2-Column Bento Grid for Lectures */
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {day.sessions.map((s) => {
+                      const theme = getSubjectTheme(s.subject)
+                      const yrTheme = getYearTheme(s.year)
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => setSelectedSession(s)}
+                          className={cn(
+                            "group relative flex flex-col justify-between gap-3 rounded-2xl border p-4 shadow-2xs cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md bg-card",
+                            theme.border,
+                            theme.bgLinear
+                          )}
+                        >
+                          {/* Top Row: Subject Title + Subject Code + Period Badge + Period Time */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-black text-foreground group-hover:text-primary transition-colors truncate">
+                                  {s.subject}
+                                </span>
+                                {s.subjectCode && (
+                                  <span
+                                    className={cn(
+                                      "text-[10px] font-black uppercase px-1.5 py-0.2 rounded border shadow-2xs",
+                                      theme.accentBg
+                                    )}
+                                  >
+                                    {s.subjectCode}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Academic Cohort Badges + Method Badge */}
+                              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-primary/10 text-primary border-primary/30 tracking-wider uppercase flex items-center gap-1 shadow-2xs"
+                                >
+                                  <Building2 className="size-3 mr-0.5" />
+                                  {s.departmentCode ? `${s.departmentCode}-${s.section || "A"}` : s.class}
+                                </Badge>
+                                {s.year && (
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg border shadow-2xs",
+                                      yrTheme.badge
+                                    )}
+                                  >
+                                    <GraduationCap className="size-3 shrink-0" />
+                                    {s.year}
+                                  </span>
+                                )}
+                                {s.method === "qr" ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800/60 shadow-2xs flex items-center gap-1"
+                                    title="Marked via live classroom QR scan"
+                                  >
+                                    <QrCode className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <span>Live QR</span>
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/60 dark:border-amber-800/60 shadow-2xs flex items-center gap-1"
+                                    title="Manually marked / backfilled"
+                                  >
+                                    <FileEdit className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span>Manual Entry</span>
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Period Badge & Time */}
+                            <div className="flex flex-col items-end shrink-0 gap-1">
+                              <span
+                                className={cn(
+                                  "text-[10px] font-extrabold px-2 py-0.5 rounded-md",
+                                  theme.periodBadge
+                                )}
+                              >
+                                {s.periodShort}
+                              </span>
+                              {s.periodTime && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground bg-muted/80 border border-border/70 px-2 py-0.5 rounded-md shadow-2xs">
+                                  <Clock className="size-3 text-muted-foreground shrink-0" />
+                                  {s.periodTime}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Bottom Row: Presence Tally + Percentage + Arrow */}
+                          <div className="flex items-center justify-between pt-2.5 border-t border-border/60">
+                            <div className="flex items-center gap-1.5 text-xs">
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+                                <span className="size-1.5 rounded-full bg-emerald-500" />
+                                {s.present} Present
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-xs font-bold text-rose-700 dark:text-rose-300 shadow-2xs">
+                                <span className="size-1.5 rounded-full bg-rose-500" />
+                                {s.absent} Absent
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  "text-xs font-black px-2.5 py-0.5 rounded-lg border shadow-2xs",
+                                  pctBg(s.percentage)
+                                )}
+                              >
+                                {s.percentage}%
+                              </span>
+                              <ChevronRight className="size-4 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           ))}
         </motion.div>
@@ -1016,7 +1522,7 @@ export default function AttendanceHistoryPage() {
           <SheetHeader>
             <SheetTitle className="text-lg font-black">Session Details</SheetTitle>
             <SheetDescription className="text-xs">
-              Student-level presence breakdown & verification.
+              Student-level presence breakdown & verification audit.
             </SheetDescription>
           </SheetHeader>
 
@@ -1047,7 +1553,7 @@ export default function AttendanceHistoryPage() {
                     </div>
                   </div>
 
-                  {/* Period + Timings */}
+                  {/* Period + Timings + Method Pill */}
                   <div className="flex items-center gap-2 text-xs flex-wrap mt-0.5">
                     <span className="font-bold text-foreground bg-muted/80 border border-border/70 px-2 py-0.5 rounded-md shadow-2xs">
                       {selectedSession.periodShort}
@@ -1057,6 +1563,23 @@ export default function AttendanceHistoryPage() {
                         <Clock className="size-3 text-muted-foreground/70" />
                         {selectedSession.periodTime}
                       </span>
+                    )}
+                    {selectedSession.method === "qr" ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800/60 shadow-2xs flex items-center gap-1"
+                      >
+                        <QrCode className="size-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Live QR</span>
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-300/60 dark:border-amber-800/60 shadow-2xs flex items-center gap-1"
+                      >
+                        <FileEdit className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>Manual Entry</span>
+                      </Badge>
                     )}
                     <span className="text-xs text-muted-foreground font-medium ml-auto">
                       {selectedSession.date}
@@ -1082,22 +1605,85 @@ export default function AttendanceHistoryPage() {
                 </div>
               </div>
 
-              {/* Export Button */}
-              <Button
-                variant="outline"
-                className="gap-2 w-full h-10 rounded-xl font-bold shadow-2xs hover:shadow transition-all cursor-pointer"
-                disabled={detailLoading || detailStudents.length === 0}
-                onClick={() => {
-                  exportDetailCSV(selectedSession, detailStudents)
-                  toast.success("Session student details exported.")
-                }}
-              >
-                <Download className="size-4" />
-                Export This Session CSV
-              </Button>
+              {/* Action Buttons Row */}
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="gap-2 flex-1 w-full h-10 rounded-xl font-bold shadow-2xs hover:shadow transition-all cursor-pointer bg-card hover:bg-muted text-xs"
+                  disabled={detailLoading || detailStudents.length === 0}
+                  onClick={() => {
+                    exportDetailCSV(selectedSession, detailStudents)
+                    toast.success("Session student details exported.")
+                  }}
+                >
+                  <Download className="size-3.5" />
+                  Export Session CSV
+                </Button>
+
+                {selectedSession.absent > 0 && (
+                  (() => {
+                    const notifiedCount = detailSessionSummary?.notifiedAbsentCount ?? 0
+                    const emailableCount = detailSessionSummary?.emailableAbsentCount ?? (detailSessionSummary?.pendingAbsentCount ?? selectedSession.absent)
+                    const noEmailCount = detailSessionSummary?.noEmailAbsentCount ?? 0
+                    const totalAbsent = selectedSession.absent
+
+                    // Case 1: All absentees were already notified
+                    if (notifiedCount > 0 && notifiedCount === totalAbsent) {
+                      return (
+                        <div className="flex-1 w-full h-10 rounded-xl border border-emerald-300/70 dark:border-emerald-800/70 bg-emerald-500/10 px-3 flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-300 shadow-2xs">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="truncate">All Notified ({totalAbsent})</span>
+                          </div>
+                          <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20">
+                            <Link href="/teacher/absence-notifications">
+                              <span>History</span>
+                              <ArrowUpRight className="size-3 ml-0.5" />
+                            </Link>
+                          </Button>
+                        </div>
+                      )
+                    }
+
+                    // Case 2: All remaining unnotified absentees lack a registered email address
+                    if (emailableCount === 0 && noEmailCount > 0) {
+                      return (
+                        <div className="flex-1 w-full h-10 rounded-xl border border-amber-300/70 dark:border-amber-800/70 bg-amber-500/10 px-3 flex items-center justify-between text-xs font-bold text-amber-700 dark:text-amber-300 shadow-2xs">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <AlertCircle className="size-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span className="truncate">Email Not Configured ({noEmailCount})</span>
+                          </div>
+                          <span className="text-[10px] text-amber-600/80 font-medium hidden sm:inline">
+                            Ask admin to add email
+                          </span>
+                        </div>
+                      )
+                    }
+
+                    // Case 3: We have at least 1 student eligible to be notified
+                    return (
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="gap-1.5 flex-1 w-full h-10 rounded-xl font-bold shadow-2xs hover:shadow transition-all cursor-pointer bg-card hover:bg-muted text-primary border-primary/30 text-xs"
+                      >
+                        <Link
+                          href={`/teacher/absence-notifications?date=${selectedSession.rawDate}&classId=${selectedSession.classId}&subjectId=${selectedSession.subjectId}&sessionId=${selectedSession.id}`}
+                        >
+                          <Mail className="size-3.5 text-primary" />
+                          <span>
+                            Notify Absentees ({emailableCount}{noEmailCount > 0 ? ` of ${totalAbsent}` : ""})
+                          </span>
+                          <ArrowUpRight className="size-3 opacity-60 ml-auto sm:ml-0" />
+                        </Link>
+                      </Button>
+                    )
+                  })()
+                )}
+              </div>
 
               {/* Student breakdown */}
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                     <Users className="size-3.5" /> Student Roster ({detailStudents.length})
@@ -1115,15 +1701,88 @@ export default function AttendanceHistoryPage() {
                   )}
                 </div>
 
+                {/* Instant Student Search Box */}
+                {!detailLoading && detailStudents.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <div className="relative w-full">
+                      <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Input
+                        placeholder="Search student name or roll number..."
+                        value={drawerSearch}
+                        onChange={(e) => setDrawerSearch(e.target.value)}
+                        className="h-9 pl-8.5 pr-8 text-xs rounded-xl bg-muted/40 border-border/70 focus-visible:ring-primary/20"
+                      />
+                      {drawerSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setDrawerSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                          aria-label="Clear search"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Quick Status Filter Segmented Buttons */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/60 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setDrawerStatusFilter("all")}
+                        className={cn(
+                          "flex-1 py-1 rounded-lg text-center transition-all cursor-pointer text-[11px]",
+                          drawerStatusFilter === "all"
+                            ? "bg-card text-foreground shadow-2xs border border-border/80"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        All ({detailStudents.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerStatusFilter("absent")}
+                        className={cn(
+                          "flex-1 py-1 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1 text-[11px]",
+                          drawerStatusFilter === "absent"
+                            ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 shadow-2xs border border-rose-300/60 dark:border-rose-800/60"
+                            : "text-rose-600/80 hover:text-rose-700"
+                        )}
+                      >
+                        <span className="size-1.5 rounded-full bg-rose-500 shrink-0" />
+                        Absent ({detailStudents.filter((s) => s.status === "Absent").length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDrawerStatusFilter("present")}
+                        className={cn(
+                          "flex-1 py-1 rounded-lg text-center transition-all cursor-pointer flex items-center justify-center gap-1 text-[11px]",
+                          drawerStatusFilter === "present"
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shadow-2xs border border-emerald-300/60 dark:border-emerald-800/60"
+                            : "text-emerald-600/80 hover:text-emerald-700"
+                        )}
+                      >
+                        <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        Present ({detailStudents.filter((s) => s.status === "Present").length})
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {detailLoading ? (
                   <StudentDetailsSkeleton />
                 ) : detailStudents.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">
                     No student attendance rows recorded for this session.
                   </p>
+                ) : filteredStudents.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-muted-foreground rounded-xl border border-dashed border-border bg-muted/20 flex flex-col items-center gap-1.5">
+                    <Search className="size-5 text-muted-foreground/50 mb-1" />
+                    <span className="font-bold text-foreground">No matching students</span>
+                    <span>Try changing your search query or filter tab</span>
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {detailStudents.map((st, i) => {
+                    {filteredStudents.map((st, i) => {
                       const isPresent = st.status === "Present"
                       return (
                         <div
@@ -1175,26 +1834,46 @@ export default function AttendanceHistoryPage() {
                             </div>
                           </div>
 
-                          <Badge
-                            className={cn(
-                              "gap-1 font-bold text-xs shrink-0 shadow-2xs",
-                              isPresent
-                                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                                : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <Badge
+                              className={cn(
+                                "gap-1 font-bold text-xs shadow-2xs",
+                                isPresent
+                                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                                  : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                              )}
+                            >
+                              {isPresent ? (
+                                <>
+                                  <CheckCircle2 className="size-3 text-emerald-500" />
+                                  Present
+                                </>
+                              ) : (
+                                <>
+                                  <AlertTriangle className="size-3 text-rose-500" />
+                                  Absent
+                                </>
+                              )}
+                            </Badge>
+                            {!isPresent && (
+                              st.alreadyNotified ? (
+                                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-300/50 dark:border-emerald-800/50 px-1.5 py-0.2 rounded-md shadow-2xs flex items-center gap-1">
+                                  <Check className="size-2.5" />
+                                  Email Sent
+                                </span>
+                              ) : !st.hasEmail ? (
+                                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-300/50 dark:border-amber-800/50 px-1.5 py-0.2 rounded-md shadow-2xs flex items-center gap-1">
+                                  <AlertCircle className="size-2.5" />
+                                  No Email
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-sky-700 dark:text-sky-300 bg-sky-500/10 border border-sky-300/50 dark:border-sky-800/50 px-1.5 py-0.2 rounded-md shadow-2xs flex items-center gap-1">
+                                  <Clock className="size-2.5" />
+                                  Pending Notify
+                                </span>
+                              )
                             )}
-                          >
-                            {isPresent ? (
-                              <>
-                                <CheckCircle2 className="size-3 text-emerald-500" />
-                                Present
-                              </>
-                            ) : (
-                              <>
-                                <AlertTriangle className="size-3 text-rose-500" />
-                                Absent
-                              </>
-                            )}
-                          </Badge>
+                          </div>
                         </div>
                       )
                     })}

@@ -14,16 +14,21 @@ export async function GET(request: Request) {
 
     function getDateRange(p: string) {
       const now = new Date()
-      const to = now.toISOString().split("T")[0]
+      const pad = (n: number) => String(n).padStart(2, "0")
+      const formatLocalYMD = (d: Date) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+      const to = formatLocalYMD(now)
+
       if (p === "This Week") {
         const day = now.getDay()
         const monday = new Date(now)
         monday.setDate(now.getDate() - ((day + 6) % 7))
-        return { from: monday.toISOString().split("T")[0], to }
+        return { from: formatLocalYMD(monday), to }
       }
       if (p === "This Month") {
         const from = new Date(now.getFullYear(), now.getMonth(), 1)
-        return { from: from.toISOString().split("T")[0], to }
+        return { from: formatLocalYMD(from), to }
       }
       return { from: "2000-01-01", to }
     }
@@ -63,18 +68,28 @@ export async function GET(request: Request) {
     const sessionIds = (allSessions ?? []).map((s: any) => s.id)
     const uniqueClassIds = Array.from(new Set(assignments.map((a: any) => a.class_id)))
 
-    // Fetch attendance + student counts in parallel
-    const [{ data: allAttendance }, ...studentCountResults] = await Promise.all([
-      sessionIds.length > 0
-        ? supabase
-            .from("period_attendance")
-            .select(`
-              session_id, status, student_id,
-              student:students ( roll_number, year, user:users ( full_name ) )
-            `)
-            .in("session_id", sessionIds)
-            .in("status", ["present", "absent"])
-        : Promise.resolve({ data: [] }),
+    // Fetch attendance in batches of 50 to prevent PostgREST URL query overflows on large date ranges
+    const CHUNK_SIZE = 50
+    const chunks: string[][] = []
+    for (let i = 0; i < sessionIds.length; i += CHUNK_SIZE) {
+      chunks.push(sessionIds.slice(i, i + CHUNK_SIZE))
+    }
+
+    const [attResults, ...studentCountResults] = await Promise.all([
+      chunks.length > 0
+        ? Promise.all(
+            chunks.map((chunk) =>
+              supabase
+                .from("period_attendance")
+                .select(`
+                  session_id, status, student_id,
+                  student:students ( id, roll_number, year, user:users ( full_name ) )
+                `)
+                .in("session_id", chunk)
+                .in("status", ["present", "absent"])
+            )
+          )
+        : Promise.resolve([]),
       ...uniqueClassIds.map((cid: string) =>
         supabase
           .from("students")
@@ -84,7 +99,7 @@ export async function GET(request: Request) {
       ),
     ])
 
-    const attendance = allAttendance ?? []
+    const attendance = (attResults as any[]).flatMap((r) => r.data || [])
 
     // Build student count map
     const studentCountMap = new Map<string, number>()
@@ -147,7 +162,8 @@ export async function GET(request: Request) {
         subjectId,
         subjectName: sub?.name ?? "Unknown",
         classId,
-        className: cls ? `${cls.name}-${cls.section}${cls.year ? ` · ${cls.year}` : ""}` : "Unknown",
+        className: cls ? `${cls.name}-${cls.section}` : "Unknown",
+        year: cls?.year ?? "",
         percentage,
         totalStudents: studentCount,
         totalClasses,
@@ -173,7 +189,7 @@ export async function GET(request: Request) {
         .map((s: any) => s.id)
       const rows = attendance.filter((a: any) => relevantSessionIds.includes(a.session_id))
       for (const row of rows) {
-        const key = `${row.student_id}__${subjectId}`
+        const key = `${row.student_id}__${subjectId}__${classId}`
         if (!studentSubjectPct[key]) studentSubjectPct[key] = { present: 0, total: 0 }
         studentSubjectPct[key].total++
         if (row.status === "present") studentSubjectPct[key].present++
@@ -204,8 +220,11 @@ export async function GET(request: Request) {
     const studentSubjectMap: Record<string, any> = {}
     for (const asgn of assignments) {
       const sub = (asgn as any).subjects as any
+      const cls = (asgn as any).classes as any
       const subjectId = (asgn as any).subject_id
       const classId = (asgn as any).class_id
+      const className = cls ? `${cls.name}-${cls.section}` : "Unknown"
+
       const relevantSessionIds = (allSessions ?? [])
         .filter((s: any) => s.subject_id === subjectId && s.class_id === classId)
         .map((s: any) => s.id)
@@ -217,16 +236,29 @@ export async function GET(request: Request) {
         if (!byStudent[sid]) {
           const st = (row as any).student
           const userObj = Array.isArray(st?.user) ? st.user[0] : st?.user
-          byStudent[sid] = { name: userObj?.full_name ?? "Unknown", roll: st?.roll_number ?? "—", present: 0, total: 0 }
+          byStudent[sid] = {
+            studentId: sid,
+            name: userObj?.full_name ?? "Unknown",
+            roll: st?.roll_number ?? "—",
+            year: cls?.year || st?.year || "",
+            present: 0,
+            total: 0,
+          }
         }
         byStudent[sid].total++
         if (row.status === "present") byStudent[sid].present++
       }
       for (const [sid, val] of Object.entries(byStudent)) {
-        studentSubjectMap[`${sid}__${subjectId}`] = {
-          name: val.name, roll: val.roll,
+        const key = `${sid}__${subjectId}__${classId}`
+        studentSubjectMap[key] = {
+          studentId: val.studentId,
+          name: val.name,
+          roll: val.roll,
+          year: val.year,
           subject: sub?.name ?? "Unknown",
-          attended: val.present, total: val.total,
+          className,
+          attended: val.present,
+          total: val.total,
         }
       }
     }

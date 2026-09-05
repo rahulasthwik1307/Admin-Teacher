@@ -7,6 +7,7 @@ import {
   UserCheck,
   AlertCircle,
   GraduationCap,
+  Building2,
   RotateCcw,
   Filter,
 } from "lucide-react"
@@ -201,18 +202,38 @@ function GroupHeader({
   const attention = total - approved
   const readyPercent = total > 0 ? Math.round((approved / total) * 100) : 0
 
+  const firstStudent = students[0]
+  const className = firstStudent?.class && firstStudent.class !== "—" ? firstStudent.class : (cohortName !== "Unassigned" ? cohortName : null)
+  const year = firstStudent?.year
+
   return (
     <tr className="bg-slate-100/90 dark:bg-slate-800/70 border-y border-border">
       <td colSpan={5} className="px-4 py-2.5">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-sm font-bold text-foreground tracking-wide font-mono">
-              {cohortName}
-            </span>
-            <span className="text-xs text-muted-foreground/60">·</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Class & Section Pill */}
+            {className ? (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/10 border border-blue-500/25 px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-300 shadow-2xs">
+                <Building2 className="size-3.5 shrink-0" />
+                {className}
+              </span>
+            ) : (
+              <span className="text-sm font-bold text-foreground tracking-wide font-mono">
+                {cohortName}
+              </span>
+            )}
+
+            {/* Year Pill */}
+            {year && (
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-500/10 border border-purple-500/25 px-2.5 py-1 text-xs font-bold text-purple-700 dark:text-purple-300 shadow-2xs">
+                <GraduationCap className="size-3.5 shrink-0" />
+                {year}
+              </span>
+            )}
+
             <Badge
               variant="outline"
-              className="text-xs font-semibold px-2 py-0.5 bg-card/80 border-border text-foreground"
+              className="text-xs font-semibold px-2.5 py-1 bg-card/90 border-border text-foreground shadow-2xs"
             >
               {total} {total === 1 ? "student" : "students"}
             </Badge>
@@ -232,7 +253,7 @@ function GroupHeader({
           <div className="flex items-center gap-1.5">
             <span
               className={cn(
-                "px-2.5 py-0.5 rounded-md font-mono text-[11px] font-semibold border shadow-2xs",
+                "px-2.5 py-1 rounded-md font-mono text-[11px] font-semibold border shadow-2xs",
                 readyPercent === 100
                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300/60 dark:border-emerald-800/60"
                   : readyPercent > 0
@@ -260,13 +281,32 @@ function MobileGroupHeader({
   const approved = students.filter((s) => s.faceStatus === "Approved").length
   const readyPercent = total > 0 ? Math.round((approved / total) * 100) : 0
 
+  const firstStudent = students[0]
+  const className = firstStudent?.class && firstStudent.class !== "—" ? firstStudent.class : (cohortName !== "Unassigned" ? cohortName : null)
+  const year = firstStudent?.year
+
   return (
     <div className="flex items-center justify-between gap-2 px-1 pt-3 pb-1.5 flex-wrap">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-bold text-foreground font-mono">
-          {cohortName}
-        </span>
-        <span className="text-xs text-muted-foreground">· {total} students</span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {className ? (
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+            <Building2 className="size-3 shrink-0" />
+            {className}
+          </span>
+        ) : (
+          <span className="text-sm font-bold text-foreground font-mono">
+            {cohortName}
+          </span>
+        )}
+
+        {year && (
+          <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+            <GraduationCap className="size-3 shrink-0" />
+            {year}
+          </span>
+        )}
+
+        <span className="text-xs text-muted-foreground font-medium">({total} students)</span>
       </div>
       <div className="flex items-center gap-1.5">
         <span
@@ -677,8 +717,22 @@ export default function TeacherStudentsPage() {
                           <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
                             {s.roll}
                           </td>
-                          <td className="px-4 py-3 text-foreground font-medium">{s.class}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{s.year}</td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs font-bold text-blue-700 dark:text-blue-300">
+                              <Building2 className="size-3 shrink-0" />
+                              {s.class}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {s.year ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+                                <GraduationCap className="size-3 shrink-0" />
+                                {s.year}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3">
                             <FaceStatusBadge status={s.faceStatus} />
                           </td>
@@ -750,10 +804,17 @@ export default function TeacherStudentsPage() {
                       </div>
                       <FaceStatusBadge status={student.faceStatus} />
                     </div>
-                    <div className="mt-2.5 flex items-center gap-2 pl-13 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{student.class}</span>
-                      <span>·</span>
-                      <span>{student.year}</span>
+                    <div className="mt-2.5 flex items-center gap-1.5 pl-13 flex-wrap">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                        <Building2 className="size-2.5 shrink-0" />
+                        {student.class}
+                      </span>
+                      {student.year && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-bold text-purple-700 dark:text-purple-300">
+                          <GraduationCap className="size-2.5 shrink-0" />
+                          {student.year}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

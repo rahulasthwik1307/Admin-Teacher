@@ -132,6 +132,103 @@ function getAttendanceColor(pct: number | null | undefined) {
   return { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500", badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20", bar: "bg-rose-500" }
 }
 
+const YEAR_BADGE_THEMES: Record<string, { bg: string; text: string; border: string }> = {
+  "1st Year": { bg: "bg-sky-500/10 dark:bg-sky-950/40", text: "text-sky-700 dark:text-sky-300", border: "border-sky-300/60 dark:border-sky-800/80" },
+  "2nd Year": { bg: "bg-emerald-500/10 dark:bg-emerald-950/40", text: "text-emerald-700 dark:text-emerald-300", border: "border-emerald-300/60 dark:border-emerald-800/80" },
+  "3rd Year": { bg: "bg-amber-500/10 dark:bg-amber-950/40", text: "text-amber-700 dark:text-amber-300", border: "border-amber-300/60 dark:border-amber-800/80" },
+  "4th Year": { bg: "bg-violet-500/10 dark:bg-violet-950/40", text: "text-violet-700 dark:text-violet-300", border: "border-violet-300/60 dark:border-violet-800/80" },
+}
+
+function getYearBadgeTheme(year: string) {
+  return YEAR_BADGE_THEMES[year] || { bg: "bg-primary/10", text: "text-primary", border: "border-primary/30" }
+}
+
+function parseCohortInfo(rawCohort?: string | null, fallbackYear?: string | null, fallbackClassSection?: string | null, fallbackDept?: string | null) {
+  let dept = fallbackDept || ""
+  let year = fallbackYear || ""
+  let classSection = fallbackClassSection || ""
+
+  if (rawCohort) {
+    const cleanStr = rawCohort.trim()
+    const separator = cleanStr.includes(" · ") ? " · " : cleanStr.includes(" . ") ? " . " : null
+    if (separator) {
+      const parts = cleanStr.split(separator).map(p => p.trim())
+      if (parts.length >= 3) {
+        dept = dept || parts[0]
+        year = year || parts[1]
+        const rawSec = parts[2].replace(/^(Sec|Section)\.?\s+/i, "")
+        classSection = rawSec.includes("-") ? rawSec : `${dept || "CSE"}-${rawSec}`
+      } else if (parts.length === 2) {
+        if (parts[0].toLowerCase().includes("year")) {
+          year = year || parts[0]
+          classSection = classSection || parts[1]
+        } else {
+          classSection = classSection || parts[0]
+          year = year || parts[1]
+        }
+      }
+    } else if (cleanStr.includes(" (") && cleanStr.endsWith(")")) {
+      const [cName, cYear] = cleanStr.slice(0, -1).split(" (")
+      classSection = cName.trim()
+      year = cYear.trim()
+    } else {
+      classSection = cleanStr
+    }
+  }
+
+  if (!classSection && fallbackClassSection) classSection = fallbackClassSection
+  if (!year && fallbackYear) year = fallbackYear
+  if (!dept && fallbackDept) dept = fallbackDept
+
+  // Normalize year string (e.g. "1st year" -> "1st Year")
+  if (year) {
+    const yMatch = year.match(/([1-4](?:st|nd|rd|th))\s*year/i)
+    if (yMatch) {
+      const numPart = yMatch[1].toLowerCase()
+      const formattedNum = numPart === "1st" ? "1st" : numPart === "2nd" ? "2nd" : numPart === "3rd" ? "3rd" : "4th"
+      year = `${formattedNum} Year`
+    }
+  }
+
+  // Clean classSection if it has leftover prefixes or dots
+  if (classSection) {
+    if (classSection.includes(" · ")) {
+      const subParts = classSection.split(" · ")
+      classSection = subParts[subParts.length - 1]
+    }
+    const cleanSec = classSection.replace(/^(Sec|Section)\.?\s+/i, "").trim()
+    if (!cleanSec.includes("-") && !cleanSec.includes("—") && cleanSec.length <= 3 && dept) {
+      classSection = `${dept}-${cleanSec}`
+    } else {
+      classSection = cleanSec
+    }
+  }
+
+  return {
+    classSection: classSection || "—",
+    year: year || "",
+    dept: dept || "",
+  }
+}
+
+function renderCohortBadges(rawCohort?: string | null, year?: string | null, classSection?: string | null, deptCode?: string | null) {
+  const parsed = parseCohortInfo(rawCohort, year, classSection, deptCode)
+  const yTheme = getYearBadgeTheme(parsed.year)
+
+  return (
+    <div className="inline-flex items-center gap-1.5 flex-wrap">
+      <span className="inline-flex items-center text-xs font-bold rounded-lg px-2.5 py-0.5 bg-background dark:bg-muted/40 border border-border/80 text-foreground shadow-2xs whitespace-nowrap">
+        {parsed.classSection}
+      </span>
+      {parsed.year && (
+        <span className={`inline-flex items-center text-[10px] font-bold rounded-full px-2 py-0.5 border ${yTheme.bg} ${yTheme.text} ${yTheme.border} whitespace-nowrap`}>
+          {parsed.year}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function getActionConfig(actionType: string, details: string) {
   const d = details.toLowerCase()
   if (d.includes("absence notification")) {
@@ -905,12 +1002,17 @@ export default function ReportsPage() {
                     </Badge>
                   </div>
                   {overview?.topSubjectCohort ? (
-                    <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex flex-col gap-1.5 mt-1">
                       <div className="text-lg font-bold text-foreground">
                         {overview.topSubjectCohort.subjectName} ({overview.topSubjectCohort.subjectCode})
                       </div>
-                      <div className="text-xs font-semibold text-muted-foreground">
-                        {overview.topSubjectCohort.cohortLabel} · Faculty: {overview.topSubjectCohort.teacherName}
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        {renderCohortBadges(overview.topSubjectCohort.cohortLabel)}
+                        <span className="text-muted-foreground/40 text-xs font-bold">·</span>
+                        <div className="flex items-center gap-1 text-xs text-foreground/90 font-semibold">
+                          <span className="text-muted-foreground font-medium">Faculty:</span>
+                          <span>{overview.topSubjectCohort.teacherName}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
@@ -944,12 +1046,17 @@ export default function ReportsPage() {
                     </Badge>
                   </div>
                   {overview?.attentionRequiredSubjectCohort ? (
-                    <div className="flex flex-col gap-1 mt-1">
+                    <div className="flex flex-col gap-1.5 mt-1">
                       <div className="text-lg font-bold text-foreground">
                         {overview.attentionRequiredSubjectCohort.subjectName} ({overview.attentionRequiredSubjectCohort.subjectCode})
                       </div>
-                      <div className="text-xs font-semibold text-muted-foreground">
-                        {overview.attentionRequiredSubjectCohort.cohortLabel} · Faculty: {overview.attentionRequiredSubjectCohort.teacherName}
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        {renderCohortBadges(overview.attentionRequiredSubjectCohort.cohortLabel)}
+                        <span className="text-muted-foreground/40 text-xs font-bold">·</span>
+                        <div className="flex items-center gap-1 text-xs text-foreground/90 font-semibold">
+                          <span className="text-muted-foreground font-medium">Faculty:</span>
+                          <span>{overview.attentionRequiredSubjectCohort.teacherName}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
@@ -1307,9 +1414,7 @@ export default function ReportsPage() {
 
                             {/* Cohort */}
                             <td className="px-4 py-3">
-                              <Badge variant="outline" className="font-mono text-[11px] font-semibold bg-muted/60 text-foreground px-2 py-0.5 whitespace-nowrap">
-                                {item.cohortLabel}
-                              </Badge>
+                              {renderCohortBadges(item.cohortLabel, item.year, item.classSection, item.deptCode)}
                             </td>
 
                             {/* Sessions */}
@@ -1478,9 +1583,7 @@ export default function ReportsPage() {
 
                             {/* Cohort */}
                             <td className="px-4 py-3">
-                              <span className="text-xs text-muted-foreground font-medium">
-                                {st.deptCode} · {st.year} · {st.classSection}
-                              </span>
+                              {renderCohortBadges("", st.year, st.classSection, st.deptCode)}
                             </td>
 
                             {/* Attended / Expected */}
@@ -1869,9 +1972,7 @@ export default function ReportsPage() {
                             <span className="text-[10px] font-mono text-muted-foreground">({z.subject_code})</span>
                           </td>
                           <td className="px-4 py-3">
-                            <Badge variant="outline" className="font-mono text-[11px] bg-muted/60">
-                              {z.cohort_label}
-                            </Badge>
+                            {renderCohortBadges(z.cohort_label)}
                           </td>
                           <td className="px-4 py-3 text-xs text-muted-foreground font-medium">
                             {z.teacher_name}
@@ -1935,14 +2036,10 @@ export default function ReportsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            <Badge variant="outline" className="font-mono text-[10px] bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20">
-                              {c.enrolled_cohort}
-                            </Badge>
+                            {renderCohortBadges(c.enrolled_cohort)}
                           </td>
                           <td className="px-4 py-3">
-                            <Badge variant="outline" className="font-mono text-[10px] bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20">
-                              {c.session_cohort}
-                            </Badge>
+                            {renderCohortBadges(c.session_cohort)}
                           </td>
                           <td className="px-4 py-3 text-xs text-foreground font-medium">
                             {c.subject_name}
@@ -2104,9 +2201,11 @@ export default function ReportsPage() {
               </Avatar>
               <span>{selectedStudentForDrilldown?.name}</span>
             </DialogTitle>
-            <DialogDescription className="text-xs">
-              Roll No: <span className="font-mono font-bold text-foreground">{selectedStudentForDrilldown?.rollNumber}</span> · {selectedStudentForDrilldown?.deptCode} {selectedStudentForDrilldown?.year} ({selectedStudentForDrilldown?.classSection})
-            </DialogDescription>
+            <div className="flex items-center gap-2 flex-wrap pt-1 text-xs text-muted-foreground">
+              <span>Roll No: <strong className="font-mono text-foreground font-bold">{selectedStudentForDrilldown?.rollNumber}</strong></span>
+              <span>·</span>
+              {selectedStudentForDrilldown && renderCohortBadges("", selectedStudentForDrilldown.year, selectedStudentForDrilldown.classSection, selectedStudentForDrilldown.deptCode)}
+            </div>
           </DialogHeader>
 
           {selectedStudentForDrilldown && (

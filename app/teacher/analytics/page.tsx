@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   Sparkles,
+  GraduationCap,
+  Building2,
 } from "lucide-react"
 import {
   BarChart,
@@ -45,6 +47,44 @@ import {
 /* ── types ─────────────────────────────────────────────── */
 const periods = ["This Week", "This Month", "This Semester"] as const
 type Trend = "Improving" | "Stable" | "Declining"
+
+/* ── Academic Year Color Themes ────────────────────────── */
+interface YearTheme {
+  badge: string
+  dot: string
+}
+
+function getYearTheme(yearStr?: string): YearTheme {
+  const y = (yearStr || "").toLowerCase()
+  if (y.includes("4") || y.includes("iv") || y.includes("four")) {
+    return {
+      badge: "bg-purple-500/15 text-purple-800 dark:text-purple-200 border-purple-300/80 dark:border-purple-700/80 font-bold shadow-2xs",
+      dot: "bg-purple-600 dark:bg-purple-400",
+    }
+  }
+  if (y.includes("3") || y.includes("iii") || y.includes("three")) {
+    return {
+      badge: "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-300/80 dark:border-amber-700/80 font-bold shadow-2xs",
+      dot: "bg-amber-600 dark:bg-amber-400",
+    }
+  }
+  if (y.includes("2") || y.includes("ii") || y.includes("two")) {
+    return {
+      badge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-300/80 dark:border-emerald-700/80 font-bold shadow-2xs",
+      dot: "bg-emerald-600 dark:bg-emerald-400",
+    }
+  }
+  if (y.includes("1") || y.includes("i") || y.includes("one")) {
+    return {
+      badge: "bg-sky-500/15 text-sky-800 dark:text-sky-200 border-sky-300/80 dark:border-sky-700/80 font-bold shadow-2xs",
+      dot: "bg-sky-600 dark:bg-sky-400",
+    }
+  }
+  return {
+    badge: "bg-muted text-muted-foreground border-border font-bold",
+    dot: "bg-muted-foreground",
+  }
+}
 
 /* ── date range helpers ────────────────────────────────── */
 function getDateRange(period: Period): { from: string; to: string } {
@@ -279,70 +319,108 @@ function StudentTable({
               {type === "top" && <th className="px-4 py-3.5 text-left w-12">#</th>}
               <th className="px-4 py-3.5 text-left">Student Name</th>
               <th className="px-4 py-3.5 text-left">Roll Number</th>
-              <th className="px-4 py-3.5 text-left">Subject</th>
+              <th className="px-4 py-3.5 text-left">Subject & Cohort</th>
               <th className="px-4 py-3.5 text-right">Attendance</th>
               <th className="px-4 py-3.5 text-right">Attended</th>
               <th className="px-4 py-3.5 text-right">Total Classes</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {rows.map((st, idx) => (
-              <tr
-                key={st.roll + st.subject}
-                className={cn(
-                  "transition-colors duration-150 hover:bg-muted/30",
-                  type === "low" ? getRowTint(st.percentage, "low") : getMedalStyle(idx)
-                )}
-              >
-                {type === "top" && (
-                  <td className="px-4 py-3.5 text-base">{getMedalLabel(idx)}</td>
-                )}
-                <td className="px-4 py-3.5 font-semibold text-foreground">{st.name}</td>
-                <td className="px-4 py-3.5">
-                  <span className="font-mono text-xs text-muted-foreground bg-muted/70 border border-border/60 px-2 py-0.5 rounded-md font-semibold">
-                    {st.roll}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5 text-foreground font-medium">{st.subject}</td>
-                <td className={cn("px-4 py-3.5 text-right font-extrabold text-sm", colorClass)}>
-                  {st.percentage}%
-                </td>
-                <td className="px-4 py-3.5 text-right font-medium text-muted-foreground">{st.attended}</td>
-                <td className="px-4 py-3.5 text-right font-medium text-muted-foreground">{st.total}</td>
-              </tr>
-            ))}
+            {rows.map((st, idx) => {
+              const yrTheme = getYearTheme(st.year)
+              return (
+                <tr
+                  key={`${st.roll}-${st.subject}-${st.className || ""}-${st.year || ""}-${idx}`}
+                  className={cn(
+                    "transition-colors duration-150 hover:bg-muted/30",
+                    type === "low" ? getRowTint(st.percentage, "low") : getMedalStyle(idx)
+                  )}
+                >
+                  {type === "top" && (
+                    <td className="px-4 py-3.5 text-base">{getMedalLabel(idx)}</td>
+                  )}
+                  <td className="px-4 py-3.5 font-semibold text-foreground">{st.name}</td>
+                  <td className="px-4 py-3.5">
+                    <span className="font-mono text-xs text-muted-foreground bg-muted/70 border border-border/60 px-2 py-0.5 rounded-md font-semibold">
+                      {st.roll}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-foreground font-semibold text-sm">{st.subject}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {st.className && (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                            <Building2 className="size-2.5" />
+                            {st.className}
+                          </span>
+                        )}
+                        {st.year && (
+                          <span className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold border", yrTheme.badge)}>
+                            <GraduationCap className="size-2.5" />
+                            {st.year}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className={cn("px-4 py-3.5 text-right font-extrabold text-sm", colorClass)}>
+                    {st.percentage}%
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-medium text-muted-foreground">{st.attended}</td>
+                  <td className="px-4 py-3.5 text-right font-medium text-muted-foreground">{st.total}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Mobile */}
       <div className="flex flex-col gap-2.5 md:hidden">
-        {rows.map((st, idx) => (
-          <div
-            key={st.roll + st.subject}
-            className={cn(
-              "rounded-xl border border-border/80 p-4 shadow-2xs flex flex-col gap-2.5",
-              type === "low" ? getRowTint(st.percentage, "low") : getMedalStyle(idx)
-            )}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {type === "top" && <span className="text-base">{getMedalLabel(idx)}</span>}
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-sm font-bold text-foreground">{st.name}</span>
-                  <span className="font-mono text-xs text-muted-foreground bg-muted/70 border border-border/60 px-1.5 py-0.5 rounded font-semibold self-start">
-                    {st.roll}
-                  </span>
+        {rows.map((st, idx) => {
+          const yrTheme = getYearTheme(st.year)
+          return (
+            <div
+              key={`${st.roll}-${st.subject}-${st.className || ""}-${st.year || ""}-${idx}`}
+              className={cn(
+                "rounded-xl border border-border/80 p-4 shadow-2xs flex flex-col gap-2.5",
+                type === "low" ? getRowTint(st.percentage, "low") : getMedalStyle(idx)
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {type === "top" && <span className="text-base">{getMedalLabel(idx)}</span>}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-sm font-bold text-foreground">{st.name}</span>
+                    <span className="font-mono text-xs text-muted-foreground bg-muted/70 border border-border/60 px-1.5 py-0.5 rounded font-semibold self-start">
+                      {st.roll}
+                    </span>
+                  </div>
                 </div>
+                <span className={cn("text-sm font-extrabold", colorClass)}>{st.percentage}%</span>
               </div>
-              <span className={cn("text-sm font-extrabold", colorClass)}>{st.percentage}%</span>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs text-muted-foreground border-t border-border/40 pt-2 font-medium">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-foreground font-bold">{st.subject}</span>
+                  {st.className && (
+                    <span className="inline-flex items-center gap-1 rounded bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300">
+                      <Building2 className="size-2.5" />
+                      {st.className}
+                    </span>
+                  )}
+                  {st.year && (
+                    <span className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold border", yrTheme.badge)}>
+                      <GraduationCap className="size-2.5" />
+                      {st.year}
+                    </span>
+                  )}
+                </div>
+                <span className="font-medium">{st.attended} / {st.total} classes</span>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground border-t border-border/40 pt-2 font-medium">
-              <span className="text-foreground/90 font-medium">{st.subject}</span>
-              <span>{st.attended} / {st.total} classes</span>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </>
   )
@@ -588,6 +666,7 @@ export default function AnalyticsPage() {
                 {subjectCards.map((sub) => {
                   const totalRecords = sub.presentTotal + sub.absentTotal
                   const presentPct = totalRecords > 0 ? (sub.presentTotal / totalRecords) * 100 : 0
+                  const yrTheme = getYearTheme(sub.year)
 
                   return (
                     <div
@@ -596,13 +675,22 @@ export default function AnalyticsPage() {
                     >
                       {/* Header */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex flex-col gap-1 min-w-0">
-                          <h3 className="text-sm font-bold text-foreground leading-snug truncate" title={sub.subjectName}>
+                        <div className="flex flex-col gap-1.5 min-w-0">
+                          <h3 className="text-base font-bold text-foreground leading-snug truncate" title={sub.subjectName}>
                             {sub.subjectName}
                           </h3>
-                          <span className="inline-flex items-center self-start rounded-md bg-primary/10 border border-primary/20 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                            {sub.className}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:text-blue-300">
+                              <Building2 className="size-3" />
+                              {sub.className}
+                            </span>
+                            {sub.year && (
+                              <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-bold border", yrTheme.badge)}>
+                                <GraduationCap className="size-3" />
+                                {sub.year}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {/* Trend badge */}
                         <div className={cn(
@@ -620,24 +708,46 @@ export default function AnalyticsPage() {
 
                       {/* Circular progress centered */}
                       <div className="flex justify-center py-1">
-                        <CircularProgress percentage={sub.percentage} size={104} strokeWidth={9} />
+                        <CircularProgress percentage={sub.percentage} size={108} strokeWidth={9} />
                       </div>
 
-                      {/* Present / Absent mini bar */}
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-xs font-semibold">
-                          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            <span className="size-1.5 rounded-full bg-emerald-500" />
-                            {sub.presentTotal} present ({Math.round(presentPct)}%)
-                          </span>
-                          <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
-                            <span className="size-1.5 rounded-full bg-rose-500" />
-                            {sub.absentTotal} absent
-                          </span>
+                      {/* High-End Attendance Distribution Pods & Sleek Track */}
+                      <div className="flex flex-col gap-2.5">
+                        <div className="grid grid-cols-2 gap-2">
+                          {/* Present Metric Box */}
+                          <div className="flex items-center justify-between rounded-xl bg-emerald-500/[0.08] dark:bg-emerald-950/30 border border-emerald-500/20 px-3 py-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="size-2 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20 shrink-0" />
+                              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 truncate">Present</span>
+                            </div>
+                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 font-mono shrink-0">
+                              {sub.presentTotal} <span className="text-[10px] font-semibold opacity-75">({Math.round(presentPct)}%)</span>
+                            </span>
+                          </div>
+
+                          {/* Absent Metric Box */}
+                          <div className="flex items-center justify-between rounded-xl bg-rose-500/[0.08] dark:bg-rose-950/30 border border-rose-500/20 px-3 py-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="size-2 rounded-full bg-rose-500 ring-2 ring-rose-500/20 shrink-0" />
+                              <span className="text-xs font-bold text-rose-900 dark:text-rose-200 truncate">Absent</span>
+                            </div>
+                            <span className="text-xs font-black text-rose-700 dark:text-rose-300 font-mono shrink-0">
+                              {sub.absentTotal} <span className="text-[10px] font-semibold opacity-75">({totalRecords > 0 ? Math.round(100 - presentPct) : 0}%)</span>
+                            </span>
+                          </div>
                         </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-rose-500/15 dark:bg-rose-950/40 p-0.5">
+
+                        {/* Sleek Visual Segmented Track Bar */}
+                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/80 p-0.5 shadow-inner">
                           <div
-                            className="h-full rounded-full bg-emerald-500 transition-all duration-700 ease-out"
+                            className={cn(
+                              "h-full rounded-full transition-all duration-700 ease-out",
+                              sub.percentage >= 75
+                                ? "bg-linear-to-r from-emerald-600 to-emerald-500 shadow-xs"
+                                : sub.percentage >= 60
+                                ? "bg-linear-to-r from-amber-600 to-amber-500 shadow-xs"
+                                : "bg-linear-to-r from-rose-600 to-rose-500 shadow-xs"
+                            )}
                             style={{ width: `${presentPct}%` }}
                           />
                         </div>
