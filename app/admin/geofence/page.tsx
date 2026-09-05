@@ -325,14 +325,17 @@ export default function GeofencePage() {
           {/* Card 1: Center Point */}
           <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-sky-800/60">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
                   Campus Center
                 </span>
-                <div className="text-lg font-black tracking-tight text-foreground truncate mt-0.5">
+                <div
+                  className="text-sm font-bold tracking-tight text-foreground leading-snug wrap-break-word"
+                  title={collegeName || "Campus Anchor"}
+                >
                   {collegeName || "Campus Anchor"}
                 </div>
-                <span className="text-xs font-mono text-muted-foreground truncate">
+                <span className="text-xs font-mono text-muted-foreground">
                   {parseFloat(lat).toFixed(4)}°N, {parseFloat(lng).toFixed(4)}°E
                 </span>
               </div>
@@ -345,14 +348,16 @@ export default function GeofencePage() {
           {/* Card 2: Boundary Radius */}
           <Card className="relative overflow-hidden rounded-xl border border-violet-200/80 bg-linear-to-b from-violet-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-violet-800/60">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
                   Geofence Radius
                 </span>
-                <div className="text-2xl font-black tracking-tight text-foreground mt-0.5">
+                <div className="text-xl font-black tracking-tight text-foreground">
                   {radiusNum} <span className="text-xs font-semibold text-muted-foreground">meters</span>
                 </div>
-                <span className="text-xs text-muted-foreground font-medium">Interactive Draggable Boundary</span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Interactive Draggable Boundary
+                </span>
               </div>
               <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
                 <Target className="size-4.5" />
@@ -363,14 +368,16 @@ export default function GeofencePage() {
           {/* Card 3: Total Coverage Area */}
           <Card className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-emerald-800/60">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                   Campus Coverage
                 </span>
-                <div className="text-2xl font-black tracking-tight text-foreground mt-0.5">
+                <div className="text-xl font-black tracking-tight text-foreground">
                   {coverageArea}
                 </div>
-                <span className="text-xs text-muted-foreground font-medium">Verified Active Footprint</span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Verified Active Footprint
+                </span>
               </div>
               <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <Maximize2 className="size-4.5" />
@@ -381,14 +388,16 @@ export default function GeofencePage() {
           {/* Card 4: Location Detection */}
           <Card className="relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-3.5 lg:p-4 shadow-2xs transition-all hover:shadow-md dark:border-amber-800/60">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
                   GPS Verification
                 </span>
-                <div className="text-lg font-black tracking-tight text-foreground mt-0.5">
+                <div className="text-sm sm:text-base font-bold tracking-tight text-foreground leading-snug">
                   Live & High Accuracy
                 </div>
-                <span className="text-xs text-muted-foreground font-medium">Anti-Spoofing Active</span>
+                <span className="text-xs text-muted-foreground font-medium">
+                  Anti-Spoofing Active
+                </span>
               </div>
               <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
                 <Compass className="size-4.5" />

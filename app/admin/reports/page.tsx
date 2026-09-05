@@ -98,7 +98,7 @@ type Tab = "attendance-overview" | "teacher-activity" | "diagnostics" | "system-
 const TABS: { id: Tab; label: string; icon: any; countBadge?: string }[] = [
   { id: "attendance-overview", label: "Attendance Overview", icon: BarChart3 },
   { id: "teacher-activity", label: "Teacher Activity", icon: Users },
-  { id: "diagnostics", label: "Data Quality & Diagnostics", icon: ShieldAlert },
+  { id: "diagnostics", label: "Attendance Alerts & Exceptions", icon: AlertTriangle },
   { id: "system-logs", label: "System Logs", icon: Activity },
 ]
 
@@ -296,20 +296,67 @@ function exportTeacherCSV(rows: TeacherActivityItem[]) {
   downloadBlob(csv, `teacher-activity-${new Date().toISOString().split("T")[0]}.csv`)
 }
 
-function exportDiagnosticsCSV(zeroEnrollment: ZeroEnrollmentSessionItem[], crossCohort: CrossCohortAnomalyItem[]) {
-  let content = "=== ZERO ENROLLMENT SESSIONS ===\n"
-  content += "Session ID,Date,Subject,Subject Code,Cohort Label,Faculty,Recorded Marks\n"
-  zeroEnrollment.forEach(z => {
-    content += `${z.session_id},${z.session_date},"${z.subject_name}",${z.subject_code},"${z.cohort_label}","${z.teacher_name}",${z.total_recorded_marks}\n`
-  })
+export interface LowTurnoutSessionItem {
+  sessionId: string
+  sessionDate: string
+  formattedDate: string
+  subjectName: string
+  subjectCode: string
+  classSection: string
+  year: string
+  deptCode: string
+  teacherName: string
+  presentCount: number
+  expectedCount: number
+  turnoutPct: number
+  severity: "critical" | "moderate"
+}
 
-  content += "\n=== CROSS COHORT ATTENDANCE ANOMALIES ===\n"
-  content += "Attendance ID,Session ID,Date,Student Roll,Student Name,Enrolled Cohort,Session Cohort,Subject,Status\n"
-  crossCohort.forEach(c => {
-    content += `${c.attendance_id},${c.session_id},${c.session_date},${c.roll_number},"${c.student_name}","${c.enrolled_cohort}","${c.session_cohort}","${c.subject_name}",${c.status}\n`
-  })
+export interface ConsecutiveAbsenceStudentItem {
+  studentId: string
+  studentName: string
+  rollNumber: string
+  classSection: string
+  year: string
+  deptCode: string
+  consecutiveMissed: number
+  lastAttendedDate: string | null
+  riskLevel: "critical" | "high"
+}
 
-  downloadBlob(content, `attendance-diagnostics-${new Date().toISOString().split("T")[0]}.csv`)
+function exportLowTurnoutCSV(rows: LowTurnoutSessionItem[]) {
+  const headers = ["Date", "Subject Name", "Subject Code", "Department", "Year", "Class & Section", "Faculty", "Present Students", "Expected Students", "Turnout %", "Severity"]
+  const csvRows = rows.map(r => [
+    r.sessionDate,
+    `"${r.subjectName.replace(/"/g, '""')}"`,
+    r.subjectCode,
+    r.deptCode,
+    r.year,
+    r.classSection,
+    `"${r.teacherName.replace(/"/g, '""')}"`,
+    r.presentCount,
+    r.expectedCount,
+    `${r.turnoutPct}%`,
+    r.severity === "critical" ? "Critical Mass Bunk (<=25%)" : "Low Turnout (26-49%)",
+  ])
+  const csv = [headers.join(","), ...csvRows.map(r => r.join(","))].join("\n")
+  downloadBlob(csv, `mass-bunk-low-turnout-alerts-${new Date().toISOString().split("T")[0]}.csv`)
+}
+
+function exportConsecutiveAbsenceCSV(rows: ConsecutiveAbsenceStudentItem[]) {
+  const headers = ["Roll Number", "Student Name", "Department", "Academic Year", "Class & Section", "Consecutive Classes Missed", "Last Attended Date", "Risk Level"]
+  const csvRows = rows.map(r => [
+    r.rollNumber,
+    `"${r.studentName.replace(/"/g, '""')}"`,
+    r.deptCode,
+    r.year,
+    r.classSection,
+    r.consecutiveMissed,
+    r.lastAttendedDate || "Never Attended",
+    r.riskLevel === "critical" ? "Critical Inactive (5+ missed)" : "High Inactive (3-4 missed)",
+  ])
+  const csv = [headers.join(","), ...csvRows.map(r => r.join(","))].join("\n")
+  downloadBlob(csv, `consecutive-absence-alerts-${new Date().toISOString().split("T")[0]}.csv`)
 }
 
 function downloadBlob(content: string, filename: string) {
@@ -343,6 +390,10 @@ export default function ReportsPage() {
   const [defaulterSearch, setDefaulterSearch] = useState("")
   const [defaulterStatusFilter, setDefaulterStatusFilter] = useState<"all" | "critical" | "at_risk">("all")
   const [teacherSearch, setTeacherSearch] = useState("")
+  const [lowTurnoutSearch, setLowTurnoutSearch] = useState("")
+  const [lowTurnoutSeverityFilter, setLowTurnoutSeverityFilter] = useState<"all" | "critical" | "moderate">("all")
+  const [consecutiveAbsenceSearch, setConsecutiveAbsenceSearch] = useState("")
+  const [consecutiveRiskFilter, setConsecutiveRiskFilter] = useState<"all" | "critical" | "high">("all")
   const [selectedStudentForDrilldown, setSelectedStudentForDrilldown] = useState<DefaulterStudentItem | null>(null)
   const [selectedTeacherForDrilldown, setSelectedTeacherForDrilldown] = useState<TeacherActivityItem | null>(null)
 
@@ -556,6 +607,184 @@ export default function ReportsPage() {
     )
   }, [teacherActivity, teacherSearch])
 
+  /* ── Operational Alerts: Mass Bunk / Low Turnout (<50%) ── */
+  const lowTurnoutSessions = useMemo<LowTurnoutSessionItem[]>(() => {
+    if (!reportsData?.sessions || reportsData.sessions.length === 0) return []
+
+    // Build active student count per class map from subjectCohortMatrix
+    const classActiveCountMap = new Map<string, number>()
+    for (const scm of subjectCohortMatrix) {
+      if (scm.sessionsConducted > 0 && scm.totalExpected > 0) {
+        const count = Math.round(scm.totalExpected / scm.sessionsConducted)
+        classActiveCountMap.set(scm.classId, count)
+      }
+    }
+
+    // Map session present counts from period_attendance
+    const sessionPresentMap = new Map<string, number>()
+    for (const a of reportsData.attendance ?? []) {
+      if (a.status === "present") {
+        sessionPresentMap.set(a.session_id, (sessionPresentMap.get(a.session_id) || 0) + 1)
+      }
+    }
+
+    const alerts: LowTurnoutSessionItem[] = []
+
+    for (const s of reportsData.sessions) {
+      const expected = classActiveCountMap.get(s.class_id) ?? 0
+      if (expected <= 0) continue // Skip empty classes without enrolled students
+
+      const present = sessionPresentMap.get(s.id) ?? 0
+      const pct = Math.round((present / expected) * 100)
+
+      if (pct < 50) {
+        const c = s.class
+        const dept = c?.department?.code || s.subject?.department?.code || "CSE"
+        const sec = c?.section ? (c.name.includes("-") ? c.name : `${dept}-${c.section}`) : c?.name || "—"
+        const teacherName = s.teacher?.title
+          ? `${s.teacher.title} ${s.teacher.user?.full_name}`
+          : s.teacher?.user?.full_name || "—"
+
+        alerts.push({
+          sessionId: s.id,
+          sessionDate: s.session_date,
+          formattedDate: formatSessionDate(s.session_date),
+          subjectName: s.subject?.name || "—",
+          subjectCode: s.subject?.code || "—",
+          classSection: sec,
+          year: c?.year || "",
+          deptCode: dept,
+          teacherName,
+          presentCount: present,
+          expectedCount: expected,
+          turnoutPct: pct,
+          severity: pct <= 25 ? "critical" : "moderate",
+        })
+      }
+    }
+
+    return alerts.sort((a, b) => (a.turnoutPct !== b.turnoutPct ? a.turnoutPct - b.turnoutPct : b.sessionDate.localeCompare(a.sessionDate)))
+  }, [reportsData, subjectCohortMatrix])
+
+  /* ── Operational Alerts: Acute Consecutive Absentees (3+ missed) ── */
+  const consecutiveAbsentStudents = useMemo<ConsecutiveAbsenceStudentItem[]>(() => {
+    if (!reportsData?.attendance || !reportsData?.sessions || reportsData.attendance.length === 0) return []
+
+    const sortedSessions = [...reportsData.sessions].sort((a, b) => a.session_date.localeCompare(b.session_date))
+    const sessionOrderMap = new Map<string, { date: string; classId: string; index: number }>()
+    sortedSessions.forEach((s, idx) => {
+      sessionOrderMap.set(s.id, { date: s.session_date, classId: s.class_id, index: idx })
+    })
+
+    const studentMarksMap = new Map<string, {
+      studentId: string
+      name: string
+      rollNumber: string
+      classSection: string
+      year: string
+      deptCode: string
+      classId: string
+      marks: Array<{ date: string; status: string; sessionIndex: number }>
+    }>()
+
+    for (const a of reportsData.attendance) {
+      if (!a.student_id || !a.student) continue
+      const sInfo = sessionOrderMap.get(a.session_id)
+      if (!sInfo) continue
+
+      const st = a.student
+      const c = st.class
+      const dept = st.department?.code || c?.department?.code || "CSE"
+      const sec = c?.section ? (c.name.includes("-") ? c.name : `${dept}-${c.section}`) : c?.name || "—"
+
+      if (!studentMarksMap.has(a.student_id)) {
+        studentMarksMap.set(a.student_id, {
+          studentId: a.student_id,
+          name: st.user?.full_name || "Unknown",
+          rollNumber: st.roll_number || "—",
+          classSection: sec,
+          year: st.year || c?.year || "",
+          deptCode: dept,
+          classId: c?.id || "",
+          marks: [],
+        })
+      }
+
+      studentMarksMap.get(a.student_id)!.marks.push({
+        date: sInfo.date,
+        status: a.status,
+        sessionIndex: sInfo.index,
+      })
+    }
+
+    const inactiveList: ConsecutiveAbsenceStudentItem[] = []
+
+    studentMarksMap.forEach(record => {
+      record.marks.sort((a, b) => a.sessionIndex - b.sessionIndex)
+
+      let streak = 0
+      let lastAttended: string | null = null
+
+      for (let i = record.marks.length - 1; i >= 0; i--) {
+        const m = record.marks[i]
+        if (m.status === "absent") {
+          streak++
+        } else if (m.status === "present") {
+          if (!lastAttended) lastAttended = formatSessionDate(m.date)
+          break
+        }
+      }
+
+      if (!lastAttended) {
+        const firstPresent = record.marks.find(m => m.status === "present")
+        if (firstPresent) lastAttended = formatSessionDate(firstPresent.date)
+      }
+
+      if (streak >= 3) {
+        inactiveList.push({
+          studentId: record.studentId,
+          studentName: record.name,
+          rollNumber: record.rollNumber,
+          classSection: record.classSection,
+          year: record.year,
+          deptCode: record.deptCode,
+          consecutiveMissed: streak,
+          lastAttendedDate: lastAttended,
+          riskLevel: streak >= 5 ? "critical" : "high",
+        })
+      }
+    })
+
+    return inactiveList.sort((a, b) => b.consecutiveMissed - a.consecutiveMissed)
+  }, [reportsData])
+
+  const filteredLowTurnout = useMemo(() => {
+    return lowTurnoutSessions.filter(item => {
+      if (lowTurnoutSeverityFilter !== "all" && item.severity !== lowTurnoutSeverityFilter) return false
+      if (lowTurnoutSearch.trim()) {
+        const q = lowTurnoutSearch.toLowerCase()
+        const matchSub = item.subjectName.toLowerCase().includes(q) || item.subjectCode.toLowerCase().includes(q)
+        const matchCohort = item.classSection.toLowerCase().includes(q) || item.deptCode.toLowerCase().includes(q)
+        const matchTeacher = item.teacherName.toLowerCase().includes(q)
+        if (!matchSub && !matchCohort && !matchTeacher) return false
+      }
+      return true
+    })
+  }, [lowTurnoutSessions, lowTurnoutSeverityFilter, lowTurnoutSearch])
+
+  const filteredConsecutiveAbsence = useMemo(() => {
+    return consecutiveAbsentStudents.filter(item => {
+      if (consecutiveRiskFilter !== "all" && item.riskLevel !== consecutiveRiskFilter) return false
+      if (consecutiveAbsenceSearch.trim()) {
+        const q = consecutiveAbsenceSearch.toLowerCase()
+        const matchStudent = item.studentName.toLowerCase().includes(q) || item.rollNumber.toLowerCase().includes(q)
+        const matchCohort = item.classSection.toLowerCase().includes(q) || item.deptCode.toLowerCase().includes(q)
+        if (!matchStudent && !matchCohort) return false
+      }
+      return true
+    })
+  }, [consecutiveAbsentStudents, consecutiveRiskFilter, consecutiveAbsenceSearch])
+
   /* ── System Logs ── */
   const logs = useMemo(() => reportsData?.logs ?? [], [reportsData])
   const uniquePerformers = useMemo(() => Array.from(new Set(logs.map((l: any) => l.performedBy))).sort(), [logs])
@@ -601,9 +830,9 @@ export default function ReportsPage() {
                 <span className="relative z-10 flex items-center gap-2">
                   <tab.icon className={`size-3.5 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
                   <span>{tab.label}</span>
-                  {tab.id === "diagnostics" && diagnostics && diagnostics.zeroEnrollmentSessionsCount + diagnostics.crossCohortMarksCount > 0 && (
+                  {tab.id === "diagnostics" && (lowTurnoutSessions.length + consecutiveAbsentStudents.length > 0) && (
                     <span className="flex size-4.5 items-center justify-center rounded-full bg-rose-500/15 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                      {diagnostics.zeroEnrollmentSessionsCount + diagnostics.crossCohortMarksCount}
+                      {lowTurnoutSessions.length + consecutiveAbsentStudents.length}
                     </span>
                   )}
                 </span>
@@ -1857,45 +2086,47 @@ export default function ReportsPage() {
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          TAB 3: DATA QUALITY & DIAGNOSTICS (ISOLATED AUDITING)
+          TAB 3: ATTENDANCE ALERTS & EXCEPTIONS (OPERATIONAL ALERTS)
       ══════════════════════════════════════════════════════════ */}
       {!isLoading && activeTab === "diagnostics" && (
         <motion.div
-          key="tab-diagnostics"
+          key="tab-alerts"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.15 }}
           className="flex flex-col gap-6"
         >
-          {/* Governance Notice Banner */}
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200">
+          {/* Executive Alert Banner */}
+          <div className="rounded-xl border border-rose-500/30 bg-linear-to-r from-rose-500/10 via-card to-amber-500/10 p-4 text-foreground shadow-2xs">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="size-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div className="flex size-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
+                <AlertTriangle className="size-5" />
+              </div>
               <div className="flex flex-col gap-1 text-xs">
-                <span className="font-bold text-sm">Administrative Data Quality Diagnostics</span>
-                <p className="leading-relaxed">
-                  These records identify edge-case anomalies detected during attendance operations (such as historical testing sessions conducted for classes with zero enrolled students, or students scanning in a session of another cohort).
-                </p>
-                <p className="font-semibold text-amber-800 dark:text-amber-300">
-                  ✓ Isolated for Auditing: These records are strictly excluded from official campus-wide and cohort attendance KPIs.
+                <span className="font-bold text-sm text-foreground">Immediate Operational Attendance Alerts</span>
+                <p className="text-muted-foreground leading-relaxed">
+                  Real-time detection for <strong>mass absenteeism / low turnout class events (&lt;50%)</strong> and <strong>acute student inactivity streaks (3+ consecutive lectures missed)</strong> to enable prompt mentor intervention and parent outreach.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Diagnostic Stat Cards */}
+          {/* Operational Alert Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Card 1: Mass Absenteeism & Low Turnout */}
             <Card className="p-4 border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card shadow-2xs dark:border-rose-900/50">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                    Zero-Enrollment Sessions
+                    Mass Absenteeism / Low Turnout Sessions
                   </span>
                   <div className="text-3xl font-black text-foreground mt-1">
-                    {diagnostics?.zeroEnrollmentSessionsCount ?? 0}
+                    {lowTurnoutSessions.length}
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Finalized sessions on classes with 0 enrolled students</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Conducted class sessions with &lt;50% student turnout
+                  </span>
                 </div>
                 <div className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                   <AlertTriangle className="size-5" />
@@ -1903,86 +2134,165 @@ export default function ReportsPage() {
               </div>
             </Card>
 
+            {/* Card 2: Acute Consecutive Absentees */}
             <Card className="p-4 border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card shadow-2xs dark:border-amber-900/50">
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                    Cross-Cohort Attendance Anomalies
+                    Acute Consecutive Absentees (3+ Classes)
                   </span>
                   <div className="text-3xl font-black text-foreground mt-1">
-                    {diagnostics?.crossCohortMarksCount ?? 0}
+                    {consecutiveAbsentStudents.length}
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Student scanned in a session of another class</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    Students with 3+ consecutive unexcused lecture absences
+                  </span>
                 </div>
                 <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <ShieldAlert className="size-5" />
+                  <Users className="size-5" />
                 </div>
               </div>
             </Card>
           </div>
 
-          {/* Export Action */}
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => exportDiagnosticsCSV(diagnostics?.zeroEnrollmentSessions ?? [], diagnostics?.crossCohortAnomalies ?? [])}
-              className="gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs"
-            >
-              <Download className="size-3.5" /> Export Diagnostics Log CSV
-            </Button>
-          </div>
-
-          {/* Table 1: Zero-Enrollment Sessions */}
+          {/* ══════════════════════════════════════════════════════════
+              TABLE 1: MASS ABSENTEEISM & LOW TURNOUT SESSIONS (<50%)
+          ══════════════════════════════════════════════════════════ */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-3 pt-4 border-b border-border/60 bg-muted/20">
-              <CardTitle className="text-sm font-bold text-foreground">Zero-Enrollment Sessions Ledger</CardTitle>
-              <CardDescription className="text-xs">
-                Sessions conducted where the targeted class currently has 0 active enrolled students (Denominator = 0)
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="size-4 text-rose-600 dark:text-rose-400" />
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground">Mass Absenteeism & Low Turnout Sessions (&lt;50%)</CardTitle>
+                    <CardDescription className="text-xs">
+                      Individual class sessions where attendance dropped below 50% of enrolled class capacity
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Severity Filter Toggle */}
+                  <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+                    <button
+                      onClick={() => setLowTurnoutSeverityFilter("all")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                        lowTurnoutSeverityFilter === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      All ({lowTurnoutSessions.length})
+                    </button>
+                    <button
+                      onClick={() => setLowTurnoutSeverityFilter("critical")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                        lowTurnoutSeverityFilter === "critical" ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Critical ≤25% ({lowTurnoutSessions.filter(s => s.severity === "critical").length})
+                    </button>
+                    <button
+                      onClick={() => setLowTurnoutSeverityFilter("moderate")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                        lowTurnoutSeverityFilter === "moderate" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Low 26-49% ({lowTurnoutSessions.filter(s => s.severity === "moderate").length})
+                    </button>
+                  </div>
+
+                  <div className="relative w-44 sm:w-52">
+                    <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search subject, class, faculty..."
+                      value={lowTurnoutSearch}
+                      onChange={e => setLowTurnoutSearch(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                    />
+                    {lowTurnoutSearch && (
+                      <button onClick={() => setLowTurnoutSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        <X className="size-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportLowTurnoutCSV(filteredLowTurnout)}
+                    disabled={filteredLowTurnout.length === 0}
+                    className="h-8 gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs"
+                  >
+                    <Download className="size-3.5" /> Export Low Turnout CSV
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-120">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-xs">
                     <tr className="border-b border-border bg-muted/30 text-left">
                       <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date</th>
                       <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subject</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class / Cohort</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class & Cohort</th>
                       <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Faculty</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Recorded Marks</th>
-                      <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Audit Status</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Turnout (Present / Enrolled)</th>
+                      <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance %</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Severity Alert</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(diagnostics?.zeroEnrollmentSessions ?? []).length === 0 ? (
+                    {filteredLowTurnout.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
-                          No zero-enrollment sessions found.
+                        <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                          {lowTurnoutSearch ? "No sessions match your search query." : "🎉 Excellent! No sessions with low turnout (<50%) recorded in this scope."}
                         </td>
                       </tr>
                     ) : (
-                      diagnostics!.zeroEnrollmentSessions.map(z => (
-                        <tr key={z.session_id} className="border-t border-border hover:bg-muted/20 transition-colors">
+                      filteredLowTurnout.map(item => (
+                        <tr key={item.sessionId} className="border-t border-border hover:bg-muted/20 transition-colors">
                           <td className="px-5 py-3 font-mono text-xs text-foreground whitespace-nowrap">
-                            {formatSessionDate(z.session_date)}
+                            {item.formattedDate}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="text-xs font-bold text-foreground">{z.subject_name}</span>{" "}
-                            <span className="text-[10px] font-mono text-muted-foreground">({z.subject_code})</span>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-xs font-bold text-foreground">{item.subjectName}</span>
+                              <span className="text-[10px] font-mono font-semibold text-muted-foreground">{item.subjectCode}</span>
+                            </div>
                           </td>
                           <td className="px-4 py-3">
-                            {renderCohortBadges(z.cohort_label)}
+                            {renderCohortBadges(null, item.year, item.classSection, item.deptCode)}
                           </td>
-                          <td className="px-4 py-3 text-xs text-muted-foreground font-medium">
-                            {z.teacher_name}
+                          <td className="px-4 py-3 text-xs text-muted-foreground font-semibold">
+                            {item.teacherName}
                           </td>
-                          <td className="px-4 py-3 text-center text-xs font-bold text-muted-foreground">
-                            {z.total_recorded_marks}
+                          <td className="px-4 py-3 text-center text-xs font-medium text-foreground whitespace-nowrap">
+                            <span className="font-bold text-rose-600 dark:text-rose-400">{item.presentCount}</span>
+                            <span className="text-muted-foreground"> / {item.expectedCount} students</span>
                           </td>
                           <td className="px-5 py-3">
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 text-[10px] font-semibold">
-                              Excluded from % Denominator
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-rose-500"
+                                  style={{ width: `${item.turnoutPct}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                                {item.turnoutPct}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Badge
+                              variant="outline"
+                              className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                                item.severity === "critical"
+                                  ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                              }`}
+                            >
+                              {item.severity === "critical" ? "Critical Mass Bunk (≤25%)" : "Low Turnout (26-49%)"}
                             </Badge>
                           </td>
                         </tr>
@@ -1994,64 +2304,137 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          {/* Table 2: Cross-Cohort Attendance Anomalies */}
+          {/* ══════════════════════════════════════════════════════════
+              TABLE 2: ACUTE CONSECUTIVE ABSENCE TRACKER (3+ SESSIONS)
+          ══════════════════════════════════════════════════════════ */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-3 pt-4 border-b border-border/60 bg-muted/20">
-              <CardTitle className="text-sm font-bold text-foreground">Cross-Cohort Attendance Contamination</CardTitle>
-              <CardDescription className="text-xs">
-                Attendance records where a student from one cohort was marked inside a session belonging to a different cohort
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Users className="size-4 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground">Acute Consecutive Absence Tracker (3+ Classes Missed)</CardTitle>
+                    <CardDescription className="text-xs">
+                      Students who have missed 3 or more consecutive lectures, requiring immediate mentor outreach
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Risk Filter Toggle */}
+                  <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+                    <button
+                      onClick={() => setConsecutiveRiskFilter("all")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                        consecutiveRiskFilter === "all" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      All ({consecutiveAbsentStudents.length})
+                    </button>
+                    <button
+                      onClick={() => setConsecutiveRiskFilter("critical")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                        consecutiveRiskFilter === "critical" ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Urgent 5+ ({consecutiveAbsentStudents.filter(s => s.riskLevel === "critical").length})
+                    </button>
+                    <button
+                      onClick={() => setConsecutiveRiskFilter("high")}
+                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors cursor-pointer ${
+                        consecutiveRiskFilter === "high" ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 font-bold" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      High Risk 3-4 ({consecutiveAbsentStudents.filter(s => s.riskLevel === "high").length})
+                    </button>
+                  </div>
+
+                  <div className="relative w-44 sm:w-52">
+                    <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search student or roll..."
+                      value={consecutiveAbsenceSearch}
+                      onChange={e => setConsecutiveAbsenceSearch(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                    />
+                    {consecutiveAbsenceSearch && (
+                      <button onClick={() => setConsecutiveAbsenceSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        <X className="size-3" />
+                      </button>
+                    )}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportConsecutiveAbsenceCSV(filteredConsecutiveAbsence)}
+                    disabled={filteredConsecutiveAbsence.length === 0}
+                    className="h-8 gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs"
+                  >
+                    <Download className="size-3.5" /> Export Inactive Students CSV
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-120">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-xs">
                     <tr className="border-b border-border bg-muted/30 text-left">
-                      <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Date</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Enrolled Cohort</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Session Cohort</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Subject</th>
-                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Status</th>
-                      <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Handling</th>
+                      <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Student</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Roll Number</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class & Cohort</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Consecutive Missed</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Last Attended Session</th>
+                      <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">Intervention Priority</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(diagnostics?.crossCohortAnomalies ?? []).length === 0 ? (
+                    {filteredConsecutiveAbsence.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground">
-                          No cross-cohort attendance contamination found.
+                        <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                          {consecutiveAbsenceSearch ? "No students match your search query." : "🎉 Great! No students currently on a 3+ consecutive absence streak."}
                         </td>
                       </tr>
                     ) : (
-                      diagnostics!.crossCohortAnomalies.map(c => (
-                        <tr key={c.attendance_id} className="border-t border-border hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3 font-mono text-xs text-foreground whitespace-nowrap">
-                            {formatSessionDate(c.session_date)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-foreground">{c.student_name}</span>
-                              <span className="text-[10px] font-mono text-muted-foreground">{c.roll_number}</span>
+                      filteredConsecutiveAbsence.map(st => (
+                        <tr key={st.studentId} className="border-t border-border hover:bg-muted/20 transition-colors">
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar className="size-7.5 ring-1 ring-border">
+                                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+                                  {getInitials(st.studentName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs font-bold text-foreground">{st.studentName}</span>
                             </div>
                           </td>
                           <td className="px-4 py-3">
-                            {renderCohortBadges(c.enrolled_cohort)}
+                            <span className="font-mono text-xs font-bold bg-muted px-2 py-0.5 rounded-md text-muted-foreground">
+                              {st.rollNumber}
+                            </span>
                           </td>
                           <td className="px-4 py-3">
-                            {renderCohortBadges(c.session_cohort)}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-foreground font-medium">
-                            {c.subject_name}
+                            {renderCohortBadges(null, st.year, st.classSection, st.deptCode)}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <Badge variant="outline" className={`text-[10px] font-bold ${c.status === "present" ? "text-emerald-600" : "text-rose-600"}`}>
-                              {c.status.toUpperCase()}
-                            </Badge>
+                            <span className="inline-flex items-center gap-1 font-mono text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
+                              {st.consecutiveMissed} classes in a row
+                            </span>
                           </td>
-                          <td className="px-5 py-3">
-                            <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 text-[10px] font-semibold">
-                              Filtered Out of Numerator
+                          <td className="px-4 py-3 text-xs text-muted-foreground font-medium whitespace-nowrap">
+                            {st.lastAttendedDate || "Never in record"}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <Badge
+                              variant="outline"
+                              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md ${
+                                st.riskLevel === "critical"
+                                  ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                              }`}
+                            >
+                              {st.riskLevel === "critical" ? "Urgent Outreach (5+ Missed)" : "High Risk (3-4 Missed)"}
                             </Badge>
                           </td>
                         </tr>
