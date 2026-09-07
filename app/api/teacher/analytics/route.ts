@@ -73,14 +73,14 @@ export async function GET(request: Request) {
     const sessionIds = (allSessions ?? []).map((s: any) => s.id)
     const uniqueClassIds = Array.from(new Set(assignments.map((a: any) => a.class_id)))
 
-    // Fetch attendance in batches of 50 to prevent PostgREST URL query overflows on large date ranges
-    const CHUNK_SIZE = 50
+    // Fetch attendance in batches of 120 to optimize database round-trips
+    const CHUNK_SIZE = 120
     const chunks: string[][] = []
     for (let i = 0; i < sessionIds.length; i += CHUNK_SIZE) {
       chunks.push(sessionIds.slice(i, i + CHUNK_SIZE))
     }
 
-    const [attResults, ...studentCountResults] = await Promise.all([
+    const [attResults, studentsResult] = await Promise.all([
       chunks.length > 0
         ? Promise.all(
             chunks.map((chunk) =>
@@ -95,22 +95,25 @@ export async function GET(request: Request) {
             )
           )
         : Promise.resolve([]),
-      ...uniqueClassIds.map((cid: string) =>
-        supabase
-          .from("students")
-          .select("id", { count: "exact", head: true })
-          .eq("class_id", cid)
-          .eq("is_active", true)
-      ),
+      uniqueClassIds.length > 0
+        ? supabase
+            .from("students")
+            .select("id, class_id")
+            .in("class_id", uniqueClassIds)
+            .eq("is_active", true)
+        : Promise.resolve({ data: [] }),
     ])
 
     const attendance = (attResults as any[]).flatMap((r) => r.data || [])
 
     // Build student count map
     const studentCountMap = new Map<string, number>()
-    uniqueClassIds.forEach((cid: string, i: number) => {
-      studentCountMap.set(cid, (studentCountResults[i] as any).count ?? 0)
+    uniqueClassIds.forEach((cid: string) => {
+      studentCountMap.set(cid, 0)
     })
+    for (const s of (studentsResult as any).data || []) {
+      studentCountMap.set(s.class_id, (studentCountMap.get(s.class_id) || 0) + 1)
+    }
 
     // Subject cards
     const subjectCards = assignments.map((asgn: any) => {
@@ -384,6 +387,10 @@ export async function GET(request: Request) {
       periodSlotStats,
       lowStudents: allStudentRows.filter((r: any) => r.percentage < 75).sort((a: any, b: any) => a.percentage - b.percentage),
       topStudents: allStudentRows.filter((r: any) => r.percentage >= 90).sort((a: any, b: any) => b.percentage - a.percentage).slice(0, 15),
+    }, {
+      headers: {
+        "Cache-Control": "private, no-cache, stale-while-revalidate=60",
+      },
     })
   } catch (e) {
     console.error("Analytics API error:", e)

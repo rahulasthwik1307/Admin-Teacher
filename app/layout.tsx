@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from "@/components/providers"
+import { NavigationProgress } from '@/components/ui/navigation-progress'
 import './globals.css'
 
 const inter = Inter({
@@ -48,6 +49,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <Providers>
+          <NavigationProgress />
           {children}
           <Toaster position="top-right" richColors />
           <Analytics />

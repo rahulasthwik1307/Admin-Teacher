@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 
 export interface AttendanceSession {
   id: string
@@ -29,7 +29,7 @@ export interface AttendanceSession {
   finalizedAt?: string | null
 }
 
-async function fetchAttendanceHistory(): Promise<AttendanceSession[]> {
+export async function fetchAttendanceHistory(): Promise<AttendanceSession[]> {
   const res = await fetch("/api/teacher/attendance-history")
   if (!res.ok) throw new Error("Failed to fetch attendance history")
   return res.json()
@@ -39,8 +39,10 @@ export function useAttendanceHistory() {
   return useQuery({
     queryKey: ["teacher-attendance-history"],
     queryFn: fetchAttendanceHistory,
-    staleTime: 5 * 1000,        // 5 seconds
-    refetchOnMount: "always",   // always fetch fresh data when navigating to page
-    refetchOnWindowFocus: true, // refresh when tab is focused
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 }

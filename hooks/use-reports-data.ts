@@ -143,6 +143,16 @@ export interface ReportsData {
   defaulterStudents?: DefaulterStudentItem[]
   teacherActivity?: TeacherActivityItem[]
   diagnostics?: ReportDiagnostics
+  timelineTrend?: Array<{
+    date: string
+    formattedDate?: string
+    attendancePct: number
+    present: number
+    expected: number
+    sessions: number
+  }>
+  lowTurnoutSessions?: any[]
+  consecutiveAbsentStudents?: any[]
   // Metadata & relations for filtering and drill-down:
   teachers: any[]
   sessions: any[]
@@ -306,8 +316,33 @@ export function useReportsData(filters?: ReportsFilterState) {
 
   return useQuery<ReportsData>({
     queryKey: ["admin-reports", filters],
-    queryFn: () => fetchReportsData(filters),
+    queryFn: async () => {
+      const data = await fetchReportsData(filters)
+      if (typeof window !== "undefined" && (!filters || Object.keys(filters).length === 0 || filters.dateRange === "all")) {
+        try {
+          sessionStorage.setItem("admin_reports_cache_v1", JSON.stringify(data))
+        } catch {
+          // ignore storage quota limits
+        }
+      }
+      return data
+    },
+    placeholderData: (previousData) => {
+      if (previousData) return previousData
+      if (typeof window !== "undefined") {
+        try {
+          const cached = sessionStorage.getItem("admin_reports_cache_v1")
+          if (cached) {
+            return JSON.parse(cached)
+          }
+        } catch {
+          // ignore parse error
+        }
+      }
+      return undefined
+    },
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   })
 }
+

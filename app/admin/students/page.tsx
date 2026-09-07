@@ -437,10 +437,16 @@ function FormField({
 
 const ROLL_NUMBER_REGEX = /^\d{3}[A-Z]\d[A-Z]\d{4}$/
 
+import { useQueryClient } from "@tanstack/react-query"
+import { useAdminStudents } from "@/hooks/use-admin-students"
+
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState<Student[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const { data: adminStudentsData, isLoading, error: queryError, refetch: fetchStudents } = useAdminStudents()
+  const students = useMemo(() => adminStudentsData?.students ?? [], [adminStudentsData])
+  const classOptions = useMemo(() => adminStudentsData?.classOptions ?? [], [adminStudentsData])
+  const deptOptions = useMemo(() => adminStudentsData?.deptOptions ?? [], [adminStudentsData])
+  const fetchError = queryError ? "Failed to load students." : null
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Filters
@@ -468,10 +474,6 @@ export default function AdminStudentsPage() {
   const [resetTarget, setResetTarget] = useState<Student | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
 
-  // Dropdowns metadata
-  const [classOptions, setClassOptions] = useState<ClassOption[]>([])
-  const [deptOptions, setDeptOptions] = useState<DeptOption[]>([])
-
   // Form State for Add Student
   const [formName, setFormName] = useState("")
   const [formRoll, setFormRoll] = useState("")
@@ -489,104 +491,6 @@ export default function AdminStudentsPage() {
     if (!editDeptId || !editYear) return []
     return classOptions.filter((c) => c.deptId === editDeptId && c.year === editYear)
   }, [editDeptId, editYear, classOptions])
-
-  const fetchStudents = useCallback(async () => {
-    setIsLoading(true)
-    setFetchError(null)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("students")
-        .select(`
-          id, roll_number, year, is_active, created_at, embedding_a, is_approved, is_rejected,
-          registration_photo_url, class_id, department_id,
-          class:classes ( id, name, section, year, department:departments ( code, id, name ) ),
-          user:users ( full_name, contact_email )
-        `)
-        .order("created_at", { ascending: false })
-
-      if (error) {
-        setFetchError("Failed to load students.")
-        return
-      }
-
-      const mapped: Student[] = (data || []).map((s: any) => {
-        const classData = s.class
-        const deptCode = classData?.department?.code ?? s.department?.code ?? ""
-        const classSection = classData ? `${deptCode || classData.name}-${classData.section}` : "—"
-        const className = classData
-          ? `${deptCode || classData.name}-${classData.section} · ${s.year}`
-          : "Unassigned Cohort"
-        const hasEmbedding = !!s.embedding_a
-        const isApproved = s.is_approved === true
-        const isRejected = s.is_rejected === true
-
-        // Strict 4-state lifecycle from forensic audit
-        const faceStatus: Student["faceStatus"] = isRejected
-          ? "Rejected"
-          : !hasEmbedding
-          ? "None"
-          : isApproved
-          ? "Approved"
-          : "Pending"
-
-        return {
-          id: s.id,
-          name: s.user?.full_name ?? "Unknown",
-          roll: s.roll_number,
-          class: className,
-          classSection,
-          classId: s.class_id ?? classData?.id ?? "",
-          departmentId: s.department_id ?? classData?.department?.id ?? "",
-          departmentCode: deptCode,
-          year: s.year,
-          faceStatus,
-          isActive: s.is_active ?? true,
-          photoUrl: s.registration_photo_url ?? null,
-          contactEmail: s.user?.contact_email ?? null,
-        }
-      })
-      setStudents(mapped)
-    } catch {
-      setFetchError("An unexpected error occurred.")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  const fetchDropdownData = useCallback(async () => {
-    const supabase = createClient()
-    const [classesRes, deptsRes] = await Promise.all([
-      supabase
-        .from("classes")
-        .select("id, name, section, year, department:departments ( id, name, code )")
-        .order("name"),
-      supabase.from("departments").select("id, name, code").order("name"),
-    ])
-    if (classesRes.data) {
-      setClassOptions(
-        classesRes.data.map((c: any) => ({
-          id: c.id,
-          label: `${c.department?.code ?? c.name}-${c.section} · ${c.year}`,
-          name: c.name,
-          section: c.section,
-          year: c.year,
-          classSection: `${c.department?.code ?? c.name}-${c.section}`,
-          deptName: c.department?.name ?? "",
-          deptCode: c.department?.code ?? "",
-          deptId: c.department?.id ?? "",
-        }))
-      )
-    }
-    if (deptsRes.data) {
-      setDeptOptions(deptsRes.data.map((d: any) => ({ id: d.id, name: d.name, code: d.code })))
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchStudents()
-    fetchDropdownData()
-  }, [fetchStudents, fetchDropdownData])
 
   // Cascading Dropdown choices
   const availableClassSectionOptions = useMemo(() => {
@@ -790,14 +694,7 @@ export default function AdminStudentsPage() {
       }
       toast.success("Student updated successfully")
       setEditSheetOpen(false)
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === editTarget.id
-            ? { ...s, name: editName.trim(), roll: editRoll.trim(), year: editYear || s.year }
-            : s
-        )
-      )
-      setTimeout(() => fetchStudents(), 500)
+      queryClient.invalidateQueries({ queryKey: ["admin-students"] })
     } catch {
       toast.error("An unexpected error occurred")
     } finally {
@@ -1281,7 +1178,7 @@ export default function AdminStudentsPage() {
       {fetchError && (
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-8 text-center">
           <p className="text-sm text-destructive">{fetchError}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={fetchStudents}>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchStudents()}>
             Retry
           </Button>
         </div>

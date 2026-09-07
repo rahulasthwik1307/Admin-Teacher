@@ -98,10 +98,16 @@ function getAvatarColor(name: string): string {
   return avatarColors[index]
 }
 
+import { useQueryClient } from "@tanstack/react-query"
+import { useAdminTeachers } from "@/hooks/use-admin-teachers"
+
 export default function TeacherManagementPage() {
-  const [teachers, setTeachers] = useState<Teacher[]>([])
-  const [isLoadingTeachers, setIsLoadingTeachers] = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const { data: adminTeachersData, isLoading: isLoadingTeachers, error: queryError, refetch: fetchTeachers } = useAdminTeachers()
+  const teachers = useMemo(() => adminTeachersData?.teachers ?? [], [adminTeachersData])
+  const departments = useMemo(() => adminTeachersData?.departments ?? [], [adminTeachersData])
+  const fetchError = queryError ? "Failed to load teachers. Please refresh." : null
+
   const [sheetOpen, setSheetOpen] = useState(false)
   const [resetTarget, setResetTarget] = useState<Teacher | null>(null)
   const [disableTarget, setDisableTarget] = useState<Teacher | null>(null)
@@ -125,74 +131,6 @@ export default function TeacherManagementPage() {
   const [formTeacherId, setFormTeacherId] = useState("")
   const [formDept, setFormDept] = useState("")
   const [formContactEmail, setFormContactEmail] = useState("")
-
-  const [departments, setDepartments] = useState<{ id: string; name: string; code: string }[]>([])
-
-  const fetchTeachers = useCallback(async () => {
-    setIsLoadingTeachers(true)
-    setFetchError(null)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("teachers")
-        .select(`
-          id,
-          teacher_id_code,
-          is_active,
-          title,
-          department_id,
-          department:departments ( id, name, code ),
-          user:users ( full_name, email, contact_email )
-        `)
-        .order("created_at", { ascending: false })
-
-      if (error) {
-        setFetchError("Failed to load teachers. Please refresh.")
-        setIsLoadingTeachers(false)
-        return
-      }
-
-      const mapped: Teacher[] = (data || []).map((t: any) => ({
-        id: t.id,
-        name: t.user?.full_name ?? "Unknown",
-        title: t.title ?? "Mr",
-        initials: getInitials(t.user?.full_name ?? ""),
-        teacherId: t.teacher_id_code,
-        department: t.department?.name ?? "Unassigned",
-        departmentCode: t.department?.code ?? t.department?.name ?? "Unassigned",
-        departmentId: t.department?.id ?? "unassigned",
-        subjects: 0,
-        status: t.is_active ? "Active" : "Disabled",
-        contactEmail: t.user?.contact_email ?? null,
-      }))
-
-      const { data: assignments } = await supabase
-        .from("teacher_assignments")
-        .select("teacher_id")
-
-      const countMap: Record<string, number> = {}
-      for (const a of assignments || []) {
-        countMap[a.teacher_id] = (countMap[a.teacher_id] || 0) + 1
-      }
-
-      setTeachers(mapped.map((t) => ({ ...t, subjects: countMap[t.id] || 0 })))
-    } catch {
-      setFetchError("An unexpected error occurred.")
-    } finally {
-      setIsLoadingTeachers(false)
-    }
-  }, [])
-
-  const fetchDepartments = useCallback(async () => {
-    const supabase = createClient()
-    const { data } = await supabase.from("departments").select("id, name, code").order("name")
-    if (data) setDepartments(data)
-  }, [])
-
-  useEffect(() => {
-    fetchTeachers()
-    fetchDepartments()
-  }, [fetchTeachers, fetchDepartments])
 
   // ── Filtered teachers ──
   const filteredTeachers = useMemo(() => {
@@ -408,11 +346,7 @@ export default function TeacherManagementPage() {
 
         const action = disableTarget.status === "Active" ? "disabled" : "enabled"
         toast.success(`${disableTarget.name}'s account has been ${action}.`)
-        setTeachers((prev) =>
-          prev.map((t) =>
-            t.id === disableTarget.id ? { ...t, status: newStatus ? "Active" : "Disabled" } : t
-          )
-        )
+        queryClient.invalidateQueries({ queryKey: ["admin-teachers"] })
       }
     } catch {
       toast.error("An unexpected error occurred.", {
@@ -559,7 +493,7 @@ export default function TeacherManagementPage() {
         <Card>
           <CardContent className="py-8 text-center">
             <p className="text-sm text-destructive">{fetchError}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchTeachers}>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchTeachers()}>
               Retry
             </Button>
           </CardContent>

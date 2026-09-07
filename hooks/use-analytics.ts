@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 
 export type Period = "This Week" | "This Month" | "This Semester"
 
@@ -82,7 +82,7 @@ export interface AnalyticsResponse {
   }
 }
 
-async function fetchAnalytics(period: Period): Promise<AnalyticsResponse> {
+export async function fetchAnalytics(period: Period = "This Month"): Promise<AnalyticsResponse> {
   const res = await fetch(`/api/teacher/analytics?period=${encodeURIComponent(period)}`)
   if (!res.ok) throw new Error("Failed to fetch analytics")
   return res.json()
@@ -92,8 +92,11 @@ export function useAnalytics(period: Period) {
   return useQuery({
     queryKey: ["teacher-analytics", period],
     queryFn: () => fetchAnalytics(period),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 }
 

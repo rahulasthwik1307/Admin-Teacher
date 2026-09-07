@@ -55,7 +55,7 @@ import {
   Download,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { exportAdminTimetablePDF } from "@/lib/timetable-export"
+import { cn } from "@/lib/utils"
 
 /* ---------- Constants ---------- */
 const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
@@ -322,6 +322,15 @@ export default function TimetablePage() {
     return Object.entries(groups).filter(([, items]) => items.length > 0)
   }, [allAvailableClasses])
 
+  const selectedClassMeta = useMemo(() => {
+    if (!filterClass || filterClass === "all") return null
+    const [cName, cYear] = filterClass.includes(" · ") ? filterClass.split(" · ") : [filterClass, ""]
+    return {
+      className: cName,
+      year: cYear,
+    }
+  }, [filterClass])
+
   const filteredEntries = useMemo(() => entries.filter(e => {
     if (filterDay !== "all" && e.day !== parseInt(filterDay)) return false
     if (filterClass !== "all" && e.classSection !== filterClass) return false
@@ -587,7 +596,7 @@ export default function TimetablePage() {
     } finally { setRemoveTarget(null); setIsSubmitting(false) }
   }
 
-  function handleDownloadPDF() {
+  async function handleDownloadPDF() {
     try {
       if (entries.length === 0) {
         toast.error("No timetable entries available to export.")
@@ -603,6 +612,7 @@ export default function TimetablePage() {
       }
 
       toast.info("Generating PDF timetable document...", { duration: 1500 })
+      const { exportAdminTimetablePDF } = await import("@/lib/timetable-export")
       exportAdminTimetablePDF({
         entries: entries.map((e) => ({
           day: e.day,
@@ -807,9 +817,34 @@ export default function TimetablePage() {
                 </SelectContent>
               </Select>
               <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="h-9 w-auto min-w-36 max-w-52 text-xs font-medium rounded-xl border-border/80 bg-background shadow-2xs">
-                  <GraduationCap className="size-3.5 mr-1 text-muted-foreground shrink-0" />
-                  <SelectValue placeholder="All Classes" />
+                <SelectTrigger className="h-9 w-auto min-w-36 max-w-64 text-xs font-medium rounded-xl border-border/80 bg-background shadow-2xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <GraduationCap className="size-3.5 text-muted-foreground shrink-0" />
+                    <SelectValue placeholder="All Classes">
+                      {selectedClassMeta ? (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-foreground text-xs tracking-tight">
+                            {selectedClassMeta.className}
+                          </span>
+                          {selectedClassMeta.year && selectedClassMeta.year !== "Other" && (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                getYearBadgeTheme(selectedClassMeta.year).bg,
+                                getYearBadgeTheme(selectedClassMeta.year).text,
+                                getYearBadgeTheme(selectedClassMeta.year).border
+                              )}
+                            >
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              <span>{selectedClassMeta.year}</span>
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        "All Classes"
+                      )}
+                    </SelectValue>
+                  </div>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-border shadow-lg min-w-56 py-1">
                   <SelectItem value="all" className="text-xs font-semibold py-1.5 px-3 cursor-pointer">

@@ -67,8 +67,7 @@ export async function GET() {
         .select("teacher_id, subject_id, class_id, session_date")
         .eq("teacher_id", teacherId)
         .eq("status", "finalized")
-        .order("session_date", { ascending: false })
-        .limit(50),
+        .order("session_date", { ascending: false }),
 
       // Recent finalized sessions for activity feed
       supabase

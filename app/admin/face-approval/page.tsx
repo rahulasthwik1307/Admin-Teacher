@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback, Fragment } from "react"
+import { useEffect, useState, useMemo, useCallback, Fragment, startTransition } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -214,9 +215,17 @@ function StudentPhotoThumbnail({
   )
 }
 
+import { useQueryClient } from "@tanstack/react-query"
+import { useFaceApprovals, type FaceApprovalsData } from "@/hooks/use-face-approvals"
+
 export default function AdminFaceApprovalPage() {
-  const [students, setStudents] = useState<EnrolledStudent[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const { data, isLoading: loading, refetch } = useFaceApprovals()
+
+  const students = data?.students ?? []
+  const classOptions = data?.classOptions ?? []
+  const deptOptions = data?.deptOptions ?? []
+
   const [activeTab, setActiveTab] = useState<"pending" | "approved" | "all">("pending")
   const [showCohortBreakdown, setShowCohortBreakdown] = useState(false)
 
@@ -226,10 +235,6 @@ export default function AdminFaceApprovalPage() {
   const [viewTarget, setViewTarget] = useState<EnrolledStudent | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
-  // Options & Dropdowns
-  const [classOptions, setClassOptions] = useState<ClassOption[]>([])
-  const [deptOptions, setDeptOptions] = useState<DeptOption[]>([])
-
   // Filters & Search state
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDept, setSelectedDept] = useState("all")
@@ -238,101 +243,13 @@ export default function AdminFaceApprovalPage() {
   const [selectedStatus, setSelectedStatus] = useState<"all" | BiometricStatus>("all")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name_asc" | "roll_asc">("newest")
 
-  const fetchStudentsAndMetadata = useCallback(async () => {
-    setLoading(true)
-    try {
-      const supabase = createClient()
-
-      const [studentsRes, classesRes, deptsRes] = await Promise.all([
-        supabase
-          .from("students")
-          .select(`
-            id, roll_number, year, is_active, created_at, embedding_a, is_approved, is_rejected,
-            registration_photo_url, class_id, department_id,
-            class:classes ( id, name, section, year, department:departments ( code, id, name ) ),
-            user:users ( full_name, contact_email )
-          `)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("classes")
-          .select("id, name, section, year, department:departments ( id, name, code )")
-          .order("name"),
-        supabase.from("departments").select("id, name, code").order("name"),
-      ])
-
-      if (studentsRes.error) throw studentsRes.error
-
-      const mapped: EnrolledStudent[] = (studentsRes.data || []).map((s: any) => {
-        const classData = s.class
-        const deptCode = classData?.department?.code ?? s.department?.code ?? "N/A"
-        const deptName = classData?.department?.name ?? s.department?.name ?? "Department"
-        const classSection = classData?.section ? `${deptCode}-${classData.section}` : "—"
-        const cohortLabel = classData?.section
-          ? `${deptCode}-${classData.section} · ${s.year || classData.year}`
-          : "Unassigned Cohort"
-        const hasEmbedding = !!s.embedding_a
-        const isApproved = s.is_approved === true
-        const isRejected = s.is_rejected === true
-
-        // Strict 4-state lifecycle from forensic audit
-        const faceStatus: BiometricStatus = isRejected
-          ? "Rejected"
-          : !hasEmbedding
-          ? "None"
-          : isApproved
-          ? "Approved"
-          : "Pending"
-
-        return {
-          id: s.id,
-          name: s.user?.full_name ?? "Unknown",
-          roll: s.roll_number,
-          classId: s.class_id ?? classData?.id ?? "",
-          className: classData?.name ?? "",
-          classSection,
-          cohortLabel,
-          deptId: s.department_id ?? classData?.department?.id ?? "",
-          deptCode,
-          deptName,
-          year: s.year || classData?.year || "N/A",
-          faceStatus,
-          isActive: s.is_active ?? true,
-          registrationPhoto: s.registration_photo_url ?? null,
-          createdAt: s.created_at,
-          contactEmail: s.user?.contact_email ?? null,
-        }
-      })
-
-      setStudents(mapped)
-
-      if (classesRes.data) {
-        setClassOptions(
-          classesRes.data.map((c: any) => ({
-            id: c.id,
-            label: `${c.department?.code ?? c.name}-${c.section} · ${c.year}`,
-            name: c.name,
-            section: c.section,
-            year: c.year,
-            classSection: `${c.department?.code ?? c.name}-${c.section}`,
-            deptCode: c.department?.code ?? "",
-            deptId: c.department?.id ?? "",
-          }))
-        )
-      }
-
-      if (deptsRes.data) {
-        setDeptOptions(deptsRes.data.map((d: any) => ({ id: d.id, name: d.name, code: d.code })))
-      }
-    } catch {
-      toast.error("Failed to load face verification roster")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
-    fetchStudentsAndMetadata()
-  }, [fetchStudentsAndMetadata])
+    const handleUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-face-approvals"] })
+    }
+    window.addEventListener("face-approval-updated", handleUpdate)
+    return () => window.removeEventListener("face-approval-updated", handleUpdate)
+  }, [queryClient])
 
   const handleApprove = async () => {
     if (!approveTarget) return
@@ -359,10 +276,18 @@ export default function AdminFaceApprovalPage() {
       toast.success(`Approved face registration for ${approveTarget.name}`)
       window.dispatchEvent(new Event("face-approval-updated"))
 
-      // Update local state immediately
-      setStudents((prev) =>
-        prev.map((s) => (s.id === approveTarget.studentId ? { ...s, faceStatus: "Approved" } : s))
-      )
+      // Update cache immediately
+      queryClient.setQueryData<FaceApprovalsData>(["admin-face-approvals"], (prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          students: prev.students.map((s) =>
+            s.id === approveTarget.studentId ? { ...s, faceStatus: "Approved" } : s
+          ),
+        }
+      })
+      queryClient.invalidateQueries({ queryKey: ["admin-face-approvals"] })
+
       if (viewTarget?.id === approveTarget.studentId) {
         setViewTarget((prev) => (prev ? { ...prev, faceStatus: "Approved" } : null))
       }
@@ -389,14 +314,20 @@ export default function AdminFaceApprovalPage() {
       toast.success(`Rejected face registration for ${rejectTarget.name}`)
       window.dispatchEvent(new Event("face-approval-updated"))
 
-      // Update local state immediately
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === rejectTarget.studentId
-            ? { ...s, faceStatus: "Rejected", registrationPhoto: null }
-            : s
-        )
-      )
+      // Update cache immediately
+      queryClient.setQueryData<FaceApprovalsData>(["admin-face-approvals"], (prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          students: prev.students.map((s) =>
+            s.id === rejectTarget.studentId
+              ? { ...s, faceStatus: "Rejected", registrationPhoto: null }
+              : s
+          ),
+        }
+      })
+      queryClient.invalidateQueries({ queryKey: ["admin-face-approvals"] })
+
       if (viewTarget?.id === rejectTarget.studentId) {
         setViewTarget((prev) =>
           prev ? { ...prev, faceStatus: "Rejected", registrationPhoto: null } : null
@@ -776,7 +707,11 @@ export default function AdminFaceApprovalPage() {
         {/* Segmented view tabs */}
         <div className="inline-flex flex-wrap items-center gap-1.5 rounded-xl bg-muted/60 p-1.5 border border-border/70 shadow-2xs">
           <button
-            onClick={() => setActiveTab("pending")}
+            onClick={() => {
+              startTransition(() => {
+                setActiveTab("pending")
+              })
+            }}
             className={cn(
               "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
               activeTab === "pending"
@@ -799,7 +734,11 @@ export default function AdminFaceApprovalPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("approved")}
+            onClick={() => {
+              startTransition(() => {
+                setActiveTab("approved")
+              })
+            }}
             className={cn(
               "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
               activeTab === "approved"
@@ -822,7 +761,11 @@ export default function AdminFaceApprovalPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab("all")}
+            onClick={() => {
+              startTransition(() => {
+                setActiveTab("all")
+              })
+            }}
             className={cn(
               "flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all duration-150 cursor-pointer select-none",
               activeTab === "all"
@@ -852,7 +795,7 @@ export default function AdminFaceApprovalPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchStudentsAndMetadata}
+            onClick={() => refetch()}
             disabled={loading}
             className="rounded-xl text-xs font-semibold gap-1.5 h-9.5 px-3.5 shadow-2xs cursor-pointer border-border/80 bg-card hover:bg-muted/80"
           >
@@ -1242,9 +1185,18 @@ export default function AdminFaceApprovalPage() {
       </div>
 
       {/* ── 6. Main Content List by Cohorts ── */}
-      {loading ? (
-        <FaceApprovalSkeleton />
-      ) : sortedStudents.length === 0 ? (
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full will-change-[transform,opacity]"
+        >
+          {loading ? (
+            <FaceApprovalSkeleton />
+          ) : sortedStudents.length === 0 ? (
         /* Empty State */
         <Card className="rounded-2xl border border-dashed border-border shadow-xs">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -1499,6 +1451,8 @@ export default function AdminFaceApprovalPage() {
           })}
         </div>
       )}
+        </motion.div>
+      </AnimatePresence>
 
       {/* ── 7. Student Verification Detail Modal (View Action) ── */}
       <Dialog open={!!viewTarget} onOpenChange={(open) => !open && setViewTarget(null)}>

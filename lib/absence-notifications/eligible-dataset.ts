@@ -78,6 +78,7 @@ export async function getEligibleAbsences(
     if (student?.id && student?.class_id) uniqueStudentClassPairs.set(student.id, student.class_id)
   }
 
+  const studentIds = Array.from(uniqueStudentClassPairs.keys())
   const attendanceStatsByStudent = new Map<
     string,
     {
@@ -88,44 +89,69 @@ export async function getEligibleAbsences(
     }
   >()
 
-  for (const [studentId, classId] of uniqueStudentClassPairs.entries()) {
-    const { data: att } = await supabase
-      .from("period_attendance")
-      .select("status, session:attendance_sessions!inner(subject_id, class_id, status)")
-      .eq("student_id", studentId)
-      .eq("session.class_id", classId)
-      .eq("session.status", "finalized")
-      .in("status", ["present", "absent"])
+  if (studentIds.length > 0) {
+    const BATCH_SIZE = 100
+    const batchChunks: string[][] = []
+    for (let i = 0; i < studentIds.length; i += BATCH_SIZE) {
+      batchChunks.push(studentIds.slice(i, i + BATCH_SIZE))
+    }
 
-    const records = att ?? []
-    const overallTotal = records.length
-    const overallAttended = records.filter((a: any) => a.status === "present").length
-    const overallPct = overallTotal > 0 ? Math.round((overallAttended / overallTotal) * 100) : 100
+    const recordsByStudent = new Map<string, any[]>()
+    for (const id of studentIds) {
+      recordsByStudent.set(id, [])
+    }
 
-    const subjectsMap = new Map<string, { attended: number; total: number; pct: number }>()
-    for (const r of records) {
-      const subjId = (r.session as any)?.subject_id
-      if (!subjId) continue
-      if (!subjectsMap.has(subjId)) {
-        subjectsMap.set(subjId, { attended: 0, total: 0, pct: 100 })
-      }
-      const sStat = subjectsMap.get(subjId)!
-      sStat.total += 1
-      if (r.status === "present") {
-        sStat.attended += 1
+    const attResults = await Promise.all(
+      batchChunks.map((chunk) =>
+        supabase
+          .from("period_attendance")
+          .select("student_id, status, session:attendance_sessions!inner(subject_id, class_id, status)")
+          .in("student_id", chunk)
+          .eq("session.status", "finalized")
+          .in("status", ["present", "absent"])
+      )
+    )
+
+    for (const res of attResults) {
+      for (const row of res.data || []) {
+        const expectedClassId = uniqueStudentClassPairs.get(row.student_id)
+        if (expectedClassId && (row.session as any)?.class_id === expectedClassId) {
+          recordsByStudent.get(row.student_id)?.push(row)
+        }
       }
     }
 
-    for (const [, sStat] of subjectsMap.entries()) {
-      sStat.pct = sStat.total > 0 ? Math.round((sStat.attended / sStat.total) * 100) : 100
-    }
+    for (const [studentId] of uniqueStudentClassPairs.entries()) {
+      const records = recordsByStudent.get(studentId) || []
+      const overallTotal = records.length
+      const overallAttended = records.filter((a: any) => a.status === "present").length
+      const overallPct = overallTotal > 0 ? Math.round((overallAttended / overallTotal) * 100) : 100
 
-    attendanceStatsByStudent.set(studentId, {
-      overallAttended,
-      overallTotal,
-      overallPct,
-      subjects: subjectsMap,
-    })
+      const subjectsMap = new Map<string, { attended: number; total: number; pct: number }>()
+      for (const r of records) {
+        const subjId = (r.session as any)?.subject_id
+        if (!subjId) continue
+        if (!subjectsMap.has(subjId)) {
+          subjectsMap.set(subjId, { attended: 0, total: 0, pct: 100 })
+        }
+        const sStat = subjectsMap.get(subjId)!
+        sStat.total += 1
+        if (r.status === "present") {
+          sStat.attended += 1
+        }
+      }
+
+      for (const [, sStat] of subjectsMap.entries()) {
+        sStat.pct = sStat.total > 0 ? Math.round((sStat.attended / sStat.total) * 100) : 100
+      }
+
+      attendanceStatsByStudent.set(studentId, {
+        overallAttended,
+        overallTotal,
+        overallPct,
+        subjects: subjectsMap,
+      })
+    }
   }
 
   const result: EligibleAbsence[] = []

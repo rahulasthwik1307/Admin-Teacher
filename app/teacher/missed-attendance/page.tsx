@@ -24,6 +24,8 @@ import {
   CalendarDays,
   BookOpen,
   RotateCcw,
+  Zap,
+  CornerDownLeft,
 } from "lucide-react"
 import { MissedAttendanceSkeleton, StudentSheetSkeleton } from "@/components/ui/skeletons"
 import {
@@ -78,6 +80,10 @@ interface SubjectTheme {
   periodNumBadge: string
   codeBadge: string
   dot: string
+  railBorder: string
+  railHeader: string
+  accentText: string
+  durationPill: string
 }
 
 // ── Rich Curated 360° Color Palette System (High Contrast & Distinct) ──
@@ -91,6 +97,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-blue-600 text-white dark:bg-blue-500",
     codeBadge: "bg-blue-100 text-blue-900 dark:bg-blue-900/80 dark:text-blue-200 border-blue-300 dark:border-blue-700",
     dot: "bg-blue-600",
+    railBorder: "border-blue-300 dark:border-blue-700/80",
+    railHeader: "bg-blue-600 dark:bg-blue-500 text-white",
+    accentText: "text-blue-600 dark:text-blue-400",
+    durationPill: "bg-blue-500/15 text-blue-950 dark:text-blue-200 border-blue-300/80 dark:border-blue-700/80",
   },
   // 2. Royal Purple / Violet (e.g. Machine Learning)
   {
@@ -101,6 +111,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-purple-600 text-white dark:bg-purple-500",
     codeBadge: "bg-purple-100 text-purple-900 dark:bg-purple-900/80 dark:text-purple-200 border-purple-300 dark:border-purple-700",
     dot: "bg-purple-600",
+    railBorder: "border-purple-300 dark:border-purple-700/80",
+    railHeader: "bg-purple-600 dark:bg-purple-500 text-white",
+    accentText: "text-purple-600 dark:text-purple-400",
+    durationPill: "bg-purple-500/15 text-purple-950 dark:text-purple-200 border-purple-300/80 dark:border-purple-700/80",
   },
   // 3. Vibrant Amber / Orange (e.g. Data Structures)
   {
@@ -111,6 +125,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-amber-600 text-white dark:bg-amber-500",
     codeBadge: "bg-amber-100 text-amber-950 dark:bg-amber-900/80 dark:text-amber-200 border-amber-300 dark:border-amber-700",
     dot: "bg-amber-600",
+    railBorder: "border-amber-300 dark:border-amber-700/80",
+    railHeader: "bg-amber-600 dark:bg-amber-500 text-white",
+    accentText: "text-amber-600 dark:text-amber-400",
+    durationPill: "bg-amber-500/15 text-amber-950 dark:text-amber-200 border-amber-300/80 dark:border-amber-700/80",
   },
   // 4. Deep Teal / Cyan (e.g. Web Technologies)
   {
@@ -121,6 +139,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-teal-600 text-white dark:bg-teal-500",
     codeBadge: "bg-teal-100 text-teal-900 dark:bg-teal-900/80 dark:text-teal-200 border-teal-300 dark:border-teal-700",
     dot: "bg-teal-600",
+    railBorder: "border-teal-300 dark:border-teal-700/80",
+    railHeader: "bg-teal-600 dark:bg-teal-500 text-white",
+    accentText: "text-teal-600 dark:text-teal-400",
+    durationPill: "bg-teal-500/15 text-teal-950 dark:text-teal-200 border-teal-300/80 dark:border-teal-700/80",
   },
   // 5. Rich Emerald / Green (e.g. Operating Systems)
   {
@@ -131,6 +153,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-emerald-600 text-white dark:bg-emerald-500",
     codeBadge: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/80 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700",
     dot: "bg-emerald-600",
+    railBorder: "border-emerald-300 dark:border-emerald-700/80",
+    railHeader: "bg-emerald-600 dark:bg-emerald-500 text-white",
+    accentText: "text-emerald-600 dark:text-emerald-400",
+    durationPill: "bg-emerald-500/15 text-emerald-950 dark:text-emerald-200 border-emerald-300/80 dark:border-emerald-700/80",
   },
   // 6. Crimson / Rose (e.g. Software Engineering)
   {
@@ -141,6 +167,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-rose-600 text-white dark:bg-rose-500",
     codeBadge: "bg-rose-100 text-rose-900 dark:bg-rose-900/80 dark:text-rose-200 border-rose-300 dark:border-rose-700",
     dot: "bg-rose-600",
+    railBorder: "border-rose-300 dark:border-rose-700/80",
+    railHeader: "bg-rose-600 dark:bg-rose-500 text-white",
+    accentText: "text-rose-600 dark:text-rose-400",
+    durationPill: "bg-rose-500/15 text-rose-950 dark:text-rose-200 border-rose-300/80 dark:border-rose-700/80",
   },
   // 7. Indigo / Navy (e.g. AI & Database)
   {
@@ -151,6 +181,10 @@ const PALETTES: SubjectTheme[] = [
     periodNumBadge: "bg-indigo-600 text-white dark:bg-indigo-500",
     codeBadge: "bg-indigo-100 text-indigo-900 dark:bg-indigo-900/80 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700",
     dot: "bg-indigo-600",
+    railBorder: "border-indigo-300 dark:border-indigo-700/80",
+    railHeader: "bg-indigo-600 dark:bg-indigo-500 text-white",
+    accentText: "text-indigo-600 dark:text-indigo-400",
+    durationPill: "bg-indigo-500/15 text-indigo-950 dark:text-indigo-200 border-indigo-300/80 dark:border-indigo-700/80",
   },
 ]
 
@@ -164,23 +198,39 @@ const DATE_DOT_COLORS = [
 ]
 
 function getYearBadgeClass(year: string) {
-  if (year.includes("1")) {
-    return "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/50"
+  const y = (year || "").toLowerCase()
+  if (/\b(4|4th|iv|fourth)\b/.test(y) || y.includes("4")) {
+    return "bg-purple-500/12 text-purple-800 dark:text-purple-200 border-purple-300/70 dark:border-purple-600/50 font-bold"
   }
-  if (year.includes("2")) {
-    return "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800/50"
+  if (/\b(3|3rd|iii|third)\b/.test(y) || y.includes("3")) {
+    return "bg-amber-500/12 text-amber-800 dark:text-amber-200 border-amber-300/70 dark:border-amber-600/50 font-bold"
   }
-  if (year.includes("3")) {
-    return "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/50"
+  if (/\b(2|2nd|ii|second)\b/.test(y) || y.includes("2")) {
+    return "bg-emerald-500/12 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-600/50 font-bold"
   }
-  if (year.includes("4")) {
-    return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50"
+  if (/\b(1|1st|i|first)\b/.test(y) || y.includes("1")) {
+    return "bg-sky-500/12 text-sky-800 dark:text-sky-200 border-sky-300/70 dark:border-sky-600/50 font-bold"
   }
-  return "bg-muted/70 text-muted-foreground border-border/50"
+  return "bg-muted/70 text-muted-foreground border-border/80 font-bold"
 }
 
 function slotKey(s: MissedSlot) {
   return `${s.date}__${s.subjectId}__${s.classId}__${s.periodId}`
+}
+
+function getSlotDuration(startTime?: string, endTime?: string): string {
+  if (!startTime || !endTime) return ""
+  const [sh, sm] = startTime.split(":").map(Number)
+  const [eh, em] = endTime.split(":").map(Number)
+  if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return ""
+  const startTotal = sh * 60 + sm
+  const endTotal = eh * 60 + em
+  const diff = endTotal - startTotal
+  if (diff > 0) {
+    if (diff >= 60 && diff % 60 === 0) return `${diff / 60} hr`
+    return `${diff} min`
+  }
+  return ""
 }
 
 export default function MissedAttendancePage() {
@@ -204,10 +254,14 @@ export default function MissedAttendancePage() {
 
   // ── Multi-slot Absentee picker sheet state ─────────────────────────
   const [absenteeSheetOpen, setAbsenteeSheetOpen] = useState(false)
-  const [absenteeRoster, setAbsenteeRoster] = useState<{ id: string; name: string; rollNumber: string; classLabel: string }[]>([])
+  const [absenteeRoster, setAbsenteeRoster] = useState<
+    { id: string; name: string; rollNumber: string; classId: string; classLabel: string }[]
+  >([])
   const [absenteeLoading, setAbsenteeLoading] = useState(false)
   const [absenteeSearch, setAbsenteeSearch] = useState("")
   const [pickedAbsentees, setPickedAbsentees] = useState<Set<string>>(new Set())
+  const [activeAbsenteeClassId, setActiveAbsenteeClassId] = useState<string>("all")
+  const [quickRollInput, setQuickRollInput] = useState("")
 
   // ── Confirmation Modal State ───────────────────────────────────────
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
@@ -285,6 +339,21 @@ export default function MissedAttendancePage() {
       classes: groups[year].sort((a, b) => a.sectionName.localeCompare(b.sectionName)),
     }))
   }, [missedSlots])
+
+  // Selected class cohort metadata for trigger display (showing both Section and Year)
+  const selectedCohortMeta = useMemo(() => {
+    if (!filterClass || filterClass === "all") return null
+    for (const g of groupedClassesByYear) {
+      const match = g.classes.find((c) => c.id === filterClass)
+      if (match) {
+        return {
+          sectionName: match.sectionName,
+          year: g.year,
+        }
+      }
+    }
+    return null
+  }, [groupedClassesByYear, filterClass])
 
   const grouped = useMemo(() => {
     return filteredSlots.reduce<Record<string, MissedSlot[]>>((acc, slot) => {
@@ -545,6 +614,8 @@ export default function MissedAttendancePage() {
     setAbsenteeLoading(true)
     setPickedAbsentees(new Set())
     setAbsenteeSearch("")
+    setQuickRollInput("")
+    setActiveAbsenteeClassId("all")
     try {
       const supabase = createClient()
       const uniqueClassIds = Array.from(new Set(selectedSlotObjects.map((s) => s.classId)))
@@ -567,6 +638,7 @@ export default function MissedAttendancePage() {
           id: s.id,
           name: s.user?.full_name ?? "Unknown",
           rollNumber: s.roll_number ?? "",
+          classId: s.class_id,
           classLabel: classLabelMap.get(s.class_id) ?? "",
         }))
       )
@@ -587,6 +659,100 @@ export default function MissedAttendancePage() {
     })
   }
 
+  // Distinct classes among selected slots with student and absent counts
+  const distinctSelectedClasses = useMemo(() => {
+    const classMap = new Map<
+      string,
+      { id: string; label: string; totalStudents: number; absentCount: number }
+    >()
+    for (const s of selectedSlotObjects) {
+      if (!classMap.has(s.classId)) {
+        classMap.set(s.classId, {
+          id: s.classId,
+          label: s.className,
+          totalStudents: 0,
+          absentCount: 0,
+        })
+      }
+    }
+    for (const st of absenteeRoster) {
+      const entry = classMap.get(st.classId)
+      if (entry) {
+        entry.totalStudents += 1
+        if (pickedAbsentees.has(st.id)) {
+          entry.absentCount += 1
+        }
+      }
+    }
+    return Array.from(classMap.values())
+  }, [selectedSlotObjects, absenteeRoster, pickedAbsentees])
+
+  // Rapid roll number quick-add function
+  function handleQuickRollAdd() {
+    if (!quickRollInput.trim()) return
+    const tokens = quickRollInput
+      .split(/[,\s;]+/)
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)
+
+    if (tokens.length === 0) return
+
+    const candidates =
+      activeAbsenteeClassId === "all"
+        ? absenteeRoster
+        : absenteeRoster.filter((s) => s.classId === activeAbsenteeClassId)
+
+    const newlyAddedIds: string[] = []
+    const notFoundRolls: string[] = []
+
+    for (const token of tokens) {
+      const match = candidates.find(
+        (s) =>
+          s.rollNumber.toLowerCase() === token ||
+          s.rollNumber.toLowerCase().endsWith(token)
+      )
+      if (match) {
+        newlyAddedIds.push(match.id)
+      } else {
+        notFoundRolls.push(token)
+      }
+    }
+
+    if (newlyAddedIds.length > 0) {
+      setPickedAbsentees((prev) => {
+        const next = new Set(prev)
+        newlyAddedIds.forEach((id) => next.add(id))
+        return next
+      })
+      toast.success(`Marked ${newlyAddedIds.length} student(s) absent`)
+    }
+
+    if (notFoundRolls.length > 0) {
+      toast.error(`Roll number(s) not found: ${notFoundRolls.join(", ")}`)
+    }
+
+    setQuickRollInput("")
+  }
+
+  function clearAbsenteesForCurrentClass() {
+    if (activeAbsenteeClassId === "all") {
+      setPickedAbsentees(new Set())
+    } else {
+      const idsToRemove = new Set(
+        absenteeRoster.filter((s) => s.classId === activeAbsenteeClassId).map((s) => s.id)
+      )
+      setPickedAbsentees((prev) => {
+        const next = new Set(prev)
+        idsToRemove.forEach((id) => next.delete(id))
+        return next
+      })
+    }
+  }
+
+  const pickedAbsenteeStudents = useMemo(() => {
+    return absenteeRoster.filter((s) => pickedAbsentees.has(s.id))
+  }, [absenteeRoster, pickedAbsentees])
+
   // Filtered lists for sheets
   const filteredStudentsInSheet = useMemo(() => {
     if (!singleSheetSearch.trim()) return students
@@ -597,12 +763,18 @@ export default function MissedAttendancePage() {
   }, [students, singleSheetSearch])
 
   const filteredAbsenteeRoster = useMemo(() => {
-    if (!absenteeSearch.trim()) return absenteeRoster
-    const q = absenteeSearch.toLowerCase()
-    return absenteeRoster.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q)
-    )
-  }, [absenteeRoster, absenteeSearch])
+    let list = absenteeRoster
+    if (activeAbsenteeClassId !== "all") {
+      list = list.filter((s) => s.classId === activeAbsenteeClassId)
+    }
+    if (absenteeSearch.trim()) {
+      const q = absenteeSearch.toLowerCase()
+      list = list.filter(
+        (s) => s.name.toLowerCase().includes(q) || s.rollNumber.toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [absenteeRoster, activeAbsenteeClassId, absenteeSearch])
 
   const presentCount = students.filter((s) => s.status === "present").length
   const absentCount = students.filter((s) => s.status === "absent").length
@@ -621,9 +793,11 @@ export default function MissedAttendancePage() {
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Time Range Filter */}
           <Select value={filterDays} onValueChange={setFilterDays}>
-            <SelectTrigger className="w-38 h-9 text-xs font-semibold rounded-xl bg-muted/30 border-border/80 shadow-2xs">
-              <CalendarDays className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
-              <SelectValue placeholder="Time range" />
+            <SelectTrigger className="w-auto min-w-36 h-9 text-xs font-semibold rounded-xl bg-muted/30 border-border/80 shadow-2xs gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <CalendarDays className="size-3.5 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Time range" />
+              </div>
             </SelectTrigger>
             <SelectContent className="rounded-xl border-border shadow-md">
               <SelectItem value="7" className="text-xs font-semibold">Last 7 days</SelectItem>
@@ -637,9 +811,11 @@ export default function MissedAttendancePage() {
 
           {/* Subject Filter */}
           <Select value={filterSubject} onValueChange={setFilterSubject}>
-            <SelectTrigger className="w-44 h-9 text-xs font-semibold rounded-xl bg-muted/30 border-border/80 shadow-2xs">
-              <BookOpen className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
-              <SelectValue placeholder="All Subjects" />
+            <SelectTrigger className="w-auto min-w-36 h-9 text-xs font-semibold rounded-xl bg-muted/30 border-border/80 shadow-2xs gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <BookOpen className="size-3.5 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="All Subjects" />
+              </div>
             </SelectTrigger>
             <SelectContent className="rounded-xl border-border shadow-md max-h-72">
               <SelectItem value="all" className="text-xs font-semibold">All Subjects</SelectItem>
@@ -653,9 +829,32 @@ export default function MissedAttendancePage() {
 
           {/* Cohort Filter — Grouped by Year */}
           <Select value={filterClass} onValueChange={setFilterClass}>
-            <SelectTrigger className="w-44 h-9 text-xs font-semibold rounded-xl bg-muted/30 border-border/80 shadow-2xs">
-              <GraduationCap className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
-              <SelectValue placeholder="All Cohorts" />
+            <SelectTrigger className="w-auto min-w-36 h-9 text-xs font-semibold rounded-xl bg-muted/30 border-border/80 shadow-2xs gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <GraduationCap className="size-3.5 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="All Cohorts">
+                  {selectedCohortMeta ? (
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-bold text-foreground text-xs tracking-tight">
+                        {selectedCohortMeta.sectionName}
+                      </span>
+                      {selectedCohortMeta.year && selectedCohortMeta.year !== "General" && (
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                            getYearBadgeClass(selectedCohortMeta.year)
+                          )}
+                        >
+                          <GraduationCap className="size-2.5 shrink-0" />
+                          <span>{selectedCohortMeta.year}</span>
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    "All Cohorts"
+                  )}
+                </SelectValue>
+              </div>
             </SelectTrigger>
             <SelectContent className="rounded-xl border-border shadow-md max-h-80">
               <SelectItem value="all" className="text-xs font-semibold">All Cohorts</SelectItem>
@@ -791,33 +990,48 @@ export default function MissedAttendancePage() {
               const dateLabelFormatted = slots[0].dateLabel.replace(/—/g, "•").replace(/–/g, "•")
 
               return (
-                <div key={date} className="flex flex-col gap-3">
-                  {/* Date Group Header Anchor with Color Dot & Direct Pending Badge */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-border/80 pt-1">
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                <div
+                  key={date}
+                  className="flex flex-col rounded-2xl border border-border/80 bg-card/70 dark:bg-card/40 backdrop-blur-xs shadow-2xs overflow-hidden transition-all"
+                >
+                  {/* Day Container Header Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-muted/40 dark:bg-muted/20 border-b border-border/80">
+                    <div className="flex items-center gap-3">
                       <Checkbox
                         checked={allInGroupSelected}
                         onCheckedChange={(checked) => toggleGroupSelected(slots, !!checked)}
                         aria-label={`Select all slots on ${slots[0].dateLabel}`}
                         className="rounded-md size-4.5 cursor-pointer"
                       />
-                      <div className="flex items-center gap-2">
-                        <span className={cn("size-2.5 rounded-full shrink-0 shadow-2xs", dateDotColor)} />
-                        <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
-                          {dateLabelFormatted}
-                        </span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <CalendarDays className="size-4" />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                            {dateLabelFormatted}
+                          </span>
+                          <span className="text-muted-foreground/60 hidden sm:inline">·</span>
+                          <span className="text-xs font-semibold text-muted-foreground hidden sm:inline">
+                            {slots.length} {slots.length === 1 ? "lecture slot" : "lecture slots"}
+                          </span>
+                        </div>
                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
                       <Badge
-                        variant="secondary"
-                        className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 text-[10px] sm:text-[11px] font-black px-2.5 py-0.5 rounded-full shrink-0 shadow-2xs"
+                        variant="outline"
+                        className="bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-300/70 dark:border-amber-700/60 text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-md shadow-2xs gap-1.5"
                       >
-                        {slots.length} pending {slots.length === 1 ? "session" : "sessions"}
+                        <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span>{slots.length} Pending</span>
                       </Badge>
                     </div>
                   </div>
 
-                  {/* 2-Column Responsive Grid with Compact Card Tiles */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {/* Day Lecture Slots: Side-by-Side 2-Column Grid */}
+                  <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {slots.map((slot) => {
                       const isSelected = selectedKeys.has(slotKey(slot))
                       const classParts = slot.className.includes(" · ")
@@ -827,20 +1041,23 @@ export default function MissedAttendancePage() {
                       const yearName = classParts[1]
                       const theme = getSubjectTheme(slot.subjectId, slot.subjectName)
 
+                      const duration = getSlotDuration(slot.startTime, slot.endTime)
+
                       return (
                         <Card
                           key={slotKey(slot)}
                           className={cn(
-                            "group transition-all duration-200 border shadow-2xs overflow-hidden rounded-2xl cursor-pointer select-none",
+                            "group transition-all duration-200 border shadow-2xs overflow-hidden rounded-2xl cursor-pointer select-none hover:shadow-md hover:-translate-y-0.5",
                             isSelected
                               ? "bg-primary/5 border-primary/50 ring-1 ring-primary/20 shadow-xs"
-                              : cn("bg-card", theme.border, theme.hoverBorder, theme.bg, "hover:shadow-xs")
+                              : cn("bg-card", theme.border, theme.hoverBorder, theme.bg)
                           )}
+                          onClick={() => openSheet(slot)}
                         >
-                          <CardContent className="p-3 sm:p-3.5">
-                            <div className="flex items-center justify-between gap-3">
-                              {/* Left: Checkbox + Modern High-Contrast Period Pill */}
-                              <div className="flex items-center gap-2.5 shrink-0">
+                          <CardContent className="p-3.5 sm:p-4">
+                            <div className="flex items-start gap-3">
+                              {/* Selection Checkbox */}
+                              <div className="pt-2 shrink-0">
                                 <Checkbox
                                   checked={isSelected}
                                   onCheckedChange={(checked) => toggleSlotSelected(slot, !!checked)}
@@ -848,97 +1065,111 @@ export default function MissedAttendancePage() {
                                   aria-label={`Select ${slot.subjectName} session for bulk action`}
                                   className="rounded-md size-4.5 cursor-pointer"
                                 />
+                              </div>
+
+                              {/* Schedule Rail: Eye-Catching Calendar Ticket Stub */}
+                              <div
+                                className={cn(
+                                  "flex flex-col rounded-xl border overflow-hidden shadow-2xs shrink-0 w-28 sm:w-31 transition-transform group-hover:scale-102 bg-card",
+                                  theme.railBorder
+                                )}
+                              >
+                                {/* Vibrant Accent Header Band */}
                                 <div
                                   className={cn(
-                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-bold text-xs shadow-2xs border shrink-0 transition-transform group-hover:scale-105 cursor-pointer",
-                                    theme.periodBox
+                                    "flex items-center justify-center gap-1.5 py-1.5 px-2 font-black shadow-xs",
+                                    theme.railHeader
                                   )}
-                                  onClick={() => openSheet(slot)}
                                 >
-                                  <span className="text-[10px] uppercase font-extrabold tracking-wider opacity-75">Period</span>
-                                  <span
-                                    className={cn(
-                                      "inline-flex items-center justify-center size-5 rounded-md text-xs font-black font-mono shadow-2xs",
-                                      theme.periodNumBadge
-                                    )}
-                                  >
+                                  <span className="text-[10px] tracking-wider uppercase font-extrabold opacity-95">
+                                    PERIOD
+                                  </span>
+                                  <span className="text-[13px] sm:text-sm font-black font-mono leading-none">
                                     {slot.periodNumber}
                                   </span>
                                 </div>
-                              </div>
 
-                              {/* Center: Subject Name + Monogram + Meta Row */}
-                              <div
-                                className="flex-1 flex flex-col gap-1 cursor-pointer min-w-0"
-                                onClick={() => openSheet(slot)}
-                              >
-                                {/* Row 1: Subject Name + Monogram */}
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-sm font-black text-foreground truncate group-hover:text-primary transition-colors tracking-tight">
-                                    {slot.subjectName}
-                                  </span>
-                                  {slot.subjectCode && (
-                                    <span
-                                      className={cn(
-                                        "shrink-0 text-[10px] font-mono font-black px-1.5 py-0.2 rounded-md border shadow-2xs",
-                                        theme.codeBadge
-                                      )}
-                                    >
-                                      {slot.subjectCode}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Row 2: Cohort, Year & High-Contrast Time Capsule */}
-                                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                                  <span className="font-extrabold text-foreground flex items-center gap-1 text-[11px] bg-muted/70 dark:bg-muted/40 px-1.5 py-0.5 rounded-md border border-border/60">
-                                    <GraduationCap className="size-3 text-primary shrink-0" />
-                                    <span>{sectionName}</span>
-                                  </span>
-
-                                  {yearName && (
-                                    <span
-                                      className={cn(
-                                        "text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
-                                        getYearBadgeClass(yearName)
-                                      )}
-                                    >
-                                      {yearName}
-                                    </span>
-                                  )}
-
-                                  {/* High-Contrast Time Capsule with Clock Icon */}
-                                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 font-mono font-bold text-[11px] shadow-2xs">
-                                    <Clock className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                                    <span>{slot.startTime} – {slot.endTime}</span>
+                                {/* High-Contrast Time & Duration Capsule */}
+                                <div className="flex flex-col items-center justify-center py-2 px-2 gap-1.5 text-center bg-muted/20 dark:bg-muted/10">
+                                  <div className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-black font-mono text-foreground leading-none">
+                                    <Clock className={cn("size-3 shrink-0", theme.accentText)} />
+                                    <span>{slot.startTime}–{slot.endTime}</span>
                                   </div>
+
+                                  {duration && (
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center text-[10px] font-extrabold px-2 py-0.5 rounded-full border shadow-2xs leading-none",
+                                        theme.durationPill
+                                      )}
+                                    >
+                                      {duration}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
-                              {/* Right: Unrecorded Status Badge & Record CTA Button */}
-                              <div
-                                className="flex items-center gap-2 shrink-0 cursor-pointer"
-                                onClick={() => openSheet(slot)}
-                              >
-                                <Badge
-                                  variant="outline"
-                                  className="bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-300/90 dark:border-amber-700/80 font-bold text-[10px] sm:text-[11px] px-2.5 py-1 shrink-0 gap-1 rounded-full shadow-2xs hidden lg:inline-flex"
-                                >
-                                  <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
-                                  <span>Unrecorded</span>
-                                </Badge>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 px-2.5 sm:px-3 text-xs font-bold gap-1.5 rounded-xl border-primary/30 bg-card hover:bg-primary hover:text-primary-foreground transition-all shadow-2xs cursor-pointer group-hover:border-primary shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openSheet(slot)
-                                  }}
-                                >
-                                  <span className="hidden sm:inline">Record</span>
-                                  <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
-                                </Button>
+                              {/* Middle & Right Content Area */}
+                              <div className="flex-1 min-w-0 flex flex-col justify-between self-stretch gap-2.5">
+                                {/* Top Row: Subject Title + Inline Subject Code (Adjacent!) & Status Badge */}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                    <h3 className="text-sm sm:text-[15px] font-black text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
+                                      {slot.subjectName}
+                                    </h3>
+                                    {slot.subjectCode && (
+                                      <span
+                                        className={cn(
+                                          "shrink-0 text-[10px] font-mono font-black px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                          theme.codeBadge
+                                        )}
+                                      >
+                                        {slot.subjectCode}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-amber-500/15 text-amber-900 dark:text-amber-200 border-amber-300/90 dark:border-amber-700/80 font-bold text-[10px] sm:text-[11px] px-2 py-0.5 shrink-0 gap-1 rounded-full shadow-2xs"
+                                  >
+                                    <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span>Unrecorded</span>
+                                  </Badge>
+                                </div>
+
+                                {/* Bottom Row: Cohort Metadata & Primary Action Button */}
+                                <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-border/50">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-extrabold text-foreground flex items-center gap-1 text-[11px] bg-muted/70 dark:bg-muted/40 px-2 py-0.5 rounded-md border border-border/70 shadow-2xs">
+                                      <GraduationCap className="size-3 text-primary shrink-0" />
+                                      <span>{sectionName}</span>
+                                    </span>
+
+                                    {yearName && (
+                                      <span
+                                        className={cn(
+                                          "text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                          getYearBadgeClass(yearName)
+                                        )}
+                                      >
+                                        {yearName}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-3 text-xs font-bold gap-1 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xs cursor-pointer group-hover:shadow-xs transition-all shrink-0 ml-auto"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openSheet(slot)
+                                    }}
+                                  >
+                                    <span>Record</span>
+                                    <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </CardContent>
@@ -1315,20 +1546,24 @@ export default function MissedAttendancePage() {
           if (!open) setPickedAbsentees(new Set())
         }}
       >
-        <SheetContent className="w-full sm:max-w-md flex flex-col p-0 overflow-hidden rounded-l-2xl border-l border-border bg-card">
-          <SheetHeader className="p-5 pb-4 border-b border-border/60 bg-muted/10">
-            <div className="flex items-center gap-2 mb-1">
+        <SheetContent className="w-full sm:max-w-lg flex flex-col p-0 overflow-hidden rounded-l-2xl border-l border-border bg-card">
+          <SheetHeader className="p-4 sm:p-5 pb-3.5 border-b border-border/60 bg-muted/10">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[10px] font-black uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/30">
-                Multi-Slot Bulk Action
+                Multi-Class Bulk Action
               </span>
+              <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted/60">
+                {selectedSlotObjects.length} session{selectedSlotObjects.length !== 1 ? "s" : ""} selected
+              </Badge>
+              <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted/60">
+                {distinctSelectedClasses.length} {distinctSelectedClasses.length === 1 ? "cohort" : "cohorts"}
+              </Badge>
             </div>
             <SheetTitle className="text-lg font-black text-foreground">
               Selected Absent · Others Present
             </SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground">
-              Select the students who were absent. Everyone else across all{" "}
-              <span className="font-semibold text-foreground">{selectedSlotObjects.length} selected slot(s)</span> will
-              automatically be marked present.
+              Enter or pick the absentees. Everyone else across all selected classes will automatically be marked present.
             </SheetDescription>
           </SheetHeader>
 
@@ -1344,15 +1579,158 @@ export default function MissedAttendancePage() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col flex-1 gap-3.5 p-5 overflow-hidden">
-              {/* Search Bar */}
+            <div className="flex flex-col flex-1 gap-3 p-4 sm:p-5 overflow-hidden">
+              {/* ── 1. Quick Roll-Number Input Bar (Fastest Path) ── */}
+              <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/40 border border-border/80 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Zap className="size-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                    <span>Quick Absentee Entry</span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    Type roll numbers & press Enter
+                  </span>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleQuickRollAdd()
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="e.g. 14, 28, 42..."
+                      value={quickRollInput}
+                      onChange={(e) => setQuickRollInput(e.target.value)}
+                      className="h-8.5 text-xs rounded-lg bg-card border-border shadow-2xs font-mono font-bold pl-2.5 pr-2"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={!quickRollInput.trim()}
+                    className="h-8.5 px-3 text-xs font-bold rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground gap-1 shadow-2xs shrink-0 cursor-pointer"
+                  >
+                    <span>Mark</span>
+                    <CornerDownLeft className="size-3 shrink-0 opacity-80" />
+                  </Button>
+                </form>
+              </div>
+
+              {/* ── 2. Marked Absentee Chips Strip (Shows picked students) ── */}
+              {pickedAbsenteeStudents.length > 0 && (
+                <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-300/80 dark:border-rose-900/50 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                      <UserX className="size-3.5 shrink-0" />
+                      <span>{pickedAbsenteeStudents.length} Marked Absent</span>
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPickedAbsentees(new Set())}
+                      className="h-5 px-1.5 text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-500/15 cursor-pointer rounded"
+                    >
+                      Clear All Absentees
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    {pickedAbsenteeStudents.map((st) => (
+                      <span
+                        key={st.id}
+                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-card border border-rose-300 dark:border-rose-800 text-[11px] font-bold text-foreground shadow-2xs"
+                      >
+                        <span className="font-mono text-rose-600 dark:text-rose-400 font-black">{st.rollNumber}</span>
+                        <span className="truncate max-w-28">{st.name.split(" ")[0]}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleAbsentee(st.id)}
+                          className="text-muted-foreground hover:text-rose-600 cursor-pointer p-0.5 ml-0.5"
+                          aria-label={`Unmark ${st.name}`}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── 3. Class Cohort Switcher Tabs (Isolation per class) ── */}
+              {distinctSelectedClasses.length > 1 && (
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto p-1 rounded-xl bg-muted/40 border border-border/80 select-none">
+                    <button
+                      type="button"
+                      onClick={() => setActiveAbsenteeClassId("all")}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0",
+                        activeAbsenteeClassId === "all"
+                          ? "bg-card text-foreground shadow-2xs border border-border/80"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span>All Classes</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-muted text-muted-foreground font-bold">
+                        {absenteeRoster.length}
+                      </span>
+                    </button>
+
+                    {distinctSelectedClasses.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setActiveAbsenteeClassId(c.id)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0",
+                          activeAbsenteeClassId === c.id
+                            ? "bg-card text-foreground shadow-2xs border border-border/80"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <GraduationCap className="size-3 text-primary shrink-0" />
+                        <span>{c.label.split(" · ")[0]}</span>
+                        {c.absentCount > 0 ? (
+                          <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-rose-500 text-white shadow-2xs">
+                            {c.absentCount} abs
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-md bg-muted text-muted-foreground font-bold">
+                            {c.totalStudents}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeAbsenteeClassId !== "all" && (
+                    <div className="flex items-center justify-between px-1 text-[11px]">
+                      <span className="text-muted-foreground font-medium">
+                        Showing {filteredAbsenteeRoster.length} students in this class
+                      </span>
+                      <button
+                        type="button"
+                        onClick={clearAbsenteesForCurrentClass}
+                        className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        ✓ Mark this class 100% Present
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── 4. Search Filter Bar ── */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search student by name or roll number..."
+                  placeholder="Search by student name or roll number..."
                   value={absenteeSearch}
                   onChange={(e) => setAbsenteeSearch(e.target.value)}
-                  className="h-9 pl-9 pr-8 text-xs rounded-xl bg-card border-border shadow-2xs"
+                  className="h-8.5 pl-9 pr-8 text-xs rounded-xl bg-card border-border shadow-2xs"
                 />
                 {absenteeSearch && (
                   <button
@@ -1366,28 +1744,11 @@ export default function MissedAttendancePage() {
                 )}
               </div>
 
-              {/* Status strip */}
-              <div className="flex items-center justify-between px-1 text-xs">
-                <span className="font-bold text-rose-600 dark:text-rose-400">
-                  {pickedAbsentees.size} student(s) marked absent
-                </span>
-                {pickedAbsentees.size > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-[11px] font-bold text-muted-foreground hover:text-foreground h-6 px-2 cursor-pointer"
-                    onClick={() => setPickedAbsentees(new Set())}
-                  >
-                    Clear Absentees
-                  </Button>
-                )}
-              </div>
-
-              {/* Student multi-select list */}
-              <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1 rounded-xl border border-border/80 p-2.5 bg-card">
+              {/* ── 5. Student Multi-Select List ── */}
+              <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1 rounded-xl border border-border/80 p-2 bg-card">
                 {filteredAbsenteeRoster.length === 0 ? (
                   <div className="py-12 text-center text-xs text-muted-foreground">
-                    No students match your search
+                    No students match your search or filter
                   </div>
                 ) : (
                   filteredAbsenteeRoster.map((student) => {
@@ -1396,7 +1757,7 @@ export default function MissedAttendancePage() {
                       <div
                         key={student.id}
                         className={cn(
-                          "flex items-center justify-between gap-3 rounded-xl border p-2.5 cursor-pointer transition-all shadow-2xs",
+                          "flex items-center justify-between gap-3 rounded-xl border p-2 cursor-pointer transition-all shadow-2xs select-none",
                           isAbsent
                             ? "border-rose-300/80 bg-rose-500/10 shadow-xs"
                             : "border-border/80 bg-card hover:bg-muted/30"
@@ -1407,12 +1768,12 @@ export default function MissedAttendancePage() {
                           <Checkbox
                             checked={isAbsent}
                             onCheckedChange={() => toggleAbsentee(student.id)}
-                            className="rounded-md size-4"
+                            className="rounded-md size-4 cursor-pointer"
                             aria-label={`Mark ${student.name} absent`}
                           />
                           <div
                             className={cn(
-                              "flex size-7.5 items-center justify-center rounded-full text-xs font-black shrink-0 transition-colors shadow-2xs",
+                              "flex size-7 items-center justify-center rounded-full text-xs font-black shrink-0 transition-colors shadow-2xs",
                               isAbsent
                                 ? "bg-rose-500 text-white"
                                 : "bg-muted text-muted-foreground"
@@ -1423,19 +1784,28 @@ export default function MissedAttendancePage() {
                           <div className="flex flex-col min-w-0">
                             <span className="text-xs font-bold text-foreground truncate">{student.name}</span>
                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium mt-0.5">
-                              <span className="font-mono font-semibold">{student.rollNumber}</span>
+                              <span className="font-mono font-bold text-foreground/80">{student.rollNumber}</span>
                               <span>&middot;</span>
                               <span>{student.classLabel}</span>
                             </div>
                           </div>
                         </div>
 
-                        {isAbsent && (
+                        {isAbsent ? (
                           <Badge
                             variant="outline"
-                            className="bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800/60 font-bold text-[10px] px-2 py-0.2 shrink-0"
+                            className="bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800/60 font-bold text-[10px] px-2 py-0.2 shrink-0 gap-1"
                           >
-                            Marked Absent
+                            <UserX className="size-3 shrink-0" />
+                            <span>Absent</span>
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/50 font-bold text-[10px] px-2 py-0.2 shrink-0 gap-1 opacity-70"
+                          >
+                            <Check className="size-2.5 shrink-0" />
+                            <span>Present</span>
                           </Badge>
                         )}
                       </div>
@@ -1444,11 +1814,11 @@ export default function MissedAttendancePage() {
                 )}
               </div>
 
-              {/* Bulk Submit CTA */}
+              {/* ── 6. Bulk Submit CTA ── */}
               <Button
                 onClick={() => runBulkSave("present", Array.from(pickedAbsentees))}
                 disabled={bulkSaving}
-                className="w-full h-11.5 rounded-xl font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all cursor-pointer text-xs sm:text-sm"
+                className="w-full h-11 rounded-xl font-black bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all cursor-pointer text-xs sm:text-sm"
               >
                 {bulkSaving ? (
                   <>
@@ -1456,7 +1826,7 @@ export default function MissedAttendancePage() {
                     Saving Bulk Attendance...
                   </>
                 ) : (
-                  `Save Attendance (${pickedAbsentees.size} absent, rest present across ${selectedSlotObjects.length} slots)`
+                  `Save Attendance (${absenteeRoster.length - pickedAbsentees.size} Present, ${pickedAbsentees.size} Absent Across ${distinctSelectedClasses.length} ${distinctSelectedClasses.length === 1 ? "Class" : "Classes"})`
                 )}
               </Button>
             </div>

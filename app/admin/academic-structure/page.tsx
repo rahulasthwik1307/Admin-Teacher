@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, startTransition } from "react"
 import Link from "next/link"
 import { useAcademicStructure } from "@/hooks/use-academic-structure"
 import { useQueryClient } from "@tanstack/react-query"
@@ -530,7 +530,11 @@ export default function AcademicStructurePage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    startTransition(() => {
+                      setActiveTab(tab.id)
+                    })
+                  }}
                   className={`relative flex items-center gap-2 rounded-lg h-10 px-4 text-xs font-semibold transition-all duration-150 cursor-pointer select-none ${
                     isActive
                       ? "bg-card text-foreground shadow-2xs ring-1 ring-border"
@@ -574,13 +578,14 @@ export default function AcademicStructurePage() {
         </div>
 
         {/* ── Tab Content Area with Smooth Animation ── */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full will-change-[transform,opacity]"
           >
             {/* ── Departments Tab ── */}
             {activeTab === "departments" && (

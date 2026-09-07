@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { MyTimetableSkeleton } from "@/components/ui/skeletons"
 import { toast } from "sonner"
-import { exportTeacherTimetablePDF } from "@/lib/timetable-export"
+import { useTeacherTimetable, type TimetableSlot } from "@/hooks/use-teacher-timetable"
 
 const DAYS = [
   { value: 1, short: "Mon", full: "Monday" },
@@ -28,22 +28,10 @@ const SUBJECT_COLORS = [
   { bg: "bg-primary/10", text: "text-primary", border: "border-primary/30", badge: "bg-primary/15 text-primary" },
 ]
 
-interface TimetableSlot {
-  dayOfWeek: number
-  periodNumber: number
-  startTime: string
-  endTime: string
-  subjectName: string
-  subjectCode?: string
-  className: string
-  section: string
-  year?: string
-}
-
 export function MyTimetable() {
-  const [slots, setSlots] = useState<TimetableSlot[]>([])
-  const [teacherName, setTeacherName] = useState<string>("Faculty Member")
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading } = useTeacherTimetable()
+  const slots = useMemo(() => data?.slots ?? [], [data?.slots])
+  const teacherName = data?.teacherName ?? "Faculty Member"
   const [isExpanded, setIsExpanded] = useState(false)
   const [gridView, setGridView] = useState(false)
   const [selectedDay, setSelectedDay] = useState<number>(() => {
@@ -51,73 +39,14 @@ export function MyTimetable() {
     return jsDay >= 1 && jsDay <= 6 ? jsDay : 1
   })
 
-  useEffect(() => {
-    async function fetchTimetable() {
-      try {
-        const supabase = createClient()
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        if (!session) return
-
-        const [{ data, error }, { data: profile }] = await Promise.all([
-          supabase
-            .from("timetables")
-            .select(`
-              day_of_week,
-              period:periods ( period_number, start_time, end_time ),
-              subject:subjects ( name, code ),
-              class:classes ( name, section, year )
-            `)
-            .eq("teacher_id", session.user.id)
-            .order("day_of_week"),
-          supabase
-            .from("users")
-            .select("full_name")
-            .eq("id", session.user.id)
-            .maybeSingle(),
-        ])
-
-        if (profile?.full_name) {
-          setTeacherName(profile.full_name)
-        }
-
-        if (error || !data) {
-          setLoading(false)
-          return
-        }
-
-        const mapped: TimetableSlot[] = (data as any[])
-          .map((t) => ({
-            dayOfWeek: t.day_of_week,
-            periodNumber: t.period?.period_number ?? 0,
-            startTime: t.period?.start_time?.slice(0, 5) ?? "",
-            endTime: t.period?.end_time?.slice(0, 5) ?? "",
-            subjectName: t.subject?.name ?? "—",
-            subjectCode: t.subject?.code ?? "",
-            className: t.class?.name ?? "—",
-            section: t.class?.section ?? "",
-            year: t.class?.year ?? "",
-          }))
-          .sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.periodNumber - b.periodNumber)
-
-        setSlots(mapped)
-      } catch {
-        // fail silently
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchTimetable()
-  }, [])
-
-  function handleDownloadPDF() {
+  async function handleDownloadPDF() {
     if (slots.length === 0) {
       toast.error("No timetable slots to export.")
       return
     }
     try {
       toast.info("Generating your weekly schedule PDF...", { duration: 1500 })
+      const { exportTeacherTimetablePDF } = await import("@/lib/timetable-export")
       exportTeacherTimetablePDF({
         slots,
         teacherName,
@@ -150,7 +79,7 @@ export function MyTimetable() {
     return SUBJECT_COLORS[subjectColorMap[name] ?? 0]
   }
 
-  if (loading) {
+  if (isLoading) {
     return <MyTimetableSkeleton />
   }
 

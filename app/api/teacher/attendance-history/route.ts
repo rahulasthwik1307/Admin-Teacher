@@ -37,20 +37,23 @@ export async function GET() {
     ])
 
     const authorizedPairs = new Set<string>()
+    const authorizedClassIds = new Set<string>()
     ;(assignments ?? []).forEach((a: any) => {
       if (a.subject_id && a.class_id) authorizedPairs.add(`${a.subject_id}_${a.class_id}`)
+      if (a.class_id) authorizedClassIds.add(a.class_id)
     })
     ;(timetableSlots ?? []).forEach((tt: any) => {
       if (tt.subject_id && tt.class_id) authorizedPairs.add(`${tt.subject_id}_${tt.class_id}`)
+      if (tt.class_id) authorizedClassIds.add(tt.class_id)
     })
 
-    if (authorizedPairs.size === 0) {
+    if (authorizedPairs.size === 0 || authorizedClassIds.size === 0) {
       return NextResponse.json([])
     }
 
     const todayStr = new Date().toISOString().split("T")[0]
 
-    // 2. Fetch all finalized sessions for this teacher up to today with rich joins
+    // 2. Fetch all finalized sessions for this teacher up to today with rich joins and database-level class authorization
     const { data: rawSessions, error } = await supabase
       .from("attendance_sessions")
       .select(`
@@ -62,6 +65,7 @@ export async function GET() {
       `)
       .eq("teacher_id", teacherId)
       .eq("status", "finalized")
+      .in("class_id", Array.from(authorizedClassIds))
       .lte("session_date", todayStr)
       .order("session_date", { ascending: false })
       .order("finalized_at", { ascending: false })
@@ -80,35 +84,23 @@ export async function GET() {
 
     if (authorizedSessions.length === 0) return NextResponse.json([])
 
-    // 4. Fetch attendance counts in safe chunks of 50 to prevent URL parameter explosion
+    // 4. Fetch attendance counts in 1 fast server-aggregated query (no chunks, no raw row downloads)
     const sessionIds = authorizedSessions.map((s: any) => s.id)
-    const CHUNK_SIZE = 50
-    const chunks: string[][] = []
-    for (let i = 0; i < sessionIds.length; i += CHUNK_SIZE) {
-      chunks.push(sessionIds.slice(i, i + CHUNK_SIZE))
-    }
-
-    const chunkResults = await Promise.all(
-      chunks.map((chunk) =>
-        supabase
-          .from("period_attendance")
-          .select("session_id, status")
-          .in("session_id", chunk)
-          .in("status", ["present", "absent"])
-      )
+    const { data: countsData, error: countsError } = await supabase.rpc(
+      "get_session_attendance_counts",
+      { p_session_ids: sessionIds }
     )
+
+    if (countsError) {
+      console.error("Failed to fetch attendance counts:", countsError)
+    }
 
     const presentMap = new Map<string, number>()
     const absentMap = new Map<string, number>()
 
-    for (const res of chunkResults) {
-      for (const row of (res.data ?? [])) {
-        if (row.status === "present") {
-          presentMap.set(row.session_id, (presentMap.get(row.session_id) ?? 0) + 1)
-        } else if (row.status === "absent") {
-          absentMap.set(row.session_id, (absentMap.get(row.session_id) ?? 0) + 1)
-        }
-      }
+    for (const row of (countsData ?? [])) {
+      presentMap.set(row.session_id, Number(row.present_count ?? 0))
+      absentMap.set(row.session_id, Number(row.absent_count ?? 0))
     }
 
     // 5. Map sessions and exclude empty ghost sessions with zero attendance records
@@ -166,7 +158,11 @@ export async function GET() {
       })
     }
 
-    return NextResponse.json(sessions)
+    return NextResponse.json(sessions, {
+      headers: {
+        "Cache-Control": "private, no-cache, stale-while-revalidate=60",
+      },
+    })
   } catch (e) {
     console.error("Attendance history API error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

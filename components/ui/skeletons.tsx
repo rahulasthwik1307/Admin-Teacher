@@ -488,29 +488,41 @@ export function MissedAttendanceSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       {[1, 2].map((groupIndex) => (
-        <div key={groupIndex} className="flex flex-col gap-3">
-          {/* Header divider */}
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-5 w-16 rounded-full" />
+        <div
+          key={groupIndex}
+          className="flex flex-col rounded-2xl border border-border/80 bg-card/60 shadow-2xs overflow-hidden"
+        >
+          {/* Day Header Skeleton */}
+          <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border/80">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-4.5 rounded-md" />
+              <Skeleton className="size-7 rounded-lg" />
+              <Skeleton className="h-4 w-44 rounded" />
             </div>
-            <div className="h-px flex-1 bg-border" />
+            <Skeleton className="h-6 w-24 rounded-md" />
           </div>
-          {/* Slot cards */}
-          <div className="flex flex-col gap-2">
+
+          {/* Day Rows Skeleton: Side-by-Side 2-Column Cards */}
+          <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {[1, 2].map((slotIndex) => (
-              <Card key={slotIndex}>
-                <CardContent className="flex items-center gap-4 p-4">
-                  <Skeleton className="size-10 rounded-lg shrink-0" />
-                  <div className="flex flex-col flex-1 gap-2 min-w-0">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-3.5 w-1/2" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                    <Skeleton className="size-4 rounded shrink-0" />
+              <Card key={slotIndex} className="rounded-2xl border-border/80 shadow-2xs">
+                <CardContent className="p-3.5 sm:p-4">
+                  <div className="flex items-start gap-3">
+                    <Skeleton className="size-4.5 rounded-md mt-2 shrink-0" />
+                    <Skeleton className="w-28 sm:w-31 h-18 rounded-xl shrink-0" />
+                    <div className="flex-1 flex flex-col justify-between self-stretch gap-2.5 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <Skeleton className="h-5 w-36 rounded-md" />
+                        <Skeleton className="h-5 w-20 rounded-full shrink-0" />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-1.5">
+                          <Skeleton className="h-5 w-16 rounded-md" />
+                          <Skeleton className="h-5 w-16 rounded-md" />
+                        </div>
+                        <Skeleton className="h-7 w-18 rounded-xl shrink-0 ml-auto" />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

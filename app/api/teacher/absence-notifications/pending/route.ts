@@ -9,7 +9,11 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const absences = await getEligibleAbsences(supabase, user.id)
-    return NextResponse.json(absences)
+    return NextResponse.json(absences, {
+      headers: {
+        "Cache-Control": "private, no-cache, stale-while-revalidate=60",
+      },
+    })
   } catch (e) {
     console.error("pending absences error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

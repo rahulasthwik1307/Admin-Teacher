@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, Fragment } from "react"
+import { useState, useMemo, useEffect, Fragment, startTransition } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { motion, useReducedMotion, type Variants } from "framer-motion"
@@ -604,6 +604,20 @@ export default function AttendanceHistoryPage() {
     }))
   }, [sessions])
 
+  const selectedClassMeta = useMemo(() => {
+    if (!classFilter || classFilter === "all") return null
+    for (const g of classCohortGroups) {
+      const match = g.cohorts.find((c) => c.id === classFilter)
+      if (match) {
+        return {
+          className: match.className,
+          year: match.year,
+        }
+      }
+    }
+    return null
+  }, [classCohortGroups, classFilter])
+
   /* ── Filtered sessions ─────────────────────────────────── */
   const filtered = useMemo(() => {
     return sessions.filter((s) => {
@@ -745,7 +759,28 @@ export default function AttendanceHistoryPage() {
                 </span>
                 <Select value={classFilter} onValueChange={setClassFilter}>
                   <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-bold text-xs w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
-                    <SelectValue />
+                    <SelectValue placeholder="All Assigned Classes">
+                      {selectedClassMeta ? (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-foreground text-xs tracking-tight">
+                            {selectedClassMeta.className}
+                          </span>
+                          {selectedClassMeta.year && selectedClassMeta.year !== "Other" && selectedClassMeta.year !== "General" && (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                getYearTheme(selectedClassMeta.year).badge
+                              )}
+                            >
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              <span>{selectedClassMeta.year}</span>
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        "All Assigned Classes"
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border shadow-md min-w-48 py-1">
                     <SelectItem value="all" className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer">
@@ -1125,12 +1160,14 @@ export default function AttendanceHistoryPage() {
                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/50 border border-border/70 overflow-x-auto select-none">
                   <button
                     type="button"
-                    onClick={() =>
-                      setDayYearFilters((prev) => ({
-                        ...prev,
-                        [day.rawDate]: "all",
-                      }))
-                    }
+                    onClick={() => {
+                      startTransition(() => {
+                        setDayYearFilters((prev) => ({
+                          ...prev,
+                          [day.rawDate]: "all",
+                        }))
+                      })
+                    }}
                     className={cn(
                       "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
                       (dayYearFilters[day.rawDate] || "all") === "all"
@@ -1153,12 +1190,14 @@ export default function AttendanceHistoryPage() {
                       <button
                         key={yrGroup.year}
                         type="button"
-                        onClick={() =>
-                          setDayYearFilters((prev) => ({
-                            ...prev,
-                            [day.rawDate]: yrGroup.year,
-                          }))
-                        }
+                        onClick={() => {
+                          startTransition(() => {
+                            setDayYearFilters((prev) => ({
+                              ...prev,
+                              [day.rawDate]: yrGroup.year,
+                            }))
+                          })
+                        }}
                         className={cn(
                           "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap border",
                           isSelected

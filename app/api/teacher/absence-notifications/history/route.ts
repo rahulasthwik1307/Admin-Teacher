@@ -12,7 +12,6 @@ export async function GET() {
       .select(`id, sent_at, selected_count, student_count, sent_count, failed_count, no_email_count, teacher:teachers ( user:users ( full_name ) )`)
       .eq("teacher_id", user.id)
       .order("sent_at", { ascending: false })
-      .limit(50)
 
     if (error) return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 })
     const batchIds = (batches ?? []).map((b: any) => b.id)
@@ -66,7 +65,11 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(result)
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "private, no-cache, stale-while-revalidate=60",
+      },
+    })
   } catch (e) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

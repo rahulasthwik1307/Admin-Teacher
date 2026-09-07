@@ -99,6 +99,23 @@ function getMobileCardStyle(status: Student["faceStatus"]) {
   }
 }
 
+function getYearBadgeClass(year: string) {
+  const y = (year || "").toLowerCase()
+  if (/\b(4|4th|iv|fourth)\b/.test(y) || y.includes("4")) {
+    return "bg-purple-500/12 text-purple-800 dark:text-purple-200 border-purple-300/70 dark:border-purple-600/50 font-bold"
+  }
+  if (/\b(3|3rd|iii|third)\b/.test(y) || y.includes("3")) {
+    return "bg-amber-500/12 text-amber-800 dark:text-amber-200 border-amber-300/70 dark:border-amber-600/50 font-bold"
+  }
+  if (/\b(2|2nd|ii|second)\b/.test(y) || y.includes("2")) {
+    return "bg-emerald-500/12 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-600/50 font-bold"
+  }
+  if (/\b(1|1st|i|first)\b/.test(y) || y.includes("1")) {
+    return "bg-sky-500/12 text-sky-800 dark:text-sky-200 border-sky-300/70 dark:border-sky-600/50 font-bold"
+  }
+  return "bg-muted/70 text-muted-foreground border-border/80 font-bold"
+}
+
 function FaceStatusBadge({ status }: { status: Student["faceStatus"] }) {
   switch (status) {
     case "Approved":
@@ -326,41 +343,19 @@ function MobileGroupHeader({
   )
 }
 
+import { useTeacherStudents } from "@/hooks/use-teacher-students"
+
 function getCohortKey(s: Student) {
   if (s.class === "—") return "Unassigned"
   return s.year ? `${s.class} · ${s.year}` : s.class
 }
 
 export default function TeacherStudentsPage() {
-  const [students, setStudents] = useState<Student[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const { data: students = [], isLoading, error: queryError, refetch } = useTeacherStudents()
+  const fetchError = queryError ? (queryError as Error).message : null
   const [search, setSearch] = useState("")
   const [cohortFilter, setCohortFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-
-  const fetchStudents = useCallback(async () => {
-    setIsLoading(true)
-    setFetchError(null)
-    try {
-      const res = await fetch("/api/teacher/student-list")
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        setFetchError(errData.error || "Failed to load students.")
-        return
-      }
-      const data = await res.json()
-      setStudents(data.students || [])
-    } catch {
-      setFetchError("An unexpected error occurred.")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchStudents()
-  }, [fetchStudents])
 
   // Derive unique authorized cohorts from the server-authorized student dataset
   const uniqueCohorts = useMemo(() => {
@@ -407,6 +402,21 @@ export default function TeacherStudentsPage() {
       ),
     }))
   }, [students])
+
+  // Selected cohort metadata for trigger display (showing both Section and Year)
+  const selectedCohortMeta = useMemo(() => {
+    if (!cohortFilter || cohortFilter === "all") return null
+    for (const g of cohortGroups) {
+      const match = g.cohorts.find((c) => c.key === cohortFilter)
+      if (match) {
+        return {
+          className: match.className,
+          year: g.year,
+        }
+      }
+    }
+    return null
+  }, [cohortGroups, cohortFilter])
 
   // Filter students by search, cohort, and status
   const filtered = useMemo(() => {
@@ -562,7 +572,28 @@ export default function TeacherStudentsPage() {
               </span>
               <Select value={cohortFilter} onValueChange={setCohortFilter}>
                 <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-medium w-full outline-none [&>svg]:opacity-50 hover:bg-transparent">
-                  <SelectValue placeholder="All Cohorts" />
+                  <SelectValue placeholder="All Cohorts">
+                    {selectedCohortMeta ? (
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="font-bold text-foreground text-xs tracking-tight">
+                          {selectedCohortMeta.className}
+                        </span>
+                        {selectedCohortMeta.year && selectedCohortMeta.year !== "Other" && selectedCohortMeta.year !== "General" && (
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                              getYearBadgeClass(selectedCohortMeta.year)
+                            )}
+                          >
+                            <GraduationCap className="size-2.5 shrink-0" />
+                            <span>{selectedCohortMeta.year}</span>
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      "All Cohorts"
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Cohorts</SelectItem>
@@ -630,7 +661,7 @@ export default function TeacherStudentsPage() {
             variant="outline"
             size="sm"
             className="mt-3"
-            onClick={fetchStudents}
+            onClick={() => refetch()}
           >
             Retry
           </Button>

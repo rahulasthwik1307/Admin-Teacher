@@ -111,7 +111,11 @@ export async function GET(request: Request) {
       return d !== 0 ? d : a.periodNumber - b.periodNumber
     })
 
-    return NextResponse.json(missed)
+    return NextResponse.json(missed, {
+      headers: {
+        "Cache-Control": "private, no-cache, stale-while-revalidate=60",
+      },
+    })
   } catch (e) {
     console.error("missed-attendance API error:", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

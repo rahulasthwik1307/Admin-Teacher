@@ -67,35 +67,13 @@ import {
 import { MissedAttendanceSkeleton } from "@/components/ui/skeletons"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { createClient } from "@/lib/supabase/client"
-
-interface EligibleAbsence {
-  periodAttendanceId: string
-  studentId: string
-  studentName: string
-  rollNumber: string
-  year: string
-  className: string
-  section: string
-  departmentCode: string
-  cohortLabel: string
-  contactEmail: string | null
-  alreadyNotified: boolean
-  sessionId: string
-  subjectId: string
-  subjectName: string
-  classId: string
-  periodId: string
-  periodNumber: number
-  startTime: string
-  endTime: string
-  date: string
-  overallAttendancePct: number
-  overallAttended: number
-  overallTotalClasses: number
-  subjectAttendancePct: number
-  subjectAttended: number
-  subjectTotalClasses: number
-}
+import { useQueryClient } from "@tanstack/react-query"
+import {
+  useAbsencePending,
+  useAbsenceHistory,
+  useTeacherCohorts,
+  type EligibleAbsence,
+} from "@/hooks/use-absence-notifications"
 
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
@@ -143,6 +121,23 @@ function severityBadge(pct: number, prefix: string = "") {
       "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-300/70 dark:border-emerald-800/60",
     dot: "bg-emerald-500",
   }
+}
+
+function getYearBadgeClass(year: string) {
+  const y = (year || "").toLowerCase()
+  if (/\b(4|4th|iv|fourth)\b/.test(y) || y.includes("4")) {
+    return "bg-purple-500/12 text-purple-800 dark:text-purple-200 border-purple-300/70 dark:border-purple-600/50 font-bold"
+  }
+  if (/\b(3|3rd|iii|third)\b/.test(y) || y.includes("3")) {
+    return "bg-amber-500/12 text-amber-800 dark:text-amber-200 border-amber-300/70 dark:border-amber-600/50 font-bold"
+  }
+  if (/\b(2|2nd|ii|second)\b/.test(y) || y.includes("2")) {
+    return "bg-emerald-500/12 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-600/50 font-bold"
+  }
+  if (/\b(1|1st|i|first)\b/.test(y) || y.includes("1")) {
+    return "bg-sky-500/12 text-sky-800 dark:text-sky-200 border-sky-300/70 dark:border-sky-600/50 font-bold"
+  }
+  return "bg-muted/70 text-muted-foreground border-border/80 font-bold"
 }
 
 const AVATAR_COLORS = [
@@ -395,6 +390,8 @@ async function openPreview(
   }
 }
 
+const EMPTY_CLASS_SUBJECT_MAP = new Map<string, { id: string; name: string }[]>()
+
 function AbsenceNotificationsContent() {
   const shouldReduceMotion = useReducedMotion()
   const searchParams = useSearchParams()
@@ -403,10 +400,26 @@ function AbsenceNotificationsContent() {
   const paramSubjectId = searchParams?.get("subjectId") || ""
   const paramSessionId = searchParams?.get("sessionId") || ""
 
+  const queryClient = useQueryClient()
   const [tab, setTab] = useState<"send" | "history">("send")
-  const [absences, setAbsences] = useState<EligibleAbsence[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState(false)
+
+  const {
+    data: absences = [],
+    isLoading: loading,
+    isError: loadError,
+    refetch: refetchPending,
+  } = useAbsencePending()
+
+  const {
+    data: history = [],
+    isLoading: historyLoading,
+    refetch: refetchHistory,
+  } = useAbsenceHistory()
+
+  const { data: cohortsData } = useTeacherCohorts()
+  const teacherCohorts = cohortsData?.teacherCohorts ?? []
+  const classSubjectMap = cohortsData?.classSubjectMap ?? EMPTY_CLASS_SUBJECT_MAP
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sending, setSending] = useState(false)
@@ -425,17 +438,8 @@ function AbsenceNotificationsContent() {
   const [filterDateFrom, setFilterDateFrom] = useState("")
   const [filterDateTo, setFilterDateTo] = useState("")
 
-  const [teacherCohorts, setTeacherCohorts] = useState<
-    { id: string; className: string; year: string; section: string; deptCode: string; label: string }[]
-  >([])
-  const [classSubjectMap, setClassSubjectMap] = useState<Map<string, { id: string; name: string }[]>>(
-    new Map()
-  )
-
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
-  const [history, setHistory] = useState<any[]>([])
-  const [historyLoading, setHistoryLoading] = useState(true)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detail, setDetail] = useState<any>(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -501,97 +505,6 @@ function AbsenceNotificationsContent() {
     }
   }, [absences, paramDate, paramClassId, paramSubjectId, paramSessionId])
 
-  const fetchPending = async () => {
-    setLoading(true)
-    setLoadError(false)
-    try {
-      const res = await fetch("/api/teacher/absence-notifications/pending")
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setAbsences(data)
-    } catch {
-      setLoadError(true)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchHistory = async () => {
-    setHistoryLoading(true)
-    try {
-      const res = await fetch("/api/teacher/absence-notifications/history")
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setHistory(data)
-    } catch {
-      toast.error("Failed to load history")
-    } finally {
-      setHistoryLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchPending()
-    fetchHistory()
-
-    async function loadTeacherClasses() {
-      try {
-        const supabase = createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (user) {
-          const { data: assignments } = await supabase
-            .from("teacher_assignments")
-            .select(`
-              class_id,
-              subject_id,
-              class:classes(id, name, section, year, department:departments(code)),
-              subject:subjects(id, name)
-            `)
-            .eq("teacher_id", user.id)
-          if (assignments) {
-            const cohortMap = new Map<
-              string,
-              { id: string; className: string; year: string; section: string; deptCode: string; label: string }
-            >()
-            const subjMap = new Map<string, { id: string; name: string }[]>()
-            for (const a of assignments as any[]) {
-              if (a.class && !cohortMap.has(a.class.id)) {
-                const dCode = a.class.department?.code || ""
-                const cName = dCode
-                  ? `${dCode}-${a.class.section || "A"}`
-                  : a.class.name && a.class.section
-                  ? `${a.class.name}-${a.class.section}`
-                  : `Section ${a.class.section || "A"}`
-                cohortMap.set(a.class.id, {
-                  id: a.class.id,
-                  className: cName,
-                  year: a.class.year,
-                  section: a.class.section,
-                  deptCode: dCode,
-                  label: cName,
-                })
-              }
-              if (a.class_id && a.subject) {
-                if (!subjMap.has(a.class_id)) subjMap.set(a.class_id, [])
-                const list = subjMap.get(a.class_id)!
-                if (!list.some((s) => s.id === a.subject.id)) {
-                  list.push({ id: a.subject.id, name: a.subject.name })
-                }
-              }
-            }
-            setTeacherCohorts(Array.from(cohortMap.values()))
-            setClassSubjectMap(subjMap)
-          }
-        }
-      } catch {
-        // fail silently
-      }
-    }
-    loadTeacherClasses()
-  }, [])
-
   // Build academic year grouped cohort list with clean section identification
   const { cohortYearGroups, allCohortOptions } = useMemo(() => {
     const cohortMap = new Map<
@@ -656,6 +569,19 @@ function AbsenceNotificationsContent() {
 
     return { cohortYearGroups: groups, allCohortOptions: allOptions }
   }, [teacherCohorts, absences])
+
+  // Selected cohort metadata for trigger display (showing both Section and Year)
+  const selectedCohortMeta = useMemo(() => {
+    if (!filterClass || filterClass === "all") return null
+    const match = allCohortOptions.find((c) => c.id === filterClass)
+    if (match) {
+      return {
+        className: match.className,
+        year: match.year,
+      }
+    }
+    return null
+  }, [allCohortOptions, filterClass])
 
   // Derive subjects dynamically: When a cohort is selected, ONLY show subjects taught for that cohort
   const availableSubjects = useMemo(() => {
@@ -980,8 +906,8 @@ function AbsenceNotificationsContent() {
       }
       setSendResult(result)
       setSelectedIds(new Set())
-      fetchPending()
-      fetchHistory()
+      queryClient.invalidateQueries({ queryKey: ["teacher-absence-pending"] })
+      queryClient.invalidateQueries({ queryKey: ["teacher-absence-history"] })
     } catch {
       toast.error("An unexpected error occurred")
     } finally {
@@ -1110,13 +1036,28 @@ function AbsenceNotificationsContent() {
                 {/* Cohort / Section Filter (Grouped by Academic Year) */}
                 <Select value={filterClass} onValueChange={setFilterClass}>
                   <SelectTrigger className="h-10 w-full sm:w-auto sm:min-w-44 text-xs font-semibold rounded-xl bg-card border-border/80 shadow-2xs hover:border-primary/40 focus-visible:ring-primary/20 shrink-0">
-                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
                       <Users className="size-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate">
-                        {filterClass === "all"
-                          ? "All Sections"
-                          : allCohortOptions.find((c) => c.id === filterClass)?.className || "Selected Section"}
-                      </span>
+                      {selectedCohortMeta ? (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-foreground text-xs tracking-tight">
+                            {selectedCohortMeta.className}
+                          </span>
+                          {selectedCohortMeta.year && selectedCohortMeta.year !== "Other" && selectedCohortMeta.year !== "General" && (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                getYearBadgeClass(selectedCohortMeta.year)
+                              )}
+                            >
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              <span>{selectedCohortMeta.year}</span>
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="truncate">All Sections</span>
+                      )}
                     </div>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border shadow-md min-w-48 py-1">
@@ -1581,7 +1522,7 @@ function AbsenceNotificationsContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchPending}
+                    onClick={() => refetchPending()}
                     className="rounded-xl mt-1"
                   >
                     Retry Connection

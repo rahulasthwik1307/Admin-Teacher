@@ -29,6 +29,8 @@ interface AdminSidebarProps {
   onToggleCollapse?: () => void
 }
 
+let cachedAdminProfile: { name: string; initials: string } | null = null
+
 export function AdminSidebar({
   onClose,
   collapsed = false,
@@ -37,11 +39,12 @@ export function AdminSidebar({
   const router = useRouter()
   const pathname = usePathname()
   const [pendingCount, setPendingCount] = useState<number>(0)
-  const [adminName, setAdminName] = useState("Administrator")
-  const [adminInitials, setAdminInitials] = useState("AD")
+  const [adminName, setAdminName] = useState(cachedAdminProfile?.name ?? "Administrator")
+  const [adminInitials, setAdminInitials] = useState(cachedAdminProfile?.initials ?? "AD")
 
   const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault()
+    cachedAdminProfile = null
     const { clearTabSession } = await import("@/lib/auth/session-manager")
     await clearTabSession()
     router.push("/login")
@@ -51,24 +54,26 @@ export function AdminSidebar({
     try {
       const supabase = createClient()
 
-      // Load admin name
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("full_name")
-          .eq("id", user.id)
-          .single()
-        if (profile?.full_name) {
-          setAdminName(profile.full_name)
-          setAdminInitials(
-            profile.full_name
+      // Load admin name if not already cached in memory
+      if (!cachedAdminProfile) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from("users")
+            .select("full_name")
+            .eq("id", user.id)
+            .single()
+          if (profile?.full_name) {
+            const initials = profile.full_name
               .split(" ")
               .map((n: string) => n[0])
               .join("")
               .toUpperCase()
               .slice(0, 2)
-          )
+            cachedAdminProfile = { name: profile.full_name, initials }
+            setAdminName(profile.full_name)
+            setAdminInitials(initials)
+          }
         }
       }
 

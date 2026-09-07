@@ -141,72 +141,7 @@ export async function GET(request: NextRequest) {
 
     const analytics = analyticsRpcData as any
 
-    // 5. Filtered Sessions for Transitional Compatibility (Server-side date filtered)
-    let sessionsQuery = supabase
-      .from("attendance_sessions")
-      .select(`
-        id,
-        teacher_id,
-        session_date,
-        subject_id,
-        class_id,
-        status,
-        subject:subjects ( id, name, code, department_id, department:departments ( id, name, code ) ),
-        class:classes ( id, name, section, year, department_id, department:departments ( id, name, code ) ),
-        teacher:teachers ( id, title, user:users ( full_name ), department:departments ( id, name, code ) )
-      `)
-      .eq("status", "finalized")
-      .order("session_date", { ascending: false })
-
-    if (from) sessionsQuery = sessionsQuery.gte("session_date", from)
-    if (to) sessionsQuery = sessionsQuery.lte("session_date", to)
-    if (departmentId && departmentId !== "all") {
-      // Find classes belonging to this department
-      const matchingClassIds = (classes ?? []).filter((c: any) => c.department_id === departmentId).map((c: any) => c.id)
-      if (matchingClassIds.length > 0) {
-        sessionsQuery = sessionsQuery.in("class_id", matchingClassIds)
-      }
-    }
-    if (classId && classId !== "all") sessionsQuery = sessionsQuery.eq("class_id", classId)
-    if (subjectId && subjectId !== "all") sessionsQuery = sessionsQuery.eq("subject_id", subjectId)
-    if (teacherId && teacherId !== "all") sessionsQuery = sessionsQuery.eq("teacher_id", teacherId)
-
-    const { data: filteredSessions } = await sessionsQuery
-
-    const sessionIds = (filteredSessions ?? []).map((s: any) => s.id)
-
-    // 6. Fetch Attendance in chunks for filtered sessions only
-    const CHUNK_SIZE = 50
-    const chunks: string[][] = []
-    for (let i = 0; i < sessionIds.length; i += CHUNK_SIZE) {
-      chunks.push(sessionIds.slice(i, i + CHUNK_SIZE))
-    }
-
-    const attResults = await Promise.all(
-      chunks.map(chunk =>
-        supabase
-          .from("period_attendance")
-          .select(`
-            session_id,
-            student_id,
-            status,
-            student:students (
-              id,
-              roll_number,
-              year,
-              user:users ( full_name ),
-              class:classes ( id, name, section, year, department:departments ( id, name, code ) ),
-              department:departments ( id, name, code )
-            )
-          `)
-          .in("session_id", chunk)
-          .in("status", ["present", "absent"])
-      )
-    )
-
-    const allAttendance = attResults.flatMap(r => r.data || [])
-
-    // 7. Map performer names for system logs
+    // 5. Map performer names for system logs
     const performerIds = [...new Set((logs ?? []).map((l: any) => l.performed_by).filter(Boolean))]
     const { data: logUsers } =
       performerIds.length > 0
@@ -224,11 +159,14 @@ export async function GET(request: NextRequest) {
       defaulterStudents: analytics?.defaulterStudents ?? [],
       teacherActivity: analytics?.teacherActivity ?? [],
       diagnostics: analytics?.diagnostics ?? null,
-      // Transitional fields for existing UI:
+      timelineTrend: analytics?.timelineTrend ?? [],
+      lowTurnoutSessions: analytics?.lowTurnoutSessions ?? [],
+      consecutiveAbsentStudents: analytics?.consecutiveAbsentStudents ?? [],
+      // Lightweight metadata for filter dropdowns & logs:
       teachers: teachers ?? [],
-      sessions: filteredSessions ?? [],
+      sessions: [],
       assignments: assignments ?? [],
-      attendance: allAttendance ?? [],
+      attendance: [],
       departments: departments ?? [],
       classes: classes ?? [],
       subjects: subjects ?? [],

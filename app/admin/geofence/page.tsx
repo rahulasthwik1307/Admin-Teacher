@@ -27,6 +27,8 @@ import { createClient } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
 import type { ComponentType } from "react"
 import { MapSkeleton } from "@/components/ui/skeletons"
+import { useGeofenceSettings } from "@/hooks/use-admin-geofence"
+import { useQueryClient } from "@tanstack/react-query"
 
 interface GeofenceMapProps {
   center: { lat: number; lng: number }
@@ -49,7 +51,8 @@ export default function GeofencePage() {
   const [radius, setRadius] = useState("250")
   const [collegeName, setCollegeName] = useState("NNRG College")
   const [existingId, setExistingId] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const { data: geofenceData, isLoading } = useGeofenceSettings()
   const [isSaving, setIsSaving] = useState(false)
   const [isFetchingLocation, setIsFetchingLocation] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -60,44 +63,23 @@ export default function GeofencePage() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [savedValues, setSavedValues] = useState({ lat: "17.4944", lng: "78.3996", radius: "250", name: "NNRG College" })
 
-  const fetchSettings = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("geofence_settings")
-        .select("*")
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error && error.code !== "PGRST116") {
-        console.error("Fetch geofence error:", error)
-      }
-
-      if (data) {
-        setExistingId(data.id)
-        setCollegeName(data.college_name)
-        setLat(String(data.latitude))
-        setLng(String(data.longitude))
-        setRadius(String(data.radius_meters))
-        setSavedValues({
-          lat: String(data.latitude),
-          lng: String(data.longitude),
-          radius: String(data.radius_meters),
-          name: data.college_name,
-        })
-      }
-    } catch {
-      console.error("Unexpected error fetching geofence")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
+  const initialLoadedRef = useRef(false)
   useEffect(() => {
-    fetchSettings()
-  }, [fetchSettings])
+    if (geofenceData && !initialLoadedRef.current) {
+      initialLoadedRef.current = true
+      setExistingId(geofenceData.id)
+      setCollegeName(geofenceData.college_name)
+      setLat(String(geofenceData.latitude))
+      setLng(String(geofenceData.longitude))
+      setRadius(String(geofenceData.radius_meters))
+      setSavedValues({
+        lat: String(geofenceData.latitude),
+        lng: String(geofenceData.longitude),
+        radius: String(geofenceData.radius_meters),
+        name: geofenceData.college_name,
+      })
+    }
+  }, [geofenceData])
 
   async function handleSave() {
     if (!lat || !lng || !radius || !collegeName) {
@@ -135,6 +117,7 @@ export default function GeofencePage() {
           description: `Geofence updated with radius ${radius} meters`,
         })
       }
+      queryClient.invalidateQueries({ queryKey: ["admin-geofence-settings"] })
       setSavedValues({ lat, lng, radius, name: collegeName })
       toast.success("Geofence settings updated successfully.")
     } catch {

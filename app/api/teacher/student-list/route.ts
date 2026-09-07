@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
         is_active,
         is_approved,
         is_rejected,
-        embedding_a,
+        face_registered,
         registration_photo_url,
         class_id,
         created_at,
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest) {
         classData?.department?.code ?? classData?.name ?? ""
       const section = classData?.section ?? ""
       const className = classData ? `${deptCode}-${section}` : "—"
-      const hasEmbedding = !!s.embedding_a
+      const hasEmbedding = s.face_registered === true
       const isApproved = s.is_approved === true
       const isRejected = s.is_rejected === true
       const faceStatus: "Approved" | "Pending" | "Rejected" | "None" =

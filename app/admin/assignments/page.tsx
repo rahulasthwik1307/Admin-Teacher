@@ -48,28 +48,15 @@ import {
   AlertTriangle,
   Pencil,
 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useAdminAssignments } from "@/hooks/use-admin-assignments"
 import { createClient } from "@/lib/supabase/client"
 
 /* ---------- Constants ---------- */
 const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"]
 
 /* ---------- Interfaces ---------- */
-interface Assignment {
-  id: string
-  teacher: string
-  teacherId: string
-  subject: string
-  classSection: string
-  classSectionOnly: string
-  department: string
-  year: string | null
-  date: string
-}
-
-interface TeacherOption { id: string; name: string }
-interface SubjectOption { id: string; name: string; code?: string; deptCode: string }
-interface ClassOption { id: string; label: string; fullLabel: string; name: string; section: string; year: string; classSection: string; deptCode: string }
-interface DeptOption { code: string; name: string }
+import type { Assignment, TeacherOption, SubjectOption, ClassOption, DeptOption } from "@/hooks/use-admin-assignments"
 
 /* ---------- Helpers ---------- */
 function getInitials(name: string): string {
@@ -126,16 +113,18 @@ function AssignmentRing({ count, total, color, size = 72 }: { count: number; tot
 
 /* ---------- Component ---------- */
 export default function TeacherAssignmentsPage() {
-  const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [totalSubjectsInSystem, setTotalSubjectsInSystem] = useState(0)
+  const queryClient = useQueryClient()
+  const { data: assignmentsData, isLoading, error: queryError, refetch } = useAdminAssignments()
 
-  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([])
-  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([])
-  const [classOptions, setClassOptions] = useState<ClassOption[]>([])
-  const [deptOptions, setDeptOptions] = useState<DeptOption[]>([])
+  const assignments = assignmentsData?.assignments ?? []
+  const teacherOptions = assignmentsData?.teacherOptions ?? []
+  const subjectOptions = assignmentsData?.subjectOptions ?? []
+  const classOptions = assignmentsData?.classOptions ?? []
+  const deptOptions = assignmentsData?.deptOptions ?? []
+  const totalSubjectsInSystem = assignmentsData?.totalSubjectsInSystem ?? 0
+  const fetchError = queryError ? "Failed to load assignments." : null
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [filterClass, setFilterClass] = useState("all")
   const [filterDept, setFilterDept] = useState("all")
@@ -156,74 +145,6 @@ export default function TeacherAssignmentsPage() {
   const [editYear, setEditYear] = useState("")
   const [editSheetOpen, setEditSheetOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-
-  /* ---------- Fetch ---------- */
-  const fetchDropdownData = useCallback(async () => {
-    const supabase = createClient()
-    const [teachersRes, subjectsRes, classesRes] = await Promise.all([
-      supabase.from("teachers").select("id, user:users ( full_name )").eq("is_active", true),
-      supabase.from("subjects").select("id, name, code, department:departments ( code )").order("name"),
-      supabase.from("classes").select("id, name, section, year, department:departments ( code, name )").order("name"),
-    ])
-    if (teachersRes.data) setTeacherOptions(teachersRes.data.map((t: any) => ({ id: t.id, name: t.user?.full_name ?? "Unknown" })))
-    if (subjectsRes.data) {
-      setSubjectOptions(subjectsRes.data.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        code: s.code ?? "",
-        deptCode: s.department?.code ?? "",
-      })))
-      setTotalSubjectsInSystem(subjectsRes.data.length)
-    }
-    if (classesRes.data) {
-      setClassOptions(classesRes.data.map((c: any) => ({
-        id: c.id,
-        label: `${c.name}-${c.section}`,
-        fullLabel: `${c.name}-${c.section} · ${c.year}`,
-        name: c.name,
-        section: c.section,
-        year: c.year,
-        classSection: `${c.name}-${c.section}`,
-        deptCode: c.department?.code ?? "",
-      })))
-      const deptMap = new Map<string, string>()
-      for (const c of classesRes.data as any[]) { if (c.department?.code) deptMap.set(c.department.code, c.department.name) }
-      setDeptOptions(Array.from(deptMap.entries()).map(([code, name]) => ({ code, name })))
-    }
-  }, [])
-
-  const fetchAssignments = useCallback(async () => {
-    setIsLoading(true); setFetchError(null)
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("teacher_assignments")
-        .select(`id, assigned_at, year, teacher:teachers ( id, user:users ( full_name ) ), subject:subjects ( name ), class:classes ( name, section, year, department:departments ( code ) )`)
-        .order("assigned_at", { ascending: false })
-      if (error) { setFetchError("Failed to load assignments."); return }
-      setAssignments((data || []).map((a: any) => ({
-        id: a.id,
-        teacher: a.teacher?.user?.full_name ?? "Unknown",
-        teacherId: a.teacher?.id ?? "",
-        subject: a.subject?.name ?? "—",
-        classSection: a.class ? `${a.class.name}-${a.class.section} · ${a.class.year}` : "—",
-        classSectionOnly: a.class ? `${a.class.name}-${a.class.section}` : "—",
-        department: a.class?.department?.code ?? "—",
-        year: a.year ?? a.class?.year ?? null,
-        date: a.assigned_at ? new Date(a.assigned_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
-      })))
-    } catch { setFetchError("An unexpected error occurred.") }
-    finally { setIsLoading(false) }
-  }, [])
-
-  useEffect(() => {
-    const init = async () => {
-      await Promise.resolve()
-      fetchDropdownData()
-      fetchAssignments()
-    }
-    init()
-  }, [fetchDropdownData, fetchAssignments])
 
   const availableClassFilterOptions = useMemo(() => {
     let list = classOptions
@@ -387,7 +308,7 @@ export default function TeacherAssignmentsPage() {
       setFormClassId("")
       setFormDeptCode("")
       setFormYear("")
-      fetchAssignments()
+      queryClient.invalidateQueries({ queryKey: ["admin-assignments"] })
     } catch { toast.error("An unexpected error occurred.") }
     finally { setIsSubmitting(false) }
   }
@@ -426,7 +347,7 @@ export default function TeacherAssignmentsPage() {
       setEditSheetOpen(false)
       setEditTarget(null)
       setEditYear("")
-      fetchAssignments()
+      queryClient.invalidateQueries({ queryKey: ["admin-assignments"] })
     } catch {
       toast.error("An unexpected error occurred.")
     } finally {
@@ -464,7 +385,7 @@ export default function TeacherAssignmentsPage() {
       } else {
         toast.success("Assignment removed")
       }
-      fetchAssignments()
+      queryClient.invalidateQueries({ queryKey: ["admin-assignments"] })
     } catch { toast.error("An unexpected error occurred.") }
     finally { setRemoveTarget(null); setAffectedSlots([]); setIsSubmitting(false) }
   }
@@ -613,7 +534,7 @@ export default function TeacherAssignmentsPage() {
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="py-8 text-center">
             <p className="text-sm font-semibold text-destructive">{fetchError}</p>
-            <Button variant="outline" size="sm" className="mt-3 rounded-xl" onClick={fetchAssignments}>Retry</Button>
+            <Button variant="outline" size="sm" className="mt-3 rounded-xl" onClick={() => refetch()}>Retry</Button>
           </CardContent>
         </Card>
       )}

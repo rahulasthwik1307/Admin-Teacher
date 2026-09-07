@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, startTransition } from "react"
 import {
   useReportsData,
   ReportsFilterState,
@@ -59,7 +59,9 @@ import {
   Award,
   ArrowUpDown,
   FileSpreadsheet,
+  GraduationCap,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   ResponsiveContainer,
   AreaChart,
@@ -473,6 +475,20 @@ export default function ReportsPage() {
     }))
   }, [availableClasses])
 
+  const selectedClassMeta = useMemo(() => {
+    if (!selectedClass || selectedClass === "all") return null
+    for (const g of groupedClassesByYear) {
+      const match = g.classes.find((c: any) => c.id === selectedClass)
+      if (match) {
+        return {
+          name: `${match.department?.code || match.name}-${match.section}`,
+          year: g.year,
+        }
+      }
+    }
+    return null
+  }, [groupedClassesByYear, selectedClass])
+
   // Filter available subjects cascading from dept
   const availableSubjects = useMemo(() => {
     return subjectsList.filter((s: any) => {
@@ -519,58 +535,16 @@ export default function ReportsPage() {
   const teacherActivity = useMemo(() => reportsData?.teacherActivity ?? [], [reportsData])
   const diagnostics = reportsData?.diagnostics
 
-  /* ── Trend Computation: Option B Daily Aggregation ── */
+  /* ── Trend Computation: Server-Aggregated Daily Timeline ── */
   const dailyAttendanceTrend = useMemo(() => {
-    if (!reportsData?.sessions || reportsData.sessions.length === 0) return []
-
-    // Build active student count per class map from subjectCohortMatrix
-    const classActiveCountMap = new Map<string, number>()
-    for (const scm of subjectCohortMatrix) {
-      if (scm.sessionsConducted > 0 && scm.totalExpected > 0) {
-        const count = Math.round(scm.totalExpected / scm.sessionsConducted)
-        classActiveCountMap.set(scm.classId, count)
-      }
+    if (reportsData?.timelineTrend && reportsData.timelineTrend.length > 0) {
+      return reportsData.timelineTrend.map(item => ({
+        ...item,
+        formattedDate: item.formattedDate || formatSessionDate(item.date),
+      }))
     }
-
-    // Group sessions by date
-    const dateMap = new Map<string, { sessions: number; expected: number; present: number }>()
-
-    for (const s of reportsData.sessions) {
-      if (!dateMap.has(s.session_date)) {
-        dateMap.set(s.session_date, { sessions: 0, expected: 0, present: 0 })
-      }
-      const item = dateMap.get(s.session_date)!
-      item.sessions += 1
-      const expectedInSession = classActiveCountMap.get(s.class_id) ?? 0
-      item.expected += expectedInSession
-    }
-
-    // Add present marks strictly matching session class
-    for (const a of reportsData.attendance ?? []) {
-      if (a.status === "present") {
-        const sess = reportsData.sessions.find((s: any) => s.id === a.session_id)
-        if (sess && a.student?.class?.id === sess.class_id) {
-          const item = dateMap.get(sess.session_date)
-          if (item) item.present += 1
-        }
-      }
-    }
-
-    // Convert to sorted array
-    const sortedDates = Array.from(dateMap.keys()).sort()
-    return sortedDates.map(d => {
-      const entry = dateMap.get(d)!
-      const pct = entry.expected > 0 ? Math.round((entry.present / entry.expected) * 100) : 0
-      return {
-        date: d,
-        formattedDate: formatSessionDate(d),
-        attendancePct: pct,
-        present: entry.present,
-        expected: entry.expected,
-        sessions: entry.sessions,
-      }
-    })
-  }, [reportsData, subjectCohortMatrix])
+    return []
+  }, [reportsData?.timelineTrend])
 
   /* ── Filtered Subsets for Tables ── */
   const filteredMatrix = useMemo(() => {
@@ -609,154 +583,25 @@ export default function ReportsPage() {
 
   /* ── Operational Alerts: Mass Bunk / Low Turnout (<50%) ── */
   const lowTurnoutSessions = useMemo<LowTurnoutSessionItem[]>(() => {
-    if (!reportsData?.sessions || reportsData.sessions.length === 0) return []
-
-    // Build active student count per class map from subjectCohortMatrix
-    const classActiveCountMap = new Map<string, number>()
-    for (const scm of subjectCohortMatrix) {
-      if (scm.sessionsConducted > 0 && scm.totalExpected > 0) {
-        const count = Math.round(scm.totalExpected / scm.sessionsConducted)
-        classActiveCountMap.set(scm.classId, count)
-      }
+    if (reportsData?.lowTurnoutSessions && reportsData.lowTurnoutSessions.length > 0) {
+      return reportsData.lowTurnoutSessions.map((item: any) => ({
+        ...item,
+        formattedDate: item.formattedDate || formatSessionDate(item.sessionDate),
+      }))
     }
-
-    // Map session present counts from period_attendance
-    const sessionPresentMap = new Map<string, number>()
-    for (const a of reportsData.attendance ?? []) {
-      if (a.status === "present") {
-        sessionPresentMap.set(a.session_id, (sessionPresentMap.get(a.session_id) || 0) + 1)
-      }
-    }
-
-    const alerts: LowTurnoutSessionItem[] = []
-
-    for (const s of reportsData.sessions) {
-      const expected = classActiveCountMap.get(s.class_id) ?? 0
-      if (expected <= 0) continue // Skip empty classes without enrolled students
-
-      const present = sessionPresentMap.get(s.id) ?? 0
-      const pct = Math.round((present / expected) * 100)
-
-      if (pct < 50) {
-        const c = s.class
-        const dept = c?.department?.code || s.subject?.department?.code || "CSE"
-        const sec = c?.section ? (c.name.includes("-") ? c.name : `${dept}-${c.section}`) : c?.name || "—"
-        const teacherName = s.teacher?.title
-          ? `${s.teacher.title} ${s.teacher.user?.full_name}`
-          : s.teacher?.user?.full_name || "—"
-
-        alerts.push({
-          sessionId: s.id,
-          sessionDate: s.session_date,
-          formattedDate: formatSessionDate(s.session_date),
-          subjectName: s.subject?.name || "—",
-          subjectCode: s.subject?.code || "—",
-          classSection: sec,
-          year: c?.year || "",
-          deptCode: dept,
-          teacherName,
-          presentCount: present,
-          expectedCount: expected,
-          turnoutPct: pct,
-          severity: pct <= 25 ? "critical" : "moderate",
-        })
-      }
-    }
-
-    return alerts.sort((a, b) => (a.turnoutPct !== b.turnoutPct ? a.turnoutPct - b.turnoutPct : b.sessionDate.localeCompare(a.sessionDate)))
-  }, [reportsData, subjectCohortMatrix])
+    return []
+  }, [reportsData?.lowTurnoutSessions])
 
   /* ── Operational Alerts: Acute Consecutive Absentees (3+ missed) ── */
   const consecutiveAbsentStudents = useMemo<ConsecutiveAbsenceStudentItem[]>(() => {
-    if (!reportsData?.attendance || !reportsData?.sessions || reportsData.attendance.length === 0) return []
-
-    const sortedSessions = [...reportsData.sessions].sort((a, b) => a.session_date.localeCompare(b.session_date))
-    const sessionOrderMap = new Map<string, { date: string; classId: string; index: number }>()
-    sortedSessions.forEach((s, idx) => {
-      sessionOrderMap.set(s.id, { date: s.session_date, classId: s.class_id, index: idx })
-    })
-
-    const studentMarksMap = new Map<string, {
-      studentId: string
-      name: string
-      rollNumber: string
-      classSection: string
-      year: string
-      deptCode: string
-      classId: string
-      marks: Array<{ date: string; status: string; sessionIndex: number }>
-    }>()
-
-    for (const a of reportsData.attendance) {
-      if (!a.student_id || !a.student) continue
-      const sInfo = sessionOrderMap.get(a.session_id)
-      if (!sInfo) continue
-
-      const st = a.student
-      const c = st.class
-      const dept = st.department?.code || c?.department?.code || "CSE"
-      const sec = c?.section ? (c.name.includes("-") ? c.name : `${dept}-${c.section}`) : c?.name || "—"
-
-      if (!studentMarksMap.has(a.student_id)) {
-        studentMarksMap.set(a.student_id, {
-          studentId: a.student_id,
-          name: st.user?.full_name || "Unknown",
-          rollNumber: st.roll_number || "—",
-          classSection: sec,
-          year: st.year || c?.year || "",
-          deptCode: dept,
-          classId: c?.id || "",
-          marks: [],
-        })
-      }
-
-      studentMarksMap.get(a.student_id)!.marks.push({
-        date: sInfo.date,
-        status: a.status,
-        sessionIndex: sInfo.index,
-      })
+    if (reportsData?.consecutiveAbsentStudents && reportsData.consecutiveAbsentStudents.length > 0) {
+      return reportsData.consecutiveAbsentStudents.map((item: any) => ({
+        ...item,
+        lastAttendedDate: item.lastAttendedDate ? formatSessionDate(item.lastAttendedDate) : null,
+      }))
     }
-
-    const inactiveList: ConsecutiveAbsenceStudentItem[] = []
-
-    studentMarksMap.forEach(record => {
-      record.marks.sort((a, b) => a.sessionIndex - b.sessionIndex)
-
-      let streak = 0
-      let lastAttended: string | null = null
-
-      for (let i = record.marks.length - 1; i >= 0; i--) {
-        const m = record.marks[i]
-        if (m.status === "absent") {
-          streak++
-        } else if (m.status === "present") {
-          if (!lastAttended) lastAttended = formatSessionDate(m.date)
-          break
-        }
-      }
-
-      if (!lastAttended) {
-        const firstPresent = record.marks.find(m => m.status === "present")
-        if (firstPresent) lastAttended = formatSessionDate(firstPresent.date)
-      }
-
-      if (streak >= 3) {
-        inactiveList.push({
-          studentId: record.studentId,
-          studentName: record.name,
-          rollNumber: record.rollNumber,
-          classSection: record.classSection,
-          year: record.year,
-          deptCode: record.deptCode,
-          consecutiveMissed: streak,
-          lastAttendedDate: lastAttended,
-          riskLevel: streak >= 5 ? "critical" : "high",
-        })
-      }
-    })
-
-    return inactiveList.sort((a, b) => b.consecutiveMissed - a.consecutiveMissed)
-  }, [reportsData])
+    return []
+  }, [reportsData?.consecutiveAbsentStudents])
 
   const filteredLowTurnout = useMemo(() => {
     return lowTurnoutSessions.filter(item => {
@@ -815,7 +660,11 @@ export default function ReportsPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  startTransition(() => {
+                    setActiveTab(tab.id)
+                  })
+                }}
                 className={`relative flex items-center gap-2 rounded-lg px-3.5 h-9 text-xs font-semibold transition-all cursor-pointer ${
                   isActive ? "text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -943,8 +792,31 @@ export default function ReportsPage() {
             <div className="w-44 sm:w-48 min-w-40">
               <Select value={selectedClass} onValueChange={setSelectedClass}>
                 <SelectTrigger className="h-9 text-xs font-medium w-full">
-                  <div className="truncate text-left w-full">
-                    <SelectValue placeholder="All Classes" />
+                  <div className="flex items-center gap-1.5 truncate text-left w-full">
+                    <SelectValue placeholder="All Classes">
+                      {selectedClassMeta ? (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-bold text-foreground text-xs tracking-tight">
+                            {selectedClassMeta.name}
+                          </span>
+                          {selectedClassMeta.year && selectedClassMeta.year !== "Other" && (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                getYearBadgeTheme(selectedClassMeta.year).bg,
+                                getYearBadgeTheme(selectedClassMeta.year).text,
+                                getYearBadgeTheme(selectedClassMeta.year).border
+                              )}
+                            >
+                              <GraduationCap className="size-2.5 shrink-0" />
+                              <span>{selectedClassMeta.year}</span>
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        "All Classes"
+                      )}
+                    </SelectValue>
                   </div>
                 </SelectTrigger>
                 <SelectContent className="min-w-44 max-w-64 max-h-96 p-1">
@@ -1092,131 +964,138 @@ export default function ReportsPage() {
                   <X className="size-3 cursor-pointer hover:text-foreground" onClick={() => setSelectedTeacher("all")} />
                 </Badge>
               )}
+            {isFetching && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground ml-auto animate-pulse">
+                <RefreshCw className="size-3 animate-spin text-primary" /> Updating analytics...
+              </span>
+            )}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Loading Skeleton State */}
-      {isLoading && (
-        <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {[1, 2, 3, 4].map(i => <CardSkeleton key={i} />)}
-          </div>
-          <ChartSkeleton />
-          <TableSkeleton cols={7} rows={6} hasAvatar={false} />
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════════
           TAB 1: ATTENDANCE OVERVIEW (EXECUTIVE DASHBOARD)
       ══════════════════════════════════════════════════════════ */}
-      {!isLoading && activeTab === "attendance-overview" && (
+      <AnimatePresence mode="popLayout" initial={false}>
+      {activeTab === "attendance-overview" && (
         <motion.div
           key="tab-attendance-overview"
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-          className="flex flex-col gap-6"
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col gap-6 will-change-[transform,opacity]"
         >
           {/* 4 Headline Executive KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {/* KPI 1: Overall Attendance Rate */}
-            <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-4 shadow-2xs dark:border-sky-800/60">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-                      {isAnyFilterActive ? "Filtered Attendance" : "Campus Attendance"}
+          {isLoading && !reportsData ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {[1, 2, 3, 4].map(i => <CardSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {/* KPI 1: Overall Attendance Rate */}
+              <Card className="relative overflow-hidden rounded-xl border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card p-4 shadow-2xs dark:border-sky-800/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                        {isAnyFilterActive ? "Filtered Attendance" : "Campus Attendance"}
+                      </span>
+                    </div>
+                    <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
+                      {overview?.hasData && campusPct !== null ? (
+                        <span className={overallColor.text}>{campusPct}%</span>
+                      ) : (
+                        <span className="text-muted-foreground text-2xl font-bold">No Data</span>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {overview?.hasData
+                        ? `${overview.totalPresentMarks.toLocaleString()} present / ${overview.totalExpectedStudents.toLocaleString()} expected`
+                        : "No valid finalized sessions"}
                     </span>
                   </div>
-                  <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
-                    {overview?.hasData && campusPct !== null ? (
-                      <span className={overallColor.text}>{campusPct}%</span>
-                    ) : (
-                      <span className="text-muted-foreground text-2xl font-bold">No Data</span>
-                    )}
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                    <BarChart3 className="size-5" />
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {overview?.hasData
-                      ? `${overview.totalPresentMarks.toLocaleString()} present / ${overview.totalExpectedStudents.toLocaleString()} expected`
-                      : "No valid finalized sessions"}
-                  </span>
                 </div>
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                  <BarChart3 className="size-5" />
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* KPI 2: Sessions Conducted */}
-            <Card className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-4 shadow-2xs dark:border-emerald-800/60">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                    Sessions Finalized
-                  </span>
-                  <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
-                    {overview?.totalSessionsConducted?.toLocaleString() ?? 0}
+              {/* KPI 2: Sessions Conducted */}
+              <Card className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card p-4 shadow-2xs dark:border-emerald-800/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      Sessions Finalized
+                    </span>
+                    <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
+                      {overview?.totalSessionsConducted?.toLocaleString() ?? 0}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Conducted by {overview?.activeTeachersCount ?? 0} active faculty
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Conducted by {overview?.activeTeachersCount ?? 0} active faculty
-                  </span>
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="size-5" />
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* KPI 3: Students Below 75% Criteria */}
-            <Card className="relative overflow-hidden rounded-xl border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card p-4 shadow-2xs dark:border-rose-800/60">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                    Defaulters (&lt;75%)
-                  </span>
-                  <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
-                    {overview?.studentsBelow75Count ?? 0}
+              {/* KPI 3: Students Below 75% Criteria */}
+              <Card className="relative overflow-hidden rounded-xl border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card p-4 shadow-2xs dark:border-rose-800/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                      Defaulters (&lt;75%)
+                    </span>
+                    <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
+                      {overview?.studentsBelow75Count ?? 0}
+                    </div>
+                    <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                      Students requiring intervention
+                    </span>
                   </div>
-                  <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
-                    Students requiring intervention
-                  </span>
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <AlertTriangle className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                  <AlertTriangle className="size-5" />
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* KPI 4: Total Expected Student Opportunities */}
-            <Card className="relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-4 shadow-2xs dark:border-amber-800/60">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex flex-col gap-1 min-w-0">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                    Expected Opportunities
-                  </span>
-                  <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
-                    {overview?.totalExpectedStudents?.toLocaleString() ?? 0}
+              {/* KPI 4: Total Expected Student Opportunities */}
+              <Card className="relative overflow-hidden rounded-xl border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card p-4 shadow-2xs dark:border-amber-800/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                      Expected Opportunities
+                    </span>
+                    <div className="text-3xl font-black tracking-tight text-foreground mt-0.5">
+                      {overview?.totalExpectedStudents?.toLocaleString() ?? 0}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {overview?.totalExpectedStudents && overview?.totalPresentMarks
+                        ? `${overview.totalExpectedStudents - overview.totalPresentMarks} absent marks recorded`
+                        : "Total expected student seats"}
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {overview?.totalExpectedStudents && overview?.totalPresentMarks
-                      ? `${overview.totalExpectedStudents - overview.totalPresentMarks} absent marks recorded`
-                      : "Total expected student seats"}
-                  </span>
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Users className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Users className="size-5" />
-                </div>
-              </div>
-            </Card>
-          </div>
+              </Card>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════
               TOP PERFORMER & ATTENTION REQUIRED SUMMARY CARDS
           ══════════════════════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {isLoading && !reportsData ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Top Attendance Cohort */}
             <Card className="border-emerald-200/80 bg-emerald-500/5 dark:border-emerald-900/50 p-4.5 shadow-2xs">
               <div className="flex items-start justify-between gap-3">
@@ -1304,7 +1183,8 @@ export default function ReportsPage() {
                 </div>
               </div>
             </Card>
-          </div>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════
               ATTENDANCE TREND & DEPARTMENT BREAKDOWN SECTION
@@ -1327,7 +1207,9 @@ export default function ReportsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 p-4 pt-6">
-                {dailyAttendanceTrend.length === 0 ? (
+                {isLoading && !reportsData ? (
+                  <ChartSkeleton />
+                ) : dailyAttendanceTrend.length === 0 ? (
                   <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm gap-2">
                     <Calendar className="size-8 opacity-40" />
                     <span>No attendance session records found for the selected date range.</span>
@@ -1422,7 +1304,9 @@ export default function ReportsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-1 p-4 flex flex-col justify-between gap-4">
-                {departmentYearBreakdown.length === 0 ? (
+                {isLoading && !reportsData ? (
+                  <TableSkeleton cols={2} rows={4} hasAvatar={false} />
+                ) : departmentYearBreakdown.length === 0 ? (
                   <div className="py-12 flex flex-col items-center justify-center text-center text-xs text-muted-foreground gap-2">
                     <Layers className="size-8 opacity-30" />
                     <span>No department cohorts available for selection.</span>
@@ -1621,7 +1505,13 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMatrix.length === 0 ? (
+                    {isLoading && !reportsData ? (
+                      <tr>
+                        <td colSpan={8} className="p-4">
+                          <TableSkeleton cols={8} rows={6} hasAvatar={false} />
+                        </td>
+                      </tr>
+                    ) : filteredMatrix.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="px-5 py-12 text-center text-sm text-muted-foreground">
                           {matrixSearch ? "No subjects match your search query." : "No attendance data found for the selected filters."}
@@ -1778,7 +1668,13 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDefaulters.length === 0 ? (
+                    {isLoading && !reportsData ? (
+                      <tr>
+                        <td colSpan={7} className="p-4">
+                          <TableSkeleton cols={7} rows={6} hasAvatar={true} />
+                        </td>
+                      </tr>
+                    ) : filteredDefaulters.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-5 py-12 text-center text-sm text-muted-foreground">
                           {overview?.hasData
@@ -1875,72 +1771,78 @@ export default function ReportsPage() {
       {/* ══════════════════════════════════════════════════════════
           TAB 2: TEACHER ACTIVITY (FACULTY MONITORING)
       ══════════════════════════════════════════════════════════ */}
-      {!isLoading && activeTab === "teacher-activity" && (
+      {activeTab === "teacher-activity" && (
         <motion.div
           key="tab-teacher-activity"
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-          className="flex flex-col gap-6"
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col gap-6 will-change-[transform,opacity]"
         >
           {/* Teacher Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            {/* Active Faculty */}
-            <Card className="p-4 border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card shadow-2xs dark:border-emerald-800/60">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                    Active Faculty
-                  </span>
-                  <div className="text-3xl font-black text-foreground mt-1">
-                    {teacherActivity.filter(t => t.sessionsConducted > 0).length}
-                    <span className="text-xs font-semibold text-muted-foreground ml-1.5">/ {teacherActivity.length}</span>
+          {isLoading && !reportsData ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {[1, 2, 3].map(i => <CardSkeleton key={i} />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Active Faculty */}
+              <Card className="p-4 border border-emerald-200/80 bg-linear-to-b from-emerald-500/5 via-card to-card shadow-2xs dark:border-emerald-800/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                      Active Faculty
+                    </span>
+                    <div className="text-3xl font-black text-foreground mt-1">
+                      {teacherActivity.filter(t => t.sessionsConducted > 0).length}
+                      <span className="text-xs font-semibold text-muted-foreground ml-1.5">/ {teacherActivity.length}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">Faculty members with finalized sessions</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Faculty members with finalized sessions</span>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Users className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <Users className="size-5" />
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Total Sessions Conducted by Faculty */}
-            <Card className="p-4 border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card shadow-2xs dark:border-sky-800/60">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
-                    Faculty Sessions
-                  </span>
-                  <div className="text-3xl font-black text-foreground mt-1">
-                    {teacherActivity.reduce((sum, t) => sum + t.sessionsConducted, 0).toLocaleString()}
+              {/* Total Sessions Conducted by Faculty */}
+              <Card className="p-4 border border-sky-200/80 bg-linear-to-b from-sky-500/5 via-card to-card shadow-2xs dark:border-sky-800/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-700 dark:text-sky-300">
+                      Faculty Sessions
+                    </span>
+                    <div className="text-3xl font-black text-foreground mt-1">
+                      {teacherActivity.reduce((sum, t) => sum + t.sessionsConducted, 0).toLocaleString()}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">Total sessions finalized by teachers</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Total sessions finalized by teachers</span>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                    <CheckCircle2 className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-                  <CheckCircle2 className="size-5" />
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Average Student Attendance Across Faculty */}
-            <Card className="p-4 border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card shadow-2xs dark:border-amber-800/60">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                    Average Student Attendance
-                  </span>
-                  <div className="text-3xl font-black text-foreground mt-1">
-                    {overview?.campusAttendancePct !== null ? `${overview?.campusAttendancePct}%` : "—"}
+              {/* Average Student Attendance Across Faculty */}
+              <Card className="p-4 border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card shadow-2xs dark:border-amber-800/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                      Average Student Attendance
+                    </span>
+                    <div className="text-3xl font-black text-foreground mt-1">
+                      {overview?.campusAttendancePct !== null ? `${overview?.campusAttendancePct}%` : "—"}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">Cumulative expected attendance outcome</span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">Cumulative expected attendance outcome</span>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <TrendingUp className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <TrendingUp className="size-5" />
-                </div>
-              </div>
-            </Card>
-          </div>
+              </Card>
+            </div>
+          )}
 
           {/* Teacher Activity Table */}
           <Card className="overflow-hidden">
@@ -1992,7 +1894,13 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTeachers.length === 0 ? (
+                    {isLoading && !reportsData ? (
+                      <tr>
+                        <td colSpan={8} className="p-4">
+                          <TableSkeleton cols={8} rows={6} hasAvatar={true} />
+                        </td>
+                      </tr>
+                    ) : filteredTeachers.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="px-5 py-12 text-center text-sm text-muted-foreground">
                           No faculty records match your criteria.
@@ -2088,14 +1996,14 @@ export default function ReportsPage() {
       {/* ══════════════════════════════════════════════════════════
           TAB 3: ATTENDANCE ALERTS & EXCEPTIONS (OPERATIONAL ALERTS)
       ══════════════════════════════════════════════════════════ */}
-      {!isLoading && activeTab === "diagnostics" && (
+      {activeTab === "diagnostics" && (
         <motion.div
           key="tab-alerts"
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-          className="flex flex-col gap-6"
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col gap-6 will-change-[transform,opacity]"
         >
           {/* Executive Alert Banner */}
           <div className="rounded-xl border border-rose-500/30 bg-linear-to-r from-rose-500/10 via-card to-amber-500/10 p-4 text-foreground shadow-2xs">
@@ -2113,47 +2021,54 @@ export default function ReportsPage() {
           </div>
 
           {/* Operational Alert Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {/* Card 1: Mass Absenteeism & Low Turnout */}
-            <Card className="p-4 border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card shadow-2xs dark:border-rose-900/50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                    Mass Absenteeism / Low Turnout Sessions
-                  </span>
-                  <div className="text-3xl font-black text-foreground mt-1">
-                    {lowTurnoutSessions.length}
+          {isLoading && !reportsData ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Card 1: Mass Absenteeism & Low Turnout */}
+              <Card className="p-4 border border-rose-200/80 bg-linear-to-b from-rose-500/5 via-card to-card shadow-2xs dark:border-rose-900/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                      Mass Absenteeism / Low Turnout Sessions
+                    </span>
+                    <div className="text-3xl font-black text-foreground mt-1">
+                      {lowTurnoutSessions.length}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Conducted class sessions with &lt;50% student turnout
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Conducted class sessions with &lt;50% student turnout
-                  </span>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <AlertTriangle className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                  <AlertTriangle className="size-5" />
-                </div>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Card 2: Acute Consecutive Absentees */}
-            <Card className="p-4 border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card shadow-2xs dark:border-amber-900/50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                    Acute Consecutive Absentees (3+ Classes)
-                  </span>
-                  <div className="text-3xl font-black text-foreground mt-1">
-                    {consecutiveAbsentStudents.length}
+              {/* Card 2: Acute Consecutive Absentees */}
+              <Card className="p-4 border border-amber-200/80 bg-linear-to-b from-amber-500/5 via-card to-card shadow-2xs dark:border-amber-900/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                      Acute Consecutive Absentees (3+ Classes)
+                    </span>
+                    <div className="text-3xl font-black text-foreground mt-1">
+                      {consecutiveAbsentStudents.length}
+                    </div>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      Students with 3+ consecutive unexcused lecture absences
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Students with 3+ consecutive unexcused lecture absences
-                  </span>
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Users className="size-5" />
+                  </div>
                 </div>
-                <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Users className="size-5" />
-                </div>
-              </div>
-            </Card>
-          </div>
+              </Card>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════
               TABLE 1: MASS ABSENTEEISM & LOW TURNOUT SESSIONS (<50%)
@@ -2242,7 +2157,13 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLowTurnout.length === 0 ? (
+                    {isLoading && !reportsData ? (
+                      <tr>
+                        <td colSpan={7} className="p-4">
+                          <TableSkeleton cols={7} rows={5} hasAvatar={false} />
+                        </td>
+                      </tr>
+                    ) : filteredLowTurnout.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-5 py-10 text-center text-sm text-muted-foreground">
                           {lowTurnoutSearch ? "No sessions match your search query." : "🎉 Excellent! No sessions with low turnout (<50%) recorded in this scope."}
@@ -2390,7 +2311,13 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredConsecutiveAbsence.length === 0 ? (
+                    {isLoading && !reportsData ? (
+                      <tr>
+                        <td colSpan={6} className="p-4">
+                          <TableSkeleton cols={6} rows={5} hasAvatar={true} />
+                        </td>
+                      </tr>
+                    ) : filteredConsecutiveAbsence.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="px-5 py-10 text-center text-sm text-muted-foreground">
                           {consecutiveAbsenceSearch ? "No students match your search query." : "🎉 Great! No students currently on a 3+ consecutive absence streak."}
@@ -2451,14 +2378,14 @@ export default function ReportsPage() {
       {/* ══════════════════════════════════════════════════════════
           TAB 4: SYSTEM LOGS (AUDIT TRAIL)
       ══════════════════════════════════════════════════════════ */}
-      {!isLoading && activeTab === "system-logs" && (
+      {activeTab === "system-logs" && (
         <motion.div
           key="tab-system-logs"
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-          className="flex flex-col gap-6"
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col gap-6 will-change-[transform,opacity]"
         >
           {/* Filters for Logs */}
           <div className="flex flex-wrap gap-2.5 items-center">
@@ -2521,7 +2448,13 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLogs.length === 0 ? (
+                    {isLoading && !reportsData ? (
+                      <tr>
+                        <td colSpan={5} className="p-4">
+                          <TableSkeleton cols={5} rows={6} hasAvatar={false} />
+                        </td>
+                      </tr>
+                    ) : filteredLogs.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-5 py-12 text-center text-sm text-muted-foreground">
                           No audit logs match the selected criteria.
@@ -2569,6 +2502,7 @@ export default function ReportsPage() {
           </Card>
         </motion.div>
       )}
+      </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════
           STUDENT DRILLDOWN MODAL

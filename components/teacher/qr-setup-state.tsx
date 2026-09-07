@@ -1,7 +1,7 @@
 "use client"
 
 import { Fragment, useMemo, useState, useEffect } from "react"
-import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown, AlertCircle, FileEdit } from "lucide-react"
+import { QrCode, CalendarDays, Users, BookOpen, Clock, ArrowRight, ShieldCheck, Sparkles, ChevronDown, AlertCircle, FileEdit, Building2, GraduationCap, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -60,6 +60,7 @@ interface QRSetupStateProps {
   recentSessionsLoading?: boolean
   periodAutoFilled?: boolean
   todayOccupiedSlots?: Map<string, OccupiedSlotData>
+  isTransitioning?: boolean
 }
 
 /* ---------- Cohort label parser & grouper helper ---------- */
@@ -74,6 +75,44 @@ function parseCohortLabel(label: string) {
   return {
     className: label,
     year: "Other",
+  }
+}
+
+/* ---------- Academic Year Color Themes ---------- */
+interface YearTheme {
+  badge: string
+  dot: string
+}
+
+function getYearTheme(yearStr?: string): YearTheme {
+  const y = (yearStr || "").toLowerCase()
+  if (/\b(4|4th|iv|fourth)\b/.test(y) || y.includes("4")) {
+    return {
+      badge: "bg-purple-500/12 text-purple-800 dark:text-purple-200 border-purple-300/70 dark:border-purple-600/50 font-bold shadow-2xs",
+      dot: "bg-purple-600 dark:bg-purple-400",
+    }
+  }
+  if (/\b(3|3rd|iii|third)\b/.test(y) || y.includes("3")) {
+    return {
+      badge: "bg-amber-500/12 text-amber-800 dark:text-amber-200 border-amber-300/70 dark:border-amber-600/50 font-bold shadow-2xs",
+      dot: "bg-amber-600 dark:bg-amber-400",
+    }
+  }
+  if (/\b(2|2nd|ii|second)\b/.test(y) || y.includes("2")) {
+    return {
+      badge: "bg-emerald-500/12 text-emerald-800 dark:text-emerald-200 border-emerald-300/70 dark:border-emerald-600/50 font-bold shadow-2xs",
+      dot: "bg-emerald-600 dark:bg-emerald-400",
+    }
+  }
+  if (/\b(1|1st|i|first)\b/.test(y) || y.includes("1")) {
+    return {
+      badge: "bg-sky-500/12 text-sky-800 dark:text-sky-200 border-sky-300/70 dark:border-sky-600/50 font-bold shadow-2xs",
+      dot: "bg-sky-600 dark:bg-sky-400",
+    }
+  }
+  return {
+    badge: "bg-muted/70 text-muted-foreground border-border/80 font-bold shadow-2xs",
+    dot: "bg-muted-foreground",
   }
 }
 
@@ -199,6 +238,7 @@ export function QRSetupState({
   recentSessionsLoading,
   periodAutoFilled,
   todayOccupiedSlots,
+  isTransitioning = false,
 }: QRSetupStateProps) {
   const [dateFilter, setDateFilter] = useState<"today" | "week" | "all">("today")
   const [classFilterLocal, setClassFilterLocal] = useState("all")
@@ -238,9 +278,15 @@ export function QRSetupState({
 
   const uniqueClasses = useMemo(() => {
     const set = new Set<string>()
-    recentSessions.forEach((s) => set.add(s.class))
+    const assignedLabels = new Set(classOptions.map((o) => o.label))
+    recentSessions.forEach((s) => {
+      if (assignedLabels.has(s.class)) {
+        set.add(s.class)
+      }
+    })
+    classOptions.forEach((o) => set.add(o.label))
     return Array.from(set).sort()
-  }, [recentSessions])
+  }, [recentSessions, classOptions])
 
   // Group recent sessions cohorts by academic year
   const recentCohortGroups = useMemo(() => {
@@ -303,6 +349,12 @@ export function QRSetupState({
 
   const grouped = useMemo(() => groupSessions(filteredSessions), [filteredSessions])
 
+  // Selected class option formatting for trigger display (showing both Section and Year)
+  const selectedClassOption = useMemo(
+    () => classOptions.find((o) => o.value === selectedClass) || null,
+    [classOptions, selectedClass]
+  )
+
   // Selected period formatting for trigger display
   const selectedPeriodParsed = useMemo(() => {
     if (!selectedPeriod) return null
@@ -364,15 +416,65 @@ export function QRSetupState({
                 </span>
                 {!mounted ? (
                   <div className="flex items-center justify-between font-semibold text-xs sm:text-sm text-muted-foreground w-full py-0.5">
-                    <span className="truncate">
-                      {classOptions.find((o) => o.value === selectedClass)?.label || "Select class cohort"}
-                    </span>
+                    {selectedClassOption ? (
+                      (() => {
+                        const { className, year } = parseCohortLabel(selectedClassOption.label)
+                        const yrTheme = getYearTheme(year)
+                        return (
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="font-bold text-foreground text-xs sm:text-sm tracking-tight">
+                              {className}
+                            </span>
+                            {year && year !== "Other" && (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border shadow-2xs",
+                                  yrTheme.badge
+                                )}
+                              >
+                                <GraduationCap className="size-3 shrink-0" />
+                                <span>{year}</span>
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()
+                    ) : (
+                      <span className="truncate">
+                        {classOptions.find((o) => o.value === selectedClass)?.label || "Select class cohort"}
+                      </span>
+                    )}
                     <ChevronDown className="size-4 opacity-50 shrink-0 ml-auto" />
                   </div>
                 ) : (
                   <Select value={selectedClass} onValueChange={onClassChange}>
                     <SelectTrigger className="border-0 bg-transparent p-0 h-auto shadow-none focus:ring-0 focus:ring-offset-0 font-semibold text-xs sm:text-sm w-full outline-none [&>svg]:opacity-50 hover:bg-transparent cursor-pointer">
-                      <SelectValue placeholder="Select class cohort" />
+                      <SelectValue placeholder="Select class cohort">
+                        {selectedClassOption ? (
+                          (() => {
+                            const { className, year } = parseCohortLabel(selectedClassOption.label)
+                            const yrTheme = getYearTheme(year)
+                            return (
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="font-bold text-foreground text-xs sm:text-sm tracking-tight">
+                                  {className}
+                                </span>
+                                {year && year !== "Other" && (
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border shadow-2xs transition-colors",
+                                      yrTheme.badge
+                                    )}
+                                  >
+                                    <GraduationCap className="size-3 shrink-0" />
+                                    <span>{year}</span>
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })()
+                        ) : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-border shadow-md min-w-56 py-1">
                       {setupCohortGroups.map((group, idx) => (
@@ -388,7 +490,7 @@ export function QRSetupState({
                                 value={cohort.value}
                                 className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer"
                               >
-                                {cohort.className}
+                                <span>{cohort.className}</span>
                               </SelectItem>
                             ))}
                           </SelectGroup>
@@ -569,24 +671,31 @@ export function QRSetupState({
               size="lg"
               className={cn(
                 "gap-2 font-bold shadow-xs hover:shadow transition-all sm:w-auto h-11 px-5 rounded-xl cursor-pointer",
-                hasSlotConflict && "opacity-50 cursor-not-allowed"
+                hasSlotConflict && "opacity-50 cursor-not-allowed",
+                isTransitioning && "opacity-90 ring-2 ring-primary/50 animate-pulse pointer-events-none"
               )}
-              disabled={!canStart || hasSlotConflict}
+              disabled={!canStart || hasSlotConflict || isTransitioning}
               onClick={onStart}
             >
-              {isReopenSession && currentSlotOccupant?.isManual ? (
+              {isTransitioning ? (
+                <Loader2 className="size-4.5 animate-spin text-white" />
+              ) : isReopenSession && currentSlotOccupant?.isManual ? (
                 <FileEdit className="size-4.5 text-amber-500" />
               ) : (
                 <QrCode className="size-4.5" />
               )}
               <span>
-                {isReopenSession
+                {isTransitioning
+                  ? isReopenSession
+                    ? "Opening Session..."
+                    : "Initializing Attendance Window..."
+                  : isReopenSession
                   ? currentSlotOccupant?.isManual
                     ? "Review / Edit Attendance"
                     : "Reopen Attendance Window"
                   : "Open Attendance Window"}
               </span>
-              <ArrowRight className="size-4" />
+              {!isTransitioning && <ArrowRight className="size-4" />}
             </Button>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {isReopenSession ? (
@@ -655,39 +764,89 @@ export function QRSetupState({
                 <Users className="size-3.5 text-muted-foreground mr-1.5 shrink-0" />
                 {!mounted ? (
                   <div className="h-full border-0 bg-transparent p-0 text-xs font-semibold flex items-center justify-between w-full text-foreground">
-                    <span>{classFilterLocal === "all" ? "All Cohorts" : classFilterLocal}</span>
+                    {classFilterLocal === "all" ? (
+                      <span>All Cohorts</span>
+                    ) : (
+                      (() => {
+                        const { className, year } = parseCohortLabel(classFilterLocal)
+                        const yrTheme = getYearTheme(year)
+                        return (
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="font-bold text-foreground text-xs">{className}</span>
+                            {year && year !== "Other" && (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                  yrTheme.badge
+                                )}
+                              >
+                                <GraduationCap className="size-2.5 shrink-0" />
+                                <span>{year}</span>
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()
+                    )}
                     <ChevronDown className="size-4 opacity-50 shrink-0 ml-1" />
                   </div>
                 ) : (
-                  <Select value={classFilterLocal} onValueChange={setClassFilterLocal}>
-                    <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50">
-                      <SelectValue placeholder="All Cohorts" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border shadow-md min-w-48 py-1">
-                      <SelectItem value="all" className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer">
-                        All Cohorts
-                      </SelectItem>
-                      {recentCohortGroups.map((group) => (
-                        <Fragment key={group.year}>
-                          <SelectSeparator className="my-1 bg-border/60" />
-                          <SelectGroup>
-                            <SelectLabel className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              {group.year}
-                            </SelectLabel>
-                            {group.cohorts.map((cohort) => (
-                              <SelectItem
-                                key={cohort.key}
-                                value={cohort.key}
-                                className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer"
-                              >
-                                {cohort.className}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </Fragment>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <Select value={classFilterLocal} onValueChange={setClassFilterLocal}>
+                      <SelectTrigger className="h-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0 focus:ring-offset-0 shadow-none outline-none [&>svg]:opacity-50 cursor-pointer">
+                        <SelectValue placeholder="All Cohorts">
+                          {classFilterLocal === "all" ? (
+                            "All Cohorts"
+                          ) : (
+                            (() => {
+                              const { className, year } = parseCohortLabel(classFilterLocal)
+                              const yrTheme = getYearTheme(year)
+                              return (
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <span className="font-bold text-foreground text-xs">
+                                    {className}
+                                  </span>
+                                  {year && year !== "Other" && (
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shadow-2xs",
+                                        yrTheme.badge
+                                      )}
+                                    >
+                                      <GraduationCap className="size-2.5 shrink-0" />
+                                      <span>{year}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })()
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border shadow-md min-w-48 py-1">
+                        <SelectItem value="all" className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer">
+                          All Cohorts
+                        </SelectItem>
+                        {recentCohortGroups.map((group) => (
+                          <Fragment key={group.year}>
+                            <SelectSeparator className="my-1 bg-border/60" />
+                            <SelectGroup>
+                              <SelectLabel className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                {group.year}
+                              </SelectLabel>
+                              {group.cohorts.map((cohort) => (
+                                <SelectItem
+                                  key={cohort.key}
+                                  value={cohort.key}
+                                  className="text-xs font-semibold py-1.5 px-2.5 cursor-pointer"
+                                >
+                                  <span>{cohort.className}</span>
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </Fragment>
+                        ))}
+                      </SelectContent>
+                    </Select>
                 )}
               </div>
             </div>
@@ -705,38 +864,65 @@ export function QRSetupState({
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              {Array.from(grouped.entries()).map(([day, sectionMap]) => (
-                <div key={day} className="flex flex-col gap-3">
-                  {/* Day header */}
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">{day}</span>
-                    <div className="flex-1 h-px bg-border/80" />
-                    <span className="text-[11px] text-muted-foreground font-medium">
-                      {Array.from(sectionMap.values()).flat().length} session{Array.from(sectionMap.values()).flat().length !== 1 ? "s" : ""}
-                    </span>
-                  </div>
+              {Array.from(grouped.entries()).map(([day, sectionMap]) => {
+                const totalDaySessions = Array.from(sectionMap.values()).flat().length
+                const isSingleSectionDay = sectionMap.size === 1
 
-                  {/* Sections within day */}
-                  <div className="flex flex-col gap-4">
-                    {Array.from(sectionMap.entries()).map(([section, sessions]) => {
-                      const accent = getCohortAccent(section)
-                      return (
-                        <div key={section} className="flex flex-col gap-2">
-                          {/* Cohort Section Header with Visual Identity */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "inline-flex items-center gap-1.5 text-xs font-bold font-mono rounded-md border px-2.5 py-0.5 shadow-2xs",
-                                accent.badge
-                              )}>
-                                <span className={cn("size-1.5 rounded-full inline-block shrink-0", accent.dot)} />
-                                {section}
-                              </span>
+                return (
+                  <div key={day} className="flex flex-col gap-3">
+                    {/* Day header with calendar icon & clean capsule badge */}
+                    <div className="flex items-center gap-2.5 pt-1">
+                      <div className="flex items-center gap-1.5 text-foreground">
+                        <CalendarDays className="size-3.5 text-muted-foreground/80 shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-wider">{day}</span>
+                      </div>
+                      <div className="flex-1 h-px bg-border/70" />
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted/60 border border-border/60 text-muted-foreground shadow-2xs">
+                        {totalDaySessions} {totalDaySessions === 1 ? "session" : "sessions"}
+                      </span>
+                    </div>
+
+                    {/* Sections within day */}
+                    <div className="flex flex-col gap-4">
+                      {Array.from(sectionMap.entries()).map(([section, sessions]) => {
+                        const { className, year } = parseCohortLabel(section)
+                        const yrTheme = getYearTheme(year)
+
+                        return (
+                          <div key={section} className="flex flex-col gap-2">
+                            {/* Cohort Section Header with Distinct High-Craft Pills */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {/* Class / Section Pill */}
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-md bg-primary/10 text-primary border-primary/25 tracking-wide flex items-center gap-1 shadow-2xs"
+                                >
+                                  <Building2 className="size-3 mr-0.5 text-primary shrink-0" />
+                                  <span>{className}</span>
+                                </Badge>
+
+                                {/* Academic Year Pill */}
+                                {year && year !== "Other" && (
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md border shadow-2xs",
+                                      yrTheme.badge
+                                    )}
+                                  >
+                                    <GraduationCap className="size-3 shrink-0" />
+                                    <span>{year}</span>
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Show session count here ONLY when multiple cohorts are present on this day to eliminate duplicate 1 session / 1 session */}
+                              {!isSingleSectionDay && (
+                                <span className="text-[11px] font-semibold text-muted-foreground bg-muted/40 border border-border/50 px-2 py-0.5 rounded-md shadow-2xs">
+                                  {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
+                                </span>
+                              )}
                             </div>
-                            <span className="text-[11px] text-muted-foreground font-medium">
-                              {sessions.length} {sessions.length === 1 ? "session" : "sessions"}
-                            </span>
-                          </div>
 
                           {/* Subject rows within section */}
                           <div className="rounded-xl border border-border bg-card overflow-hidden shadow-2xs divide-y divide-border/60">
@@ -794,7 +980,8 @@ export function QRSetupState({
                     })}
                   </div>
                 </div>
-              ))}
+              )
+            })}
             </div>
           )}
         </CardContent>

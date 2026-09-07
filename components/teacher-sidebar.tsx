@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
+import { useQueryClient } from "@tanstack/react-query"
 
 /* ── Nav structure with groups ─────────────────────────── */
 const navGroups = [
@@ -58,6 +59,8 @@ interface TeacherSidebarProps {
   onToggleCollapse?: () => void
 }
 
+let cachedTeacherProfile: { name: string; initials: string } | null = null
+
 export function TeacherSidebar({
   onClose,
   collapsed = false,
@@ -65,17 +68,58 @@ export function TeacherSidebar({
 }: TeacherSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const [teacherName, setTeacherName] = useState("Teacher")
-  const [teacherInitials, setTeacherInitials] = useState("T")
+  const queryClient = useQueryClient()
+
+  const prefetchRoute = (href: string) => {
+    try {
+      if (href === "/teacher/missed-attendance") {
+        queryClient.prefetchQuery({
+          queryKey: ["teacher-missed-attendance", "180"],
+          queryFn: () => fetch("/api/teacher/missed-attendance?days=180").then((r) => r.json()),
+          staleTime: 5 * 60 * 1000,
+        })
+      } else if (href === "/teacher/absence-notifications") {
+        queryClient.prefetchQuery({
+          queryKey: ["teacher-absence-pending"],
+          queryFn: () => fetch("/api/teacher/absence-notifications/pending").then((r) => r.json()),
+          staleTime: 5 * 60 * 1000,
+        })
+        queryClient.prefetchQuery({
+          queryKey: ["teacher-absence-history"],
+          queryFn: () => fetch("/api/teacher/absence-notifications/history").then((r) => r.json()),
+          staleTime: 5 * 60 * 1000,
+        })
+      } else if (href === "/teacher/attendance-history") {
+        queryClient.prefetchQuery({
+          queryKey: ["teacher-attendance-history"],
+          queryFn: () => fetch("/api/teacher/attendance-history").then((r) => r.json()),
+          staleTime: 5 * 60 * 1000,
+        })
+      } else if (href === "/teacher/analytics") {
+        queryClient.prefetchQuery({
+          queryKey: ["teacher-analytics", "This Month"],
+          queryFn: () => fetch("/api/teacher/analytics?period=This%20Month").then((r) => r.json()),
+          staleTime: 5 * 60 * 1000,
+        })
+      }
+    } catch {
+      // safe fallback
+    }
+  }
+
+  const [teacherName, setTeacherName] = useState(cachedTeacherProfile?.name ?? "Teacher")
+  const [teacherInitials, setTeacherInitials] = useState(cachedTeacherProfile?.initials ?? "T")
 
   const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault()
+    cachedTeacherProfile = null
     const { clearTabSession } = await import("@/lib/auth/session-manager")
     await clearTabSession()
     router.push("/login")
   }
 
   useEffect(() => {
+    if (cachedTeacherProfile) return
     async function loadTeacherName() {
       try {
         const supabase = createClient()
@@ -87,15 +131,15 @@ export function TeacherSidebar({
             .eq("id", user.id)
             .single()
           if (profile?.full_name) {
+            const initials = profile.full_name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2)
+            cachedTeacherProfile = { name: profile.full_name, initials }
             setTeacherName(profile.full_name)
-            setTeacherInitials(
-              profile.full_name
-                .split(" ")
-                .map((n: string) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)
-            )
+            setTeacherInitials(initials)
           }
         }
       } catch {
@@ -247,6 +291,9 @@ export function TeacherSidebar({
                             <Link
                               href={item.href}
                               onClick={onClose}
+                              onMouseEnter={() => prefetchRoute(item.href)}
+                              onFocus={() => prefetchRoute(item.href)}
+                              onTouchStart={() => prefetchRoute(item.href)}
                               className={cn(
                                 "group relative flex size-11 items-center justify-center rounded-xl transition-all duration-200",
                                 isActive
@@ -277,6 +324,9 @@ export function TeacherSidebar({
                       <Link
                         href={item.href}
                         onClick={onClose}
+                        onMouseEnter={() => prefetchRoute(item.href)}
+                        onFocus={() => prefetchRoute(item.href)}
+                        onTouchStart={() => prefetchRoute(item.href)}
                         className={cn(
                           "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-200",
                           isActive

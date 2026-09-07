@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, keepPreviousData } from "@tanstack/react-query"
 
 export interface MissedSlot {
   date: string
@@ -16,7 +16,7 @@ export interface MissedSlot {
   endTime: string
 }
 
-async function fetchMissedAttendance(days: string): Promise<MissedSlot[]> {
+export async function fetchMissedAttendance(days: string = "180"): Promise<MissedSlot[]> {
   const res = await fetch(`/api/teacher/missed-attendance?days=${days}`)
   if (!res.ok) throw new Error("Failed to fetch missed attendance")
   return res.json()
@@ -26,7 +26,10 @@ export function useMissedAttendance(days: string) {
   return useQuery<MissedSlot[]>({
     queryKey: ["teacher-missed-attendance", days],
     queryFn: () => fetchMissedAttendance(days),
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
   })
 }
