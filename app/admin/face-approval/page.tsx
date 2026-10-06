@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { FaceApprovalSkeleton } from "@/components/ui/skeletons"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -234,6 +235,11 @@ export default function AdminFaceApprovalPage() {
   const [rejectTarget, setRejectTarget] = useState<{ studentId: string; name: string } | null>(null)
   const [viewTarget, setViewTarget] = useState<EnrolledStudent | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Multi-select batch actions state
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
+  const [bulkRejectOpen, setBulkRejectOpen] = useState(false)
+  const [bulkActionLoading, setBulkActionLoading] = useState(false)
 
   // Filters & Search state
   const [searchQuery, setSearchQuery] = useState("")
@@ -571,6 +577,115 @@ export default function AdminFaceApprovalPage() {
     return list
   }, [filteredStudents, sortBy])
 
+  // Batch action selection logic
+  const pendingInView = useMemo(() => {
+    return sortedStudents.filter((s) => s.faceStatus === "Pending")
+  }, [sortedStudents])
+
+  const areAllPendingSelected =
+    pendingInView.length > 0 && pendingInView.every((s) => selectedStudentIds.has(s.id))
+
+  const handleToggleSelectAllPending = () => {
+    if (areAllPendingSelected) {
+      setSelectedStudentIds(new Set())
+    } else {
+      setSelectedStudentIds(new Set(pendingInView.map((s) => s.id)))
+    }
+  }
+
+  const toggleSelectStudent = (id: string) => {
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleBatchApprove = async () => {
+    if (selectedStudentIds.size === 0) return
+    setBulkActionLoading(true)
+    const idsToApprove = Array.from(selectedStudentIds)
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("students")
+        .update({ is_approved: true })
+        .in("id", idsToApprove)
+
+      if (error) throw error
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from("system_logs").insert({
+          performed_by: user.id,
+          action_type: "update",
+          description: `Batch face approval: Approved ${idsToApprove.length} students by admin`,
+        })
+      }
+
+      toast.success(`Approved ${idsToApprove.length} face registrations!`)
+      window.dispatchEvent(new Event("face-approval-updated"))
+
+      queryClient.setQueryData<FaceApprovalsData>(["admin-face-approvals"], (prev) => {
+        if (!prev) return prev
+        const idSet = new Set(idsToApprove)
+        return {
+          ...prev,
+          students: prev.students.map((s) =>
+            idSet.has(s.id) ? { ...s, faceStatus: "Approved" } : s
+          ),
+        }
+      })
+      queryClient.invalidateQueries({ queryKey: ["admin-face-approvals"] })
+      setSelectedStudentIds(new Set())
+    } catch {
+      toast.error("Failed to approve selected students")
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }
+
+  const handleBatchReject = async () => {
+    if (selectedStudentIds.size === 0) return
+    setBulkActionLoading(true)
+    const idsToReject = Array.from(selectedStudentIds)
+    try {
+      let succeeded = 0
+      let failed = 0
+      for (const studentId of idsToReject) {
+        try {
+          const res = await fetch("/api/admin/reject-face", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ studentId }),
+          })
+          if (res.ok) succeeded++
+          else failed++
+        } catch {
+          failed++
+        }
+      }
+
+      if (failed === 0) {
+        toast.success(`Rejected and purged face registrations for ${succeeded} students`)
+      } else {
+        toast.warning(`Rejected ${succeeded} students (${failed} failed)`)
+      }
+
+      window.dispatchEvent(new Event("face-approval-updated"))
+      queryClient.invalidateQueries({ queryKey: ["admin-face-approvals"] })
+      setSelectedStudentIds(new Set())
+      setBulkRejectOpen(false)
+    } catch {
+      toast.error("An error occurred during batch rejection")
+    } finally {
+      setBulkActionLoading(false)
+    }
+  }
+
   // Group sorted results by Cohort Label
   const groupedCohorts = useMemo(() => {
     const map = new Map<string, EnrolledStudent[]>()
@@ -782,7 +897,27 @@ export default function AdminFaceApprovalPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {pendingInView.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleSelectAllPending}
+              className={cn(
+                "rounded-xl text-xs font-semibold gap-1.5 h-9.5 px-3.5 shadow-2xs cursor-pointer border transition-all",
+                areAllPendingSelected
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-400/80"
+                  : "bg-card border-border/80 text-foreground hover:bg-muted/80"
+              )}
+            >
+              <CheckCircle2 className="size-3.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                {areAllPendingSelected
+                  ? "Deselect Pending"
+                  : `Select All Pending (${pendingInView.length})`}
+              </span>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -1326,6 +1461,14 @@ export default function AdminFaceApprovalPage() {
                     >
                       {/* Left: Identity & Metadata */}
                       <div className="flex flex-1 items-start sm:items-center gap-3.5 min-w-0">
+                        {student.faceStatus !== "None" && (
+                          <Checkbox
+                            checked={selectedStudentIds.has(student.id)}
+                            onCheckedChange={() => toggleSelectStudent(student.id)}
+                            className="size-4.5 rounded-md border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary shrink-0 self-center cursor-pointer"
+                            aria-label={`Select ${student.name}`}
+                          />
+                        )}
                         <StudentPhotoThumbnail
                           src={student.registrationPhoto}
                           name={student.name}
@@ -1693,6 +1836,99 @@ export default function AdminFaceApprovalPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── 10. Bulk Reject Confirmation Dialog ── */}
+      <AlertDialog open={bulkRejectOpen} onOpenChange={setBulkRejectOpen}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2.5 text-rose-600 mb-1">
+              <div className="flex size-8 items-center justify-center rounded-xl bg-rose-500/15">
+                <AlertCircle className="size-4.5" />
+              </div>
+              <AlertDialogTitle className="text-base font-bold text-foreground">
+                Reject & Purge {selectedStudentIds.size} Face Registrations
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to reject the face registrations for all{" "}
+              <strong className="text-foreground">{selectedStudentIds.size} selected students</strong>?
+              Their stored biometric embeddings and registered photos will be cleared permanently, and they will be prompted to re-register.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-2">
+            <AlertDialogCancel disabled={bulkActionLoading} className="rounded-xl text-xs font-semibold">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBatchReject}
+              disabled={bulkActionLoading}
+              className="rounded-xl text-xs font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+            >
+              {bulkActionLoading ? (
+                <>
+                  <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                  Rejecting & Purging...
+                </>
+              ) : (
+                "Confirm Batch Rejection"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── 11. Floating Bulk Action Bar ── */}
+      <AnimatePresence>
+        {selectedStudentIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 30, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 30, x: "-50%" }}
+            className="fixed bottom-6 left-1/2 z-50 flex items-center gap-3 p-3 px-5 rounded-2xl bg-card/95 backdrop-blur-md border border-border shadow-2xl"
+          >
+            <div className="flex items-center gap-2 pr-2 border-r border-border">
+              <Badge className="bg-primary/10 text-primary border-primary/20 text-xs py-0.5 font-bold">
+                {selectedStudentIds.size} Selected
+              </Badge>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={handleBatchApprove}
+              disabled={bulkActionLoading}
+              className="rounded-xl text-xs font-semibold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs"
+            >
+              {bulkActionLoading ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Check className="size-3.5" />
+              )}
+              <span>Approve Selected ({selectedStudentIds.size})</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setBulkRejectOpen(true)}
+              disabled={bulkActionLoading}
+              className="rounded-xl text-xs font-semibold gap-1.5 cursor-pointer shadow-xs"
+            >
+              <X className="size-3.5" />
+              <span>Reject Selected</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedStudentIds(new Set())}
+              disabled={bulkActionLoading}
+              className="rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Clear
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

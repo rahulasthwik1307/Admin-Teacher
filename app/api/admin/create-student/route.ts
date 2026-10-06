@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       email,
       full_name: full_name.trim(),
       role: "student",
-      must_change_password: false,
+      must_change_password: true,
       contact_email: contact_email?.trim() || null,
     })
 

@@ -6,7 +6,7 @@ import {
   Search, Plus, MoreHorizontal, Trash2, ChevronLeft, ChevronRight,
   Users, UserCheck, Clock, Loader2, User, Hash, GraduationCap,
   CalendarDays, Building2, Mail, ShieldCheck, X, UserX, AlertCircle,
-  Eye, Edit3, KeyRound,
+  Eye, Edit3, KeyRound, Lock, Unlock, AlertTriangle,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { TableSkeleton, ListSkeleton } from "@/components/ui/skeletons"
+import { EnrollmentStudioDialog } from "@/components/admin/students/enrollment-studio-dialog"
 
 export interface Student {
   id: string
@@ -420,15 +421,15 @@ function FormField({
   children,
 }: {
   icon: React.ElementType
-  label: string
+  label: React.ReactNode
   htmlFor: string
   children: React.ReactNode
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={htmlFor} className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-        <Icon className="size-3.5 text-muted-foreground" />
-        {label}
+        <Icon className="size-3.5 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">{label}</div>
       </Label>
       {children}
     </div>
@@ -470,6 +471,21 @@ export default function AdminStudentsPage() {
   const [editDeptId, setEditDeptId] = useState("")
   const [editYear, setEditYear] = useState("")
   const [editContactEmail, setEditContactEmail] = useState("")
+  const [isRollUnlocked, setIsRollUnlocked] = useState(false)
+  const [showRollUnlockWarning, setShowRollUnlockWarning] = useState(false)
+
+  function openEditStudent(student: Student) {
+    setEditTarget(student)
+    setEditName(student.name)
+    setEditRoll(student.roll)
+    setEditClassId(student.classId)
+    setEditDeptId(student.departmentId)
+    setEditYear(student.year)
+    setEditContactEmail(student.contactEmail ?? "")
+    setIsRollUnlocked(false)
+    setShowRollUnlockWarning(false)
+    setEditSheetOpen(true)
+  }
 
   const [resetTarget, setResetTarget] = useState<Student | null>(null)
   const [resetOpen, setResetOpen] = useState(false)
@@ -804,16 +820,7 @@ export default function AdminStudentsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44 rounded-xl">
                 <DropdownMenuItem
-                  onClick={() => {
-                    setEditTarget(student)
-                    setEditName(student.name)
-                    setEditRoll(student.roll)
-                    setEditClassId(student.classId)
-                    setEditDeptId(student.departmentId)
-                    setEditYear(student.year)
-                    setEditContactEmail(student.contactEmail ?? "")
-                    setEditSheetOpen(true)
-                  }}
+                  onClick={() => openEditStudent(student)}
                   className="gap-2 cursor-pointer"
                 >
                   <Edit3 className="size-3.5 text-muted-foreground" />
@@ -1113,10 +1120,10 @@ export default function AdminStudentsPage() {
           <div className="lg:col-span-1 flex justify-end">
             <Button
               onClick={() => setSheetOpen(true)}
-              className="gap-1.5 h-9.5 rounded-xl text-xs font-semibold shadow-2xs w-full cursor-pointer"
+              className="gap-1.5 h-9.5 rounded-xl text-xs font-semibold shadow-2xs w-full cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="size-3.5" />
-              <span>Add</span>
+              <span>Enroll Students</span>
             </Button>
           </div>
         </div>
@@ -1314,16 +1321,7 @@ export default function AdminStudentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44 rounded-xl">
                             <DropdownMenuItem
-                              onClick={() => {
-                                setEditTarget(student)
-                                setEditName(student.name)
-                                setEditRoll(student.roll)
-                                setEditClassId(student.classId)
-                                setEditDeptId(student.departmentId)
-                                setEditYear(student.year)
-                                setEditContactEmail(student.contactEmail ?? "")
-                                setEditSheetOpen(true)
-                              }}
+                              onClick={() => openEditStudent(student)}
                             >
                               <Edit3 className="size-3.5 mr-2 text-muted-foreground" />
                               Edit Student
@@ -1402,16 +1400,7 @@ export default function AdminStudentsPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44 rounded-xl">
                       <DropdownMenuItem
-                        onClick={() => {
-                          setEditTarget(student)
-                          setEditName(student.name)
-                          setEditRoll(student.roll)
-                          setEditClassId(student.classId)
-                          setEditDeptId(student.departmentId)
-                          setEditYear(student.year)
-                          setEditContactEmail(student.contactEmail ?? "")
-                          setEditSheetOpen(true)
-                        }}
+                        onClick={() => openEditStudent(student)}
                       >
                         <Edit3 className="size-3.5 mr-2 text-muted-foreground" />
                         Edit Student
@@ -1639,185 +1628,18 @@ export default function AdminStudentsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Add Student Sheet ── */}
-      <Sheet
+      {/* ── Student Enrollment Studio (Single, Quick Paste Option A, Excel Option B) ── */}
+      <EnrollmentStudioDialog
         open={sheetOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setFormName("")
-            setFormRoll("")
-            setFormClassId("")
-            setFormDeptId("")
-            setFormYear("")
-            setFormContactEmail("")
-          }
-          setSheetOpen(open)
-        }}
-      >
-        <SheetContent side="right" className="sm:max-w-md flex flex-col p-0">
-          <SheetHeader className="border-b border-border p-5 pb-4 bg-muted/20">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <GraduationCap className="size-5" />
-              </div>
-              <div>
-                <SheetTitle className="text-base font-bold text-foreground">Add New Student</SheetTitle>
-                <SheetDescription className="text-xs mt-0.5">
-                  Default password: <span className="font-mono font-bold text-foreground">Student@1234</span>
-                </SheetDescription>
-              </div>
-            </div>
-          </SheetHeader>
+        onOpenChange={setSheetOpen}
+        deptOptions={deptOptions}
+        classOptions={classOptions}
+        defaultDeptId={deptFilter !== "all" ? deptFilter : ""}
+        defaultYear={yearFilter !== "all" ? yearFilter : ""}
+        defaultClassId={classFilter !== "all" ? (classOptions.find((c) => c.classSection === classFilter)?.id || "") : ""}
+        onSuccess={fetchStudents}
+      />
 
-          <div className="flex flex-col gap-0 flex-1 overflow-y-auto p-5 divide-y divide-border/60">
-            <div className="pb-4 flex flex-col gap-4">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Personal Information
-              </p>
-              <FormField icon={User} label="Full Name" htmlFor="student-name">
-                <Input
-                  id="student-name"
-                  placeholder="Enter student full name"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="h-9 rounded-xl text-xs"
-                />
-              </FormField>
-              <FormField icon={Hash} label="Roll Number" htmlFor="student-roll">
-                <Input
-                  id="student-roll"
-                  placeholder="e.g. 227Z1A6755"
-                  value={formRoll}
-                  maxLength={10}
-                  onChange={(e) => setFormRoll(e.target.value.toUpperCase())}
-                  className="h-9 rounded-xl text-xs font-mono"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Format: 227Z1A6755 (3 digits, letter, digit, letter, 4 digits)
-                </p>
-              </FormField>
-              <FormField icon={Mail} label="Contact Email" htmlFor="student-contact-email">
-                <Input
-                  id="student-contact-email"
-                  type="email"
-                  placeholder="student@gmail.com (optional)"
-                  value={formContactEmail}
-                  onChange={(e) => setFormContactEmail(e.target.value)}
-                  className="h-9 rounded-xl text-xs"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Used for absence notifications — login is always roll-based.
-                </p>
-              </FormField>
-            </div>
-
-            <div className="pt-4 flex flex-col gap-4">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Academic Enrollment
-              </p>
-              <FormField icon={Building2} label="Department" htmlFor="student-dept">
-                <Select
-                  value={formDeptId}
-                  onValueChange={(v) => {
-                    setFormDeptId(v)
-                    setFormClassId("")
-                  }}
-                >
-                  <SelectTrigger id="student-dept" className="h-9 rounded-xl text-xs">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {deptOptions.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.code} — {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-
-              <FormField icon={CalendarDays} label="Academic Year" htmlFor="student-year">
-                <Select
-                  value={formYear}
-                  onValueChange={(v) => {
-                    setFormYear(v)
-                    setFormClassId("")
-                  }}
-                >
-                  <SelectTrigger id="student-year" className="h-9 rounded-xl text-xs">
-                    <SelectValue placeholder="Select academic year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1st Year">1st Year</SelectItem>
-                    <SelectItem value="2nd Year">2nd Year</SelectItem>
-                    <SelectItem value="3rd Year">3rd Year</SelectItem>
-                    <SelectItem value="4th Year">4th Year</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-
-              <FormField icon={GraduationCap} label="Class & Section" htmlFor="student-class">
-                <Select
-                  value={formClassId}
-                  onValueChange={setFormClassId}
-                  disabled={!formDeptId || !formYear}
-                >
-                  <SelectTrigger id="student-class" disabled={!formDeptId || !formYear} className="h-9 rounded-xl text-xs">
-                    <SelectValue
-                      placeholder={
-                        !formDeptId
-                          ? "Select department first"
-                          : !formYear
-                          ? "Select academic year first"
-                          : filteredClassOptions.length === 0
-                          ? "No classes found"
-                          : "Select class & section"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredClassOptions.length === 0 ? (
-                      <SelectItem value="none" disabled>
-                        No classes found
-                      </SelectItem>
-                    ) : (
-                      filteredClassOptions.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.classSection}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2.5 border-t border-border px-5 py-4 bg-muted/20 mt-auto">
-            <Button variant="outline" size="sm" onClick={() => setSheetOpen(false)} className="rounded-xl text-xs font-semibold cursor-pointer">
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleAddStudent}
-              disabled={isSubmitting}
-              className="rounded-xl text-xs font-semibold gap-1.5 min-w-28 cursor-pointer"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus className="size-3.5" />
-                  Add Student
-                </>
-              )}
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       {/* ── Edit Student Sheet ── */}
       <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
@@ -1840,17 +1662,56 @@ export default function AdminStudentsPage() {
               />
             </FormField>
 
-            <FormField icon={Hash} label="Roll Number" htmlFor="edit-roll">
-              <Input
-                id="edit-roll"
-                value={editRoll}
-                maxLength={10}
-                onChange={(e) => setEditRoll(e.target.value.toUpperCase())}
-                placeholder="e.g. 227Z1A6755"
-                className="h-9 rounded-xl text-xs font-mono"
-              />
+            <FormField
+              icon={Hash}
+              label={
+                <div className="flex items-center justify-between w-full">
+                  <span>Roll Number</span>
+                  {!isRollUnlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowRollUnlockWarning(true)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    >
+                      <Lock className="size-3" />
+                      Locked (Click to modify)
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <Unlock className="size-3" />
+                      Unlocked
+                    </span>
+                  )}
+                </div>
+              }
+              htmlFor="edit-roll"
+            >
+              <div className="relative">
+                <Input
+                  id="edit-roll"
+                  value={editRoll}
+                  disabled={!isRollUnlocked}
+                  maxLength={10}
+                  onChange={(e) => setEditRoll(e.target.value.toUpperCase())}
+                  placeholder="e.g. 227Z1A6755"
+                  className={`h-9 rounded-xl text-xs font-mono pr-8 ${
+                    !isRollUnlocked
+                      ? "bg-muted/60 text-muted-foreground cursor-not-allowed opacity-90"
+                      : ""
+                  }`}
+                />
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                  {!isRollUnlocked ? (
+                    <Lock className="size-3.5 text-muted-foreground/70" />
+                  ) : (
+                    <Unlock className="size-3.5 text-emerald-500" />
+                  )}
+                </div>
+              </div>
               <p className="text-[11px] text-muted-foreground">
-                Changing roll number will automatically sync login email credentials.
+                {!isRollUnlocked
+                  ? "Roll Number is the student's unique login ID. It is locked to prevent accidental modification."
+                  : "⚠️ Caution: Modifying roll number will update the student's login credential and institutional email."}
               </p>
             </FormField>
 
@@ -1964,6 +1825,62 @@ export default function AdminStudentsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* ── Roll Number Unlock Confirmation Dialog ── */}
+      <AlertDialog open={showRollUnlockWarning} onOpenChange={setShowRollUnlockWarning}>
+        <AlertDialogContent className="max-w-md rounded-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="size-5" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-base font-bold">
+                  Modify Student Roll Number?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Roll Number is the student's primary institutional login identity
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <div className="text-xs text-muted-foreground space-y-2 py-2">
+            <p>
+              In real-world attendance systems, the student's unique identity is their Roll Number. Modifying it will:
+            </p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                Update their login email credentials (
+                <span className="font-mono text-[11px] bg-muted px-1.5 py-0.5 rounded font-semibold text-foreground">
+                  &lt;roll&gt;@nnrg.student
+                </span>
+                ).
+              </li>
+              <li>Require the student to sign in using their newly assigned roll number.</li>
+              <li>
+                Keep all past attendance records safe and preserved via their internal database ID.
+              </li>
+            </ul>
+            <p className="font-medium text-foreground pt-1">
+              Are you sure you want to unlock and edit the Roll Number for this student?
+            </p>
+          </div>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl text-xs cursor-pointer">
+              Cancel (Keep Locked)
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setIsRollUnlocked(true)
+                setShowRollUnlockWarning(false)
+              }}
+              className="rounded-xl text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold cursor-pointer"
+            >
+              Unlock Roll Number
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Reset Password Dialog ── */}
       <Dialog open={resetOpen} onOpenChange={setResetOpen}>
